@@ -1,2 +1,2 @@
 # FAROES
-Fusion Analysis, Realization and Optimization for Energy Systems
+Fusion Analysis, Research and Optimization for Energy Systems
