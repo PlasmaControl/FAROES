@@ -4,6 +4,9 @@ from scipy.constants import mu_0
 
 
 class InnerTFCoilTension(om.ExplicitComponent):
+    """Total vertical tension on an inner TF coil leg
+
+    """
     def setup(self):
         self.add_input('I_leg', units='MA', desc='Current in one leg')
         self.add_input('B0', units='T', desc='Field on axis')
@@ -17,6 +20,8 @@ class InnerTFCoilTension(om.ExplicitComponent):
         self.add_output('T1', units='MN', desc='Tension on the inner leg')
 
     def compute(self, inputs, outputs):
+        """Implement tension
+        """
         i_leg = inputs['I_leg']
         b0 = inputs['B0']
         R0 = inputs['R0']
