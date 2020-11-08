@@ -7,9 +7,8 @@ Welcome to FAROES's documentation!
    :caption: Contents:
 
    about
+   sources
 
-Introduction
-============
 This is a test
 
 Indices and tables

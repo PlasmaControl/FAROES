@@ -17,7 +17,6 @@ from datetime import datetime
 
 sys.path.insert(0, os.path.abspath('..'))
 
-
 # -- Project information -----------------------------------------------------
 
 project = 'FAROES'
@@ -26,29 +25,29 @@ copyright = f'2020, {author}'
 # uncomment this in 2021
 # copyright = f'2020-{datetime.utcnow().year}, {author}'
 
-
 # -- General configuration ---------------------------------------------------
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['sphinx.ext.autodoc',
-        'sphinx.ext.napoleon',
-        'sphinx.ext.mathjax',
-        'sphinx_automodapi.automodapi',
-        'sphinx.ext.intersphinx',
+extensions = [
+    'sphinx.ext.autodoc',
+    'sphinx.ext.napoleon',
+    'sphinx.ext.mathjax',
+    'sphinx_automodapi.automodapi',
+    'sphinx.ext.intersphinx',
 ]
 intersphinx_mapping = {
-        'python': ('https://docs.python.org/3', None),
-        'numpy': ('https://numpy.org/doc/stable/', None),
-        'scipy': ('https://docs.scipy.org/doc/scipy/reference/', None),
-        'pandas': ('http://pandas.pydata.org/pandas-docs/stable/', None),
-        'astropy': ('http://docs.astropy.org/en/stable/', None),
-        'plasmapy': ('http://docs.plasmapy.org/en/stable/', None),
-        'openmdao': ('http://openmdao.org/twodocs/versions/latest/', None),
+    'python': ('https://docs.python.org/3', None),
+    'numpy': ('https://numpy.org/doc/stable/', None),
+    'scipy': ('https://docs.scipy.org/doc/scipy/reference/', None),
+    'pandas': ('http://pandas.pydata.org/pandas-docs/stable/', None),
+    'astropy': ('http://docs.astropy.org/en/stable/', None),
+    'plasmapy': ('http://docs.plasmapy.org/en/stable/', None),
+    'openmdao': ('http://openmdao.org/twodocs/versions/latest/', None),
 }
 
-numpydoc_show_class_members = False # for automodapi
+numpydoc_show_class_members = False  # for automodapi
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -57,7 +56,6 @@ templates_path = ['_templates']
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
-
 
 # -- Options for HTML output -------------------------------------------------
 
