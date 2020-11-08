@@ -1,15 +1,4 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[55]:
-
-
 import openmdao.api as om
-
-
-# In[56]:
-
-
 import numpy as np
 from scipy.constants import mu_0
 
@@ -36,9 +25,6 @@ class InnerTFCoilTension(om.ExplicitComponent):
             
     def setup_partials(self):
         self.declare_partials('*', '*', method='fd')
-
-
-# In[57]:
 
 
 class FieldAtRadius(om.ExplicitComponent):
@@ -82,9 +68,6 @@ class FieldAtRadius(om.ExplicitComponent):
         self.declare_partials('*', '*', method='fd')
 
 
-# In[58]:
-
-
 class InnerTFCoilStrain(om.ExplicitComponent):
     E_rat = 1.25714
     hts_max_stress = 525
@@ -112,9 +95,6 @@ class InnerTFCoilStrain(om.ExplicitComponent):
 
     def setup_partials(self):
         self.declare_partials('*', '*', method='fd')
-
-
-# In[59]:
 
 
 class MagnetGeometry(om.ExplicitComponent):
@@ -212,10 +192,6 @@ class MagnetGeometry(om.ExplicitComponent):
         self.declare_partials('*', '*', method='fd')
                 
 
-
-# In[60]:
-
-
 class MagnetCurrent(om.ExplicitComponent):
     
     def setup(self):
@@ -236,14 +212,9 @@ class MagnetCurrent(om.ExplicitComponent):
         self.declare_partials('*', '*', method='fd')
         
 
-
-# In[81]:
-
-
 class MagnetDesign(om.Group):
     
     def setup(self):
-        #self = self.add_subsystem('forward', om.Group(), promotes=['*'])
         self.add_subsystem('geometry', MagnetGeometry(),
                            promotes_inputs=['r_ot', 'n_coil', 'r_iu', 'r_im', 'r_is'],
                            promotes_outputs=['A_s', 'A_t', 'A_m', 'r1', 'r2', 'r_om'])
@@ -260,10 +231,7 @@ class MagnetDesign(om.Group):
                            promotes_inputs=['T1', 'A_m', 'A_t', 'A_s', 'f_HTS'],
                            promotes_outputs=['s_HTS', 'max_stress_constraint'])
         
-        #self.nonlinear_solver = om.NonlinearBlockGS()
-        
         self.set_input_defaults('n_coil', 18)
-        #self.set_input_defaults('R0', 1)
         self.set_input_defaults('f_HTS', 0.76)
         
         self.add_subsystem('obj_cmp', om.ExecComp('obj = -B0', B0={'units': 'T'}),
@@ -276,59 +244,36 @@ class MagnetDesign(om.Group):
                                                    I_leg={'units': 'MA'}),
                            promotes=['con3', 'A_m', 'j_eff_wp_max', 'I_leg'])
         
-       # self.nonlinear_solver = om.NonlinearBlockGS()
+if __name__ == "__main__":
 
+    prob = om.Problem()
 
-# In[110]:
+    prob.model = MagnetDesign()
 
+    prob.driver = om.ScipyOptimizeDriver()
+    prob.driver.options['optimizer'] = 'SLSQP'
 
-prob = om.Problem()
+    prob.model.add_design_var('r_is', lower=0.03, upper=0.4)
+    prob.model.add_design_var('r_im', lower=0.05, upper=0.5)
+    prob.model.add_design_var('j_HTS', lower=0, upper=300)
 
-prob.model = MagnetDesign()
+    prob.model.add_objective('obj')
 
-prob.driver = om.ScipyOptimizeDriver()
+    # set constraints
+    prob.model.add_constraint('max_stress_constraint', upper=1)
+    prob.model.add_constraint('con2', lower=0)
+    prob.model.add_constraint('con3', lower=0)
 
-prob.driver.options['optimizer'] = 'SLSQP'
+    prob.setup()
 
-prob.model.add_design_var('r_is', lower=0.03, upper=0.4)
-prob.model.add_design_var('r_im', lower=0.05, upper=0.5)
-prob.model.add_design_var('j_HTS', lower=0, upper=300)
+    prob.set_val('R0', 3)
+    prob.set_val('geometry.r_ot', 0.405)
+    prob.set_val('geometry.r_iu', 8.025)
 
-prob.model.add_objective('obj')
+    prob.set_val('current.j_eff_wp_max', 160)  
 
+    prob.run_driver()
 
-# In[111]:
-
-
-prob.model.add_constraint('max_stress_constraint', upper=1)
-
-
-# In[112]:
-
-
-prob.model.add_constraint('con2', lower=0)
-prob.model.add_constraint('con3', lower=0)
-
-prob.setup()
-
-prob.set_val('geometry.r_ot', 0.405)
-prob.set_val('geometry.r_iu', 8.025)
-
-prob.set_val('current.j_eff_wp_max', 160)  
-prob.set_val('R0', 3)
-
-prob.run_driver()
-
-
-# In[113]:
-
-
-all_inputs  = prob.model.list_inputs(values=True)
-all_outputs = prob.model.list_outputs(values=True)
-
-
-# In[ ]:
-
-
-
+    all_inputs  = prob.model.list_inputs(values=True)
+    all_outputs = prob.model.list_outputs(values=True)
 
