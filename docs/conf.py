@@ -12,14 +12,19 @@
 #
 import os
 import sys
+
+from datetime import datetime
+
 sys.path.insert(0, os.path.abspath('..'))
 
 
 # -- Project information -----------------------------------------------------
 
 project = 'FAROES'
-copyright = '2020, Jacob Schwartz'
 author = 'Jacob Schwartz'
+copyright = f'2020, {author}'
+# uncomment this in 2021
+# copyright = f'2020-{datetime.utcnow().year}, {author}'
 
 
 # -- General configuration ---------------------------------------------------
@@ -30,7 +35,20 @@ author = 'Jacob Schwartz'
 extensions = ['sphinx.ext.autodoc',
         'sphinx.ext.napoleon',
         'sphinx.ext.mathjax',
+        'sphinx_automodapi.automodapi',
+        'sphinx.ext.intersphinx',
 ]
+intersphinx_mapping = {
+        'python': ('https://docs.python.org/3', None),
+        'numpy': ('https://numpy.org/doc/stable/', None),
+        'scipy': ('https://docs.scipy.org/doc/scipy/reference/', None),
+        'pandas': ('http://pandas.pydata.org/pandas-docs/stable/', None),
+        'astropy': ('http://docs.astropy.org/en/stable/', None),
+        'plasmapy': ('http://docs.plasmapy.org/en/stable/', None),
+        'openmdao': ('http://openmdao.org/twodocs/versions/latest/', None),
+}
+
+numpydoc_show_class_members = False # for automodapi
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
