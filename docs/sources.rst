@@ -1,5 +1,13 @@
 Source documentation
 ====================
 
-.. automodapi:: faroes.simple_tf_magnet
-   :no-inheritance-diagram:
+.. autoclass:: faroes.simple_tf_magnet.MagnetGeometry
+
+.. autoclass:: faroes.simple_tf_magnet.InnerTFCoilTension
+
+.. autoclass:: faroes.simple_tf_magnet.FieldAtRadius
+
+.. autoclass:: faroes.simple_tf_magnet.InnerTFCoilStrain
+
+.. autoclass:: faroes.simple_tf_magnet.MagnetCurrent
+
