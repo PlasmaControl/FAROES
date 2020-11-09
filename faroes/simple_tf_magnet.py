@@ -111,7 +111,7 @@ class FieldAtRadius(om.ExplicitComponent):
         self.add_input('I_leg', units='MA')
         self.add_input('r_om', units='m')
         self.add_input('R0', units='m')
-        self.add_input('n_coil')
+        self.add_discrete_input('n_coil', 18)
 
         self.add_output('B_on_coil', units='T')
         self.add_output('B0', units='T')
@@ -134,8 +134,8 @@ class FieldAtRadius(om.ExplicitComponent):
         b = mu_0 * i / (2 * np.pi * r)
         return b
 
-    def compute(self, inputs, outputs):
-        n_coil = inputs['n_coil']
+    def compute(self, inputs, outputs, discrete_inputs, discrete_outputs):
+        n_coil = discrete_inputs['n_coil']
         I_leg_MA = inputs['I_leg']
         R_coil_max = inputs['r_om']
         R0 = inputs['R0']
@@ -150,10 +150,10 @@ class FieldAtRadius(om.ExplicitComponent):
 
     def setup_partials(self):
         self.declare_partials('B0', ['I_leg', 'R0'])
-        self.declare_partials('B_on_coil', ['I_leg', 'R0'])
+        self.declare_partials('B_on_coil', ['I_leg', 'r_om'])
 
-    def compute_partials(self, inputs, J):
-        n_coil = inputs['n_coil']
+    def compute_partials(self, inputs, J, discrete_inputs):
+        n_coil = discrete_inputs['n_coil']
         I_leg_MA = inputs['I_leg']
         R_coil_max = inputs['r_om']
         R0 = inputs['R0']
@@ -164,7 +164,7 @@ class FieldAtRadius(om.ExplicitComponent):
             / (2 * np.pi * R0**2)
         J['B_on_coil', 'I_leg'] = mu_0 * mega * n_coil \
             / (2 * np.pi * R_coil_max)
-        J['B_on_coil', 'R0'] = - mu_0 * mega * n_coil * I_leg_MA \
+        J['B_on_coil', 'r_om'] = - mu_0 * mega * n_coil * I_leg_MA \
             / (2 * np.pi * R_coil_max**2)
 
 
@@ -366,7 +366,7 @@ class MagnetGeometry(om.ExplicitComponent):
                        0.405,
                        units='m',
                        desc='Magnet inboard leg outer structure radius')
-        self.add_input('n_coil', 18, desc='number of coils')
+        self.add_discrete_input('n_coil', 18, desc='number of coils')
         self.add_input('r_iu',
                        8.025,
                        units='m',
@@ -397,14 +397,14 @@ class MagnetGeometry(om.ExplicitComponent):
         self.add_output('r1', 0.8, units='m')
         self.add_output('r2', 8.2, units='m')
 
-    def compute(self, inputs, outputs):
+    def compute(self, inputs, outputs, discrete_inputs, discrete_outputs):
         r_is = inputs['r_is']
         r_im = inputs['r_im']
         r_ot = inputs['r_ot']
 
         r_iu = inputs['r_iu']
 
-        n_coil = inputs['n_coil']
+        n_coil = discrete_inputs['n_coil']
 
         r_it = r_ot - self.Δr_t
         r_om = r_it - self.e_gap

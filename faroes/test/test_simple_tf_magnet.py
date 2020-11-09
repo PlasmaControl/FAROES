@@ -1,8 +1,76 @@
-from unittest import TestCase
+import openmdao.api as om
+from openmdao.utils.assert_utils import assert_near_equal
+from openmdao.utils.assert_utils import assert_check_partials
+import unittest
 
-import faroes
+import faroes.simple_tf_magnet
 
-class TestSimpleTFMagnet(TestCase):
 
-    def test_one(self):
-        self.assertTrue(True)
+class TestSimpleTFMagnet(unittest.TestCase):
+    def test_magnet_build(self):
+        prob = om.Problem()
+
+        prob.model = faroes.simple_tf_magnet.MagnetRadialBuild()
+
+        prob.driver = om.ScipyOptimizeDriver()
+        prob.driver.options['optimizer'] = 'SLSQP'
+        prob.driver.options['disp'] = False
+
+        prob.model.add_design_var('r_is', lower=0.03, upper=0.4)
+        prob.model.add_design_var('r_im', lower=0.05, upper=0.5)
+        prob.model.add_design_var('j_HTS', lower=0, upper=300)
+
+        prob.model.add_objective('obj')
+
+        # set constraints
+        prob.model.add_constraint('max_stress_con', lower=0)
+        prob.model.add_constraint('con2', lower=0)
+        prob.model.add_constraint('con3', lower=0)
+
+        prob.setup()
+
+        prob.set_val('R0', 3)
+        prob.set_val('geometry.r_ot', 0.405)
+        prob.set_val('geometry.r_iu', 8.025)
+
+        prob.set_val('current.j_eff_wp_max', 160)
+
+        prob.run_driver()
+
+        assert_near_equal(prob['B0'][0], 2.094, 1e-3)
+        assert_near_equal(prob['B_on_coil'][0], 18, 1e-3)
+        # check radius order
+        self.assertTrue(0 < prob['r_is'][0])
+        self.assertTrue(prob['geometry.r_is'][0] < prob['geometry.r_os'][0])
+        self.assertTrue(prob['geometry.r_os'][0] < prob['geometry.r_im'][0])
+        self.assertTrue(prob['geometry.r_im'][0] < prob['geometry.r1'][0])
+        self.assertTrue(prob['geometry.r1'][0] < prob['geometry.r_om'][0])
+        self.assertTrue(prob['geometry.r_om'][0] < prob['geometry.r_it'][0])
+        self.assertTrue(prob['geometry.r_im'][0] < prob['geometry.r_ot'][0])
+        self.assertTrue(prob['geometry.r_iu'][0] < prob['geometry.r2'][0])
+
+        self.assertTrue(prob['T1'][0] > 0)
+        self.assertTrue(prob['I_leg'][0] > 0)
+
+
+class TestFieldAtRadius(unittest.TestCase):
+    def test_field_at_radius(self):
+        prob = om.Problem()
+
+        prob.model = faroes.simple_tf_magnet.FieldAtRadius()
+        prob.setup(force_alloc_complex=True)
+
+        prob['n_coil'] = 1
+        prob['I_leg'] = 10
+        prob['R0'] = 2
+        prob['r_om'] = 1
+        prob.run_model()
+        assert_near_equal(prob['B0'][0], 1, 1e-4)
+        assert_near_equal(prob['B_on_coil'][0], 2, 1e-4)
+
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+
+if __name__ == '__main__':
+    unittest.main()
