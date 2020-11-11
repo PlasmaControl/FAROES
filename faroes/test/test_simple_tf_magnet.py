@@ -33,7 +33,7 @@ class TestSimpleTFMagnet(unittest.TestCase):
         prob.set_val('geometry.r_ot', 0.405)
         prob.set_val('geometry.r_iu', 8.025)
 
-        prob.set_val('current.j_eff_wp_max', 160)
+        prob.set_val('windingpack.j_eff_max', 160)
 
         prob.run_driver()
 
@@ -54,7 +54,7 @@ class TestSimpleTFMagnet(unittest.TestCase):
 
 
 class TestFieldAtRadius(unittest.TestCase):
-    def test_field_at_radius(self):
+    def test_partials(self):
         prob = om.Problem()
 
         prob.model = faroes.simple_tf_magnet.FieldAtRadius()
@@ -69,6 +69,40 @@ class TestFieldAtRadius(unittest.TestCase):
         assert_near_equal(prob['B_on_coil'][0], 2, 1e-4)
 
         check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+class TestMagnetCurrent(unittest.TestCase):
+    def test_partials(self):
+        import numpy.random as nprand
+        prob = om.Problem()
+
+        prob.model = faroes.simple_tf_magnet.MagnetCurrent()
+        prob.setup()
+
+        prob['A_m'] = nprand.random()
+        prob['f_HTS'] = nprand.random()
+        prob['j_HTS'] = nprand.random()
+        prob.run_model()
+
+        check = prob.check_partials(out_stream=None, method='fd')
+        assert_check_partials(check)
+
+class TestInnerTFCoilStrain(unittest.TestCase):
+    def test_partials(self):
+        import numpy.random as nprand
+        prob = om.Problem()
+
+        prob.model = faroes.simple_tf_magnet.InnerTFCoilStrain()
+        prob.setup(force_alloc_complex=True)
+
+        prob['T1'] = nprand.random()
+        prob['A_s'] = nprand.random() + 0.01
+        prob['A_m'] = nprand.random() + 0.01
+        prob['A_t'] = nprand.random() + 0.01
+        prob['f_HTS'] = nprand.random()
+        prob.run_model()
+
+        check = prob.check_partials(out_stream=None, compact_print=True, method='cs')
         assert_check_partials(check)
 
 

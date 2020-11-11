@@ -3,6 +3,19 @@ import numpy as np
 from scipy.constants import mu_0, mega
 
 
+class WindingPackProperties(om.ExplicitComponent):
+    def setup(self):
+        self.add_output("max_stress", 525, units="MPa")
+        self.add_output("max_strain", 0.003)
+        self.add_output("Young's modulus", 175, units="GPa")
+        self.add_output("j_eff_max", 160, units='MA/m**2')
+        self.add_output("f_HTS", 0.76)
+
+class MagnetStructureProperties(om.ExplicitComponent):
+    def setup(self):
+        self.add_output("Young's modulus", 220, units="GPa")
+
+
 class InnerTFCoilTension(om.ExplicitComponent):
     r"""Total vertical tension on the inner leg of the TF coil
 
@@ -199,8 +212,6 @@ class InnerTFCoilStrain(om.ExplicitComponent):
     max_stress_con: float
         fraction of the maximum allowed stress on the HTS material
     """
-    E_rat = 1.25714
-    hts_max_stress = 525
 
     def setup(self):
         self.add_input('T1',
@@ -220,8 +231,12 @@ class InnerTFCoilStrain(om.ExplicitComponent):
                        units='m**2',
                        desc='Inner TF leg winding pack area')
         self.add_input('f_HTS',
-                       0.76,
+                       0.01,
                        desc='Fraction of magnet area which is SC cable')
+
+        self.add_input('hts_max_stress', 0.1, units='MPa')
+        self.add_input('hts_E_young', units='GPa')
+        self.add_input('struct_E_young', units='GPa')
 
         self.add_output('s_HTS',
                         0.066,
@@ -235,18 +250,22 @@ class InnerTFCoilStrain(om.ExplicitComponent):
         A_s = inputs['A_s']
         A_m = inputs['A_m']
         A_t = inputs['A_t']
+        σ_hts_max = inputs['hts_max_stress']
         f_HTS = inputs['f_HTS']
         T1 = inputs['T1']
+        struct_E_y = inputs['struct_E_young']
+        hts_E_y    = inputs['hts_E_young']
+        E_rat = struct_E_y / hts_E_y
 
-        sigma_HTS = T1 / ((A_s + A_t) * self.E_rat + f_HTS * A_m)
+        sigma_HTS = T1 / ((A_s + A_t) * E_rat + f_HTS * A_m)
         outputs['s_HTS'] = sigma_HTS
-        outputs['max_stress_con'] = (self.hts_max_stress -
-                                     sigma_HTS) / self.hts_max_stress
+        outputs['max_stress_con'] = (σ_hts_max - sigma_HTS) / σ_hts_max
 
     def setup_partials(self):
-        self.declare_partials('s_HTS', ['A_s', 'A_m', 'A_t', 'f_HTS', 'T1'])
-        self.declare_partials('max_stress_con',
-                              ['A_s', 'A_m', 'A_t', 'f_HTS', 'T1'])
+        self.declare_partials('s_HTS', ['A_s', 'A_m', 'A_t', 'f_HTS', 'T1', 'struct_E_young', 'hts_E_young'])
+        self.declare_partials(
+            'max_stress_con',
+            ['A_s', 'A_m', 'A_t', 'f_HTS', 'T1', 'hts_max_stress', 'struct_E_young', 'hts_E_young'])
 
     def compute_partials(self, inputs, J):
         A_s = inputs['A_s']
@@ -254,20 +273,29 @@ class InnerTFCoilStrain(om.ExplicitComponent):
         A_t = inputs['A_t']
         f_HTS = inputs['f_HTS']
         T1 = inputs['T1']
+        σ_hts_max = inputs['hts_max_stress']
 
-        denom = ((A_s + A_t) * self.E_rat + f_HTS * A_m)
+        struct_E_y = inputs['struct_E_young']
+        hts_E_y    = inputs['hts_E_young']
+        E_rat = struct_E_y / hts_E_y
+
+        denom = ((A_s + A_t) * E_rat + f_HTS * A_m)
         J['s_HTS', 'T1'] = 1 / denom
-        J['s_HTS', 'A_s'] = -self.E_rat * T1 / denom**2
+        J['s_HTS', 'A_s'] = -E_rat * T1 / denom**2
         J['s_HTS', 'A_t'] = J['s_HTS', 'A_s']
         J['s_HTS', 'A_m'] = -f_HTS * T1 / denom**2
         J['s_HTS', 'f_HTS'] = -A_m * T1 / denom**2
+        J['s_HTS', 'struct_E_young'] = -(A_s + A_t) * T1 / (hts_E_y * denom**2)
+        J['s_HTS', 'hts_E_young'] = (A_s + A_t) * struct_E_y * T1 / (hts_E_y**2 * denom**2)
 
-        J['max_stress_con', 'T1'] = -1 / (denom * self.hts_max_stress)
-        J['max_stress_con', 'A_s'] = -J['s_HTS', 'A_s'] / self.hts_max_stress
-        J['max_stress_con', 'A_t'] = -J['s_HTS', 'A_t'] / self.hts_max_stress
-        J['max_stress_con', 'A_m'] = -J['s_HTS', 'A_m'] / self.hts_max_stress
-        J['max_stress_con',
-          'f_HTS'] = -J['s_HTS', 'f_HTS'] / self.hts_max_stress
+        J['max_stress_con', 'T1'] = -1 / (denom * σ_hts_max)
+        J['max_stress_con', 'A_s'] = -J['s_HTS', 'A_s'] / σ_hts_max
+        J['max_stress_con', 'A_t'] = -J['s_HTS', 'A_t'] / σ_hts_max
+        J['max_stress_con', 'A_m'] = -J['s_HTS', 'A_m'] / σ_hts_max
+        J['max_stress_con', 'f_HTS'] = -J['s_HTS', 'f_HTS'] / σ_hts_max
+        J['max_stress_con', 'hts_max_stress'] = T1 / (denom * σ_hts_max**2)
+        J['max_stress_con', 'struct_E_young'] = (A_s + A_t) * T1 / (hts_E_y * denom**2 * σ_hts_max)
+        J['max_stress_con', 'hts_E_young'] = -(A_s + A_t) * struct_E_y * T1 / (hts_E_y**2 * denom**2 * σ_hts_max)
 
 
 class MagnetGeometry(om.ExplicitComponent):
@@ -376,10 +404,10 @@ class MagnetGeometry(om.ExplicitComponent):
         self.add_output('r_os', units='m')
         self.add_output('r_om', units='m')
 
-        self.add_output('w_is', 0.1, units='m')
+        self.add_output('w_is', units='m')
         self.add_output('w_os', units='m')
         self.add_output('w_im', units='m')
-        self.add_output('w_om', 0.250, units='m')
+        self.add_output('w_om', units='m')
         self.add_output('w_it', units='m')
         self.add_output('w_ot', units='m')
 
@@ -390,12 +418,12 @@ class MagnetGeometry(om.ExplicitComponent):
         self.add_output('l_it', units='m')
         self.add_output('l_ot', units='m')
 
-        self.add_output('A_s', 0.06, units='m**2')
-        self.add_output('A_t', 0.01, units='m**2')
-        self.add_output('A_m', 0.1, units='m**2')
+        self.add_output('A_s', units='m**2')
+        self.add_output('A_t', units='m**2')
+        self.add_output('A_m', units='m**2')
 
-        self.add_output('r1', 0.8, units='m')
-        self.add_output('r2', 8.2, units='m')
+        self.add_output('r1', units='m')
+        self.add_output('r2', units='m')
 
     def compute(self, inputs, outputs, discrete_inputs, discrete_outputs):
         r_is = inputs['r_is']
@@ -481,10 +509,9 @@ class MagnetCurrent(om.ExplicitComponent):
     """
     def setup(self):
         self.add_input('A_m', 0.01, units='m**2')
-        self.add_input('f_HTS', 0.76)
+        self.add_input('f_HTS', 0.01)
         self.add_input('j_HTS', 1, units='MA/m**2')
         self.add_output('I_leg', units='MA')
-        self.add_output('j_eff_wp_max', units='MA/m**2')
 
     def compute(self, inputs, outputs):
         A_m = inputs['A_m']
@@ -512,10 +539,12 @@ class MagnetRadialBuild(om.Group):
             MagnetGeometry(),
             promotes_inputs=['r_ot', 'n_coil', 'r_iu', 'r_im', 'r_is'],
             promotes_outputs=['A_s', 'A_t', 'A_m', 'r1', 'r2', 'r_om'])
+        self.add_subsystem('windingpack', WindingPackProperties(), promotes=['f_HTS'])
+        self.add_subsystem('magnetstructure_props', MagnetStructureProperties())
         self.add_subsystem('current',
                            MagnetCurrent(),
                            promotes_inputs=['A_m', 'f_HTS', 'j_HTS'],
-                           promotes_outputs=['I_leg', 'j_eff_wp_max'])
+                           promotes_outputs=['I_leg'])
         self.add_subsystem('field',
                            FieldAtRadius(),
                            promotes_inputs=['I_leg', 'r_om', 'R0', 'n_coil'],
@@ -530,9 +559,6 @@ class MagnetRadialBuild(om.Group):
             promotes_inputs=['T1', 'A_m', 'A_t', 'A_s', 'f_HTS'],
             promotes_outputs=['s_HTS', 'max_stress_con'])
 
-        self.set_input_defaults('n_coil', 18)
-        self.set_input_defaults('f_HTS', 0.76)
-
         self.add_subsystem('obj_cmp',
                            om.ExecComp('obj = -B0', B0={'units': 'T'}),
                            promotes=['B0', 'obj'])
@@ -545,10 +571,16 @@ class MagnetRadialBuild(om.Group):
                                        A_m={'units': 'm**2'},
                                        j_eff_wp_max={'units': 'MA/m**2'},
                                        I_leg={'units': 'MA'}),
-                           promotes=['con3', 'A_m', 'j_eff_wp_max', 'I_leg'])
+                           promotes=['con3', 'A_m', 'I_leg'])
+
+        self.connect('windingpack.max_stress', ['strain.hts_max_stress'])
+        self.connect("windingpack.Young's modulus", ['strain.hts_E_young'])
+        self.connect("magnetstructure_props.Young's modulus", ['strain.struct_E_young'])
+        self.connect('windingpack.j_eff_max', ['con_cmp3.j_eff_wp_max'])
 
 
 if __name__ == "__main__":
+    from ruamel.yaml import YAML
 
     prob = om.Problem()
 
@@ -570,13 +602,14 @@ if __name__ == "__main__":
 
     prob.setup()
 
-    prob.set_val('R0', 3)
+    prob.set_val('R0', 3, 'm')
     prob.set_val('geometry.r_ot', 0.405)
     prob.set_val('geometry.r_iu', 8.025)
-
-    prob.set_val('current.j_eff_wp_max', 160)
+    prob.set_val('windingpack.j_eff_max', 160)
+    prob.set_val('windingpack.f_HTS', 0.76)
+    prob.set_val("magnetstructure_props.Young's modulus", 220)
 
     prob.run_driver()
 
-    all_inputs = prob.model.list_inputs(values=True)
-    all_outputs = prob.model.list_outputs(values=True)
+    #all_inputs = prob.model.list_inputs(values=True)
+    #all_outputs = prob.model.list_outputs(values=True)
