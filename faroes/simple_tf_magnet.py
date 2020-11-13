@@ -1,6 +1,10 @@
 import openmdao.api as om
 import numpy as np
+
 from scipy.constants import mu_0, mega
+
+from faroes.data.yaml_data import SimpleYamlData
+from importlib import resources
 
 
 class WindingPackProperties(om.ExplicitComponent):
@@ -10,6 +14,7 @@ class WindingPackProperties(om.ExplicitComponent):
         self.add_output("Young's modulus", 175, units="GPa")
         self.add_output("j_eff_max", 160, units='MA/m**2')
         self.add_output("f_HTS", 0.76)
+
 
 class MagnetStructureProperties(om.ExplicitComponent):
     def setup(self):
@@ -212,7 +217,6 @@ class InnerTFCoilStrain(om.ExplicitComponent):
     max_stress_con: float
         fraction of the maximum allowed stress on the HTS material
     """
-
     def setup(self):
         self.add_input('T1',
                        0.002,
@@ -254,7 +258,7 @@ class InnerTFCoilStrain(om.ExplicitComponent):
         f_HTS = inputs['f_HTS']
         T1 = inputs['T1']
         struct_E_y = inputs['struct_E_young']
-        hts_E_y    = inputs['hts_E_young']
+        hts_E_y = inputs['hts_E_young']
         E_rat = struct_E_y / hts_E_y
 
         sigma_HTS = T1 / ((A_s + A_t) * E_rat + f_HTS * A_m)
@@ -262,10 +266,13 @@ class InnerTFCoilStrain(om.ExplicitComponent):
         outputs['max_stress_con'] = (σ_hts_max - sigma_HTS) / σ_hts_max
 
     def setup_partials(self):
-        self.declare_partials('s_HTS', ['A_s', 'A_m', 'A_t', 'f_HTS', 'T1', 'struct_E_young', 'hts_E_young'])
-        self.declare_partials(
-            'max_stress_con',
-            ['A_s', 'A_m', 'A_t', 'f_HTS', 'T1', 'hts_max_stress', 'struct_E_young', 'hts_E_young'])
+        self.declare_partials('s_HTS', [
+            'A_s', 'A_m', 'A_t', 'f_HTS', 'T1', 'struct_E_young', 'hts_E_young'
+        ])
+        self.declare_partials('max_stress_con', [
+            'A_s', 'A_m', 'A_t', 'f_HTS', 'T1', 'hts_max_stress',
+            'struct_E_young', 'hts_E_young'
+        ])
 
     def compute_partials(self, inputs, J):
         A_s = inputs['A_s']
@@ -276,7 +283,7 @@ class InnerTFCoilStrain(om.ExplicitComponent):
         σ_hts_max = inputs['hts_max_stress']
 
         struct_E_y = inputs['struct_E_young']
-        hts_E_y    = inputs['hts_E_young']
+        hts_E_y = inputs['hts_E_young']
         E_rat = struct_E_y / hts_E_y
 
         denom = ((A_s + A_t) * E_rat + f_HTS * A_m)
@@ -286,7 +293,9 @@ class InnerTFCoilStrain(om.ExplicitComponent):
         J['s_HTS', 'A_m'] = -f_HTS * T1 / denom**2
         J['s_HTS', 'f_HTS'] = -A_m * T1 / denom**2
         J['s_HTS', 'struct_E_young'] = -(A_s + A_t) * T1 / (hts_E_y * denom**2)
-        J['s_HTS', 'hts_E_young'] = (A_s + A_t) * struct_E_y * T1 / (hts_E_y**2 * denom**2)
+        J['s_HTS',
+          'hts_E_young'] = (A_s + A_t) * struct_E_y * T1 / (hts_E_y**2 *
+                                                            denom**2)
 
         J['max_stress_con', 'T1'] = -1 / (denom * σ_hts_max)
         J['max_stress_con', 'A_s'] = -J['s_HTS', 'A_s'] / σ_hts_max
@@ -294,8 +303,11 @@ class InnerTFCoilStrain(om.ExplicitComponent):
         J['max_stress_con', 'A_m'] = -J['s_HTS', 'A_m'] / σ_hts_max
         J['max_stress_con', 'f_HTS'] = -J['s_HTS', 'f_HTS'] / σ_hts_max
         J['max_stress_con', 'hts_max_stress'] = T1 / (denom * σ_hts_max**2)
-        J['max_stress_con', 'struct_E_young'] = (A_s + A_t) * T1 / (hts_E_y * denom**2 * σ_hts_max)
-        J['max_stress_con', 'hts_E_young'] = -(A_s + A_t) * struct_E_y * T1 / (hts_E_y**2 * denom**2 * σ_hts_max)
+        J['max_stress_con',
+          'struct_E_young'] = (A_s + A_t) * T1 / (hts_E_y * denom**2 *
+                                                  σ_hts_max)
+        J['max_stress_con', 'hts_E_young'] = -(A_s + A_t) * struct_E_y * T1 / (
+            hts_E_y**2 * denom**2 * σ_hts_max)
 
 
 class MagnetGeometry(om.ExplicitComponent):
@@ -384,10 +396,22 @@ class MagnetGeometry(om.ExplicitComponent):
         m, Outer 'length' of the outer structure of the inboard leg.
 
     """
-    e_gap = 0.006  # m
-    Δr_t = 0.05  # m
-
     def setup(self):
+
+        with resources.path("faroes.data", "magnet_geometry.yaml") as mats:
+            data = SimpleYamlData(mats)
+
+        # e_gap is the space between the inner structure and the
+        # winding pack, and between the winding pack and the outer
+        # structure.
+        ground_wrap = data["ground wrap thickness"]["value"]
+        # extra clearance space for assembly
+        inter_block = data["inter-block clearance"]["value"]
+        self.e_gap = (ground_wrap + inter_block) / 1000
+
+        # radial thickness of the A_t external structure
+        self.Δr_t = data["external structure thickness"]["value"] / 100
+
         self.add_input('r_is', 0.1, units='m')
         self.add_input('r_im', 0.22, units='m')
         self.add_input('r_ot',
@@ -404,19 +428,19 @@ class MagnetGeometry(om.ExplicitComponent):
         self.add_output('r_os', units='m')
         self.add_output('r_om', units='m')
 
-        self.add_output('w_is', units='m')
-        self.add_output('w_os', units='m')
-        self.add_output('w_im', units='m')
-        self.add_output('w_om', units='m')
-        self.add_output('w_it', units='m')
-        self.add_output('w_ot', units='m')
+        # self.add_output('w_is', units='m')
+        # self.add_output('w_os', units='m')
+        # self.add_output('w_im', units='m')
+        # self.add_output('w_om', units='m')
+        # self.add_output('w_it', units='m')
+        # self.add_output('w_ot', units='m')
 
-        self.add_output('l_is', units='m')
-        self.add_output('l_os', units='m')
-        self.add_output('l_im', units='m')
-        self.add_output('l_om', units='m')
-        self.add_output('l_it', units='m')
-        self.add_output('l_ot', units='m')
+        # self.add_output('l_is', units='m')
+        # self.add_output('l_os', units='m')
+        # self.add_output('l_im', units='m')
+        # self.add_output('l_om', units='m')
+        # self.add_output('l_it', units='m')
+        # self.add_output('l_ot', units='m')
 
         self.add_output('A_s', units='m**2')
         self.add_output('A_t', units='m**2')
@@ -424,6 +448,8 @@ class MagnetGeometry(om.ExplicitComponent):
 
         self.add_output('r1', units='m')
         self.add_output('r2', units='m')
+
+        self.add_output('r_im_is_constraint', units='m')
 
     def compute(self, inputs, outputs, discrete_inputs, discrete_outputs):
         r_is = inputs['r_is']
@@ -452,12 +478,12 @@ class MagnetGeometry(om.ExplicitComponent):
         w_it = r_it * r_to_w
         w_ot = r_ot * r_to_w
 
-        outputs['w_is'] = w_is
-        outputs['w_os'] = w_os
-        outputs['w_im'] = w_im
-        outputs['w_om'] = w_om
-        outputs['w_it'] = w_it
-        outputs['w_ot'] = w_ot
+        # outputs['w_is'] = w_is
+        # outputs['w_os'] = w_os
+        # outputs['w_im'] = w_im
+        # outputs['w_om'] = w_om
+        # outputs['w_it'] = w_it
+        # outputs['w_ot'] = w_ot
 
         l_is = r_is * r_to_l
         l_os = r_os * r_to_l
@@ -466,12 +492,12 @@ class MagnetGeometry(om.ExplicitComponent):
         l_it = r_it * r_to_l
         l_ot = r_ot * r_to_l
 
-        outputs['l_is'] = l_is
-        outputs['l_os'] = l_os
-        outputs['l_im'] = l_im
-        outputs['l_om'] = l_om
-        outputs['l_it'] = l_it
-        outputs['l_ot'] = l_ot
+        # outputs['l_is'] = l_is
+        # outputs['l_os'] = l_os
+        # outputs['l_im'] = l_im
+        # outputs['l_om'] = l_om
+        # outputs['l_it'] = l_it
+        # outputs['l_ot'] = l_ot
 
         outputs['A_s'] = (w_os - w_is) * (l_os + l_is) / 2
         outputs['A_m'] = (w_om - w_im) * (l_om + l_im) / 2
@@ -480,8 +506,49 @@ class MagnetGeometry(om.ExplicitComponent):
         outputs['r1'] = (r_om + r_im) / 2
         outputs['r2'] = r_iu + (r_ot - r_is) / 2
 
+        outputs['r_im_is_constraint'] = r_im - self.e_gap - r_is
+
     def setup_partials(self):
-        self.declare_partials('*', '*', method='cs')
+        self.declare_partials('r_it', ['r_ot'])
+        self.declare_partials('r_os', ['r_im'])
+        self.declare_partials('r_om', ['r_ot'])
+
+        self.declare_partials('A_m', ['r_ot', 'r_im'])
+        self.declare_partials('A_t', ['r_ot'])
+        self.declare_partials('A_s', ['r_is', 'r_im'])
+
+        self.declare_partials('r1', ['r_ot', 'r_im'])
+        self.declare_partials('r2', ['r_ot', 'r_is', 'r_iu'])
+        self.declare_partials('r_im_is_constraint', ['r_im', 'r_is'])
+
+    def compute_partials(self, inputs, J, discrete_inputs):
+        J['r_it', 'r_ot'] = 1
+        J['r_os', 'r_im'] = 1
+        J['r_om', 'r_ot'] = 1
+
+        n_coil = discrete_inputs['n_coil']
+
+        whole_ang = np.sin(2 * np.pi / n_coil)
+
+        r_im = inputs['r_im']
+        r_is = inputs['r_is']
+        r_ot = inputs['r_ot']
+        J['A_s', 'r_im'] = (r_im - self.e_gap) * whole_ang
+        J['A_s', 'r_is'] = -(r_is) * whole_ang
+
+        J['A_m', 'r_im'] = -r_im * whole_ang
+        J['A_m', 'r_ot'] = -(self.e_gap - r_ot + self.Δr_t) * whole_ang
+        J['A_t', 'r_ot'] = self.Δr_t * whole_ang
+
+        J['r1', 'r_im'] = 1 / 2
+        J['r1', 'r_ot'] = 1 / 2
+
+        J['r2', 'r_iu'] = 1
+        J['r2', 'r_ot'] = 1 / 2
+        J['r2', 'r_is'] = -1 / 2
+
+        J['r_im_is_constraint', 'r_is'] = -1
+        J['r_im_is_constraint', 'r_im'] = 1
 
 
 class MagnetCurrent(om.ExplicitComponent):
@@ -538,9 +605,14 @@ class MagnetRadialBuild(om.Group):
             'geometry',
             MagnetGeometry(),
             promotes_inputs=['r_ot', 'n_coil', 'r_iu', 'r_im', 'r_is'],
-            promotes_outputs=['A_s', 'A_t', 'A_m', 'r1', 'r2', 'r_om'])
-        self.add_subsystem('windingpack', WindingPackProperties(), promotes=['f_HTS'])
-        self.add_subsystem('magnetstructure_props', MagnetStructureProperties())
+            promotes_outputs=[
+                'A_s', 'A_t', 'A_m', 'r1', 'r2', 'r_om', 'r_im_is_constraint'
+            ])
+        self.add_subsystem('windingpack',
+                           WindingPackProperties(),
+                           promotes=['f_HTS'])
+        self.add_subsystem('magnetstructure_props',
+                           MagnetStructureProperties())
         self.add_subsystem('current',
                            MagnetCurrent(),
                            promotes_inputs=['A_m', 'f_HTS', 'j_HTS'],
@@ -563,25 +635,26 @@ class MagnetRadialBuild(om.Group):
                            om.ExecComp('obj = -B0', B0={'units': 'T'}),
                            promotes=['B0', 'obj'])
         self.add_subsystem('con_cmp2',
-                           om.ExecComp('con2 = 18 - B_on_coil',
+                           om.ExecComp('constraint_B_on_coil = 18 - B_on_coil',
                                        B_on_coil={'units': 'T'}),
-                           promotes=['con2', 'B_on_coil'])
-        self.add_subsystem('con_cmp3',
-                           om.ExecComp('con3 = A_m * j_eff_wp_max - I_leg',
-                                       A_m={'units': 'm**2'},
-                                       j_eff_wp_max={'units': 'MA/m**2'},
-                                       I_leg={'units': 'MA'}),
-                           promotes=['con3', 'A_m', 'I_leg'])
+                           promotes=['constraint_B_on_coil', 'B_on_coil'])
+        self.add_subsystem(
+            'con_cmp3',
+            om.ExecComp(
+                'constraint_wp_current_density = A_m * j_eff_wp_max - I_leg',
+                A_m={'units': 'm**2'},
+                j_eff_wp_max={'units': 'MA/m**2'},
+                I_leg={'units': 'MA'}),
+            promotes=['constraint_wp_current_density', 'A_m', 'I_leg'])
 
         self.connect('windingpack.max_stress', ['strain.hts_max_stress'])
         self.connect("windingpack.Young's modulus", ['strain.hts_E_young'])
-        self.connect("magnetstructure_props.Young's modulus", ['strain.struct_E_young'])
+        self.connect("magnetstructure_props.Young's modulus",
+                     ['strain.struct_E_young'])
         self.connect('windingpack.j_eff_max', ['con_cmp3.j_eff_wp_max'])
 
 
 if __name__ == "__main__":
-    from ruamel.yaml import YAML
-
     prob = om.Problem()
 
     prob.model = MagnetRadialBuild()
@@ -597,8 +670,8 @@ if __name__ == "__main__":
 
     # set constraints
     prob.model.add_constraint('max_stress_con', lower=0)
-    prob.model.add_constraint('con2', lower=0)
-    prob.model.add_constraint('con3', lower=0)
+    prob.model.add_constraint('constraint_B_on_coil', lower=0)
+    prob.model.add_constraint('constraint_wp_current_density', lower=0)
 
     prob.setup()
 
@@ -611,5 +684,4 @@ if __name__ == "__main__":
 
     prob.run_driver()
 
-    #all_inputs = prob.model.list_inputs(values=True)
     #all_outputs = prob.model.list_outputs(values=True)

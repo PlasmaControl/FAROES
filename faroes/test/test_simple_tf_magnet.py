@@ -24,8 +24,8 @@ class TestSimpleTFMagnet(unittest.TestCase):
 
         # set constraints
         prob.model.add_constraint('max_stress_con', lower=0)
-        prob.model.add_constraint('con2', lower=0)
-        prob.model.add_constraint('con3', lower=0)
+        prob.model.add_constraint('constraint_B_on_coil', lower=0)
+        prob.model.add_constraint('constraint_wp_current_density', lower=0)
 
         prob.setup()
 
@@ -71,6 +71,25 @@ class TestFieldAtRadius(unittest.TestCase):
         check = prob.check_partials(out_stream=None, method='cs')
         assert_check_partials(check)
 
+
+class TestGeometry(unittest.TestCase):
+    def test_partials(self):
+        import numpy.random as nprand
+        prob = om.Problem()
+
+        prob.model = faroes.simple_tf_magnet.MagnetGeometry()
+        prob.setup(force_alloc_complex=True)
+
+        prob['r_is'] = 0.5 * nprand.random()
+        prob['r_im'] = nprand.random() + 0.5
+        prob['r_iu'] = 8 + nprand.random()
+        prob['r_ot'] = 1.5 + nprand.random()
+        prob['n_coil'] = 18
+
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+
 class TestMagnetCurrent(unittest.TestCase):
     def test_partials(self):
         import numpy.random as nprand
@@ -82,10 +101,10 @@ class TestMagnetCurrent(unittest.TestCase):
         prob['A_m'] = nprand.random()
         prob['f_HTS'] = nprand.random()
         prob['j_HTS'] = nprand.random()
-        prob.run_model()
 
         check = prob.check_partials(out_stream=None, method='fd')
         assert_check_partials(check)
+
 
 class TestInnerTFCoilStrain(unittest.TestCase):
     def test_partials(self):
@@ -100,9 +119,10 @@ class TestInnerTFCoilStrain(unittest.TestCase):
         prob['A_m'] = nprand.random() + 0.01
         prob['A_t'] = nprand.random() + 0.01
         prob['f_HTS'] = nprand.random()
-        prob.run_model()
 
-        check = prob.check_partials(out_stream=None, compact_print=True, method='cs')
+        check = prob.check_partials(out_stream=None,
+                                    compact_print=True,
+                                    method='cs')
         assert_check_partials(check)
 
 

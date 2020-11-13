@@ -1,0 +1,3 @@
+external structure thickness : {value: 5, unit: cm} # corresponds to A_t thickness
+ground wrap thickness : {value: 4, unit: mm} # goes around the winding pack, on both inboard and outboard sides
+inter-block clearance : {value: 2, unit: mm} # between winding packs and structural blocks
