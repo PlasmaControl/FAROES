@@ -3,9 +3,9 @@ from ruamel.yaml import YAML
 
 
 def validate_dict_leaf(leaf):
-    if 'units' in leaf and not 'value' in leaf:
+    if 'units' in leaf and 'value' not in leaf:
         raise KeyError("Unit specified without value")
-    if not 'value' in leaf:
+    if 'value' not in leaf:
         raise KeyError("No value specified")
 
 
@@ -50,7 +50,7 @@ def walk_dict_tree(prob, name, dict_tree):
     for key, val in dict_tree.items():
         if is_leaf(val):
             leaf = val
-            assign(prob, name + key, val)
+            assign(prob, name + key, leaf)
         else:
             node_name = name + key + '.'
             walk_dict_tree(prob, node_name, val)

@@ -1,0 +1,4 @@
+[flake8]
+per-file-ignores = 
+    faroes/test/test_yaml_setter.py: F403,F405
+    docs/conf.py: F401

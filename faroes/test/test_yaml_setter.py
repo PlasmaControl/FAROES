@@ -3,8 +3,8 @@ from openmdao.utils.assert_utils import assert_near_equal
 from faroes.yaml_setter import *
 import unittest
 
-class TestYamlProblem(unittest.TestCase):
 
+class TestYamlProblem(unittest.TestCase):
     def test_validate_leaf_num(self):
         self.assertIsNone(validateleaf(3))
 
@@ -16,11 +16,11 @@ class TestYamlProblem(unittest.TestCase):
 
     def test_validate_dict_leaf_bad(self):
         self.assertRaisesRegex(KeyError, "Unit specified without value",
-                validateleaf, {'units': 'm'})
+                               validateleaf, {'units': 'm'})
 
     def test_validate_dict_leaf_bad_two(self):
-        self.assertRaisesRegex(KeyError, "No value",
-                validateleaf, {'Reference': 3})
+        self.assertRaisesRegex(KeyError, "No value", validateleaf,
+                               {'Reference': 3})
 
     def test_is_leaf_num(self):
         self.assertTrue(is_leaf(3))
@@ -29,17 +29,24 @@ class TestYamlProblem(unittest.TestCase):
         self.assertTrue(is_leaf({'value': 3}))
 
     def test_is_leaf_dict_array(self):
-        self.assertTrue(is_leaf({'value': [1,2,3], 'units':'m'}))
+        self.assertTrue(is_leaf({'value': [1, 2, 3], 'units': 'm'}))
 
     def test_is_leaf_dict_subdict(self):
-        self.assertTrue(is_leaf({'value': {'a':1, 'b':2}, 'units':'m'}))
+        self.assertTrue(is_leaf({'value': {'a': 1, 'b': 2}, 'units': 'm'}))
 
     def test_is_leaf_dict_reference(self):
-        self.assertTrue(is_leaf({'value': {'a':1, 'b':2}, 'units':'m', 'reference':'asdf'}))
+        self.assertTrue(
+            is_leaf({
+                'value': {
+                    'a': 1,
+                    'b': 2
+                },
+                'units': 'm',
+                'reference': 'asdf'
+            }))
 
     def test_not_is_leaf_dict_subdict(self):
-        self.assertFalse(is_leaf({'a':{'value':1}, 'reference':'asdf'}))
-
+        self.assertFalse(is_leaf({'a': {'value': 1}, 'reference': 'asdf'}))
 
     def test_full_loading(self):
         from faroes.simple_tf_magnet import MagnetRadialBuild
@@ -83,6 +90,7 @@ class TestYamlProblem(unittest.TestCase):
         assert_near_equal(prob['n_coil'], 18, 1e-3)
         assert_near_equal(prob['geometry.r_ot'][0], 0.405, 1e-3)
         assert_near_equal(prob['windingpack.j_eff_max'][0], 160, 1e-3)
+
 
 if __name__ == '__main__':
     unittest.main()
