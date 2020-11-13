@@ -1,3 +1,8 @@
+# openMDAO files
+
+faroes/n2.html
+faroes/openmdao_checks.out
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
