@@ -1,13 +1,34 @@
 Source documentation
 ====================
 
+Plasma Geometry
+---------------
+
+.. autoclass:: faroes.elliptical_plasma.PlasmaGeometry
+
+Magnet Geometry
+---------------
+
 .. autoclass:: faroes.simple_tf_magnet.MagnetGeometry
+
+MagnetCurrent
+-------------
+
+.. autoclass:: faroes.simple_tf_magnet.MagnetCurrent
+
+Inner TF coil vertical tension
+------------------------------
 
 .. autoclass:: faroes.simple_tf_magnet.InnerTFCoilTension
 
-.. autoclass:: faroes.simple_tf_magnet.FieldAtRadius
+Inner TF coil strain
+--------------------
 
 .. autoclass:: faroes.simple_tf_magnet.InnerTFCoilStrain
 
-.. autoclass:: faroes.simple_tf_magnet.MagnetCurrent
+FieldAtRadius
+-------------
+
+.. autoclass:: faroes.simple_tf_magnet.FieldAtRadius
+
 
