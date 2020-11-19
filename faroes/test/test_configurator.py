@@ -2,6 +2,7 @@ from openmdao.utils.assert_utils import assert_near_equal
 from faroes.configurator import UserConfigurator
 import unittest
 from ruamel.yaml import YAML
+from importlib import resources
 
 
 class TestConfigurator(unittest.TestCase):
@@ -508,53 +509,71 @@ class TestUpdateConfiguration(unittest.TestCase):
     def setUp(self):
         self.uc = UserConfigurator()
         self.f = self.uc.get_value
+        self.resource_dir = 'faroes.test.test_data'
 
     def test(self):
-        self.uc.update_configuration('test/test_data/config.yaml')
+        resource_name = 'config.yaml'
+        if resources.is_resource(self.resource_dir, resource_name):
+            with resources.path(self.resource_dir, resource_name) as path:
+                self.uc.update_configuration(path)
 
     def test_bad_key(self):
+        resource_name = 'config_bad_option.yaml'
         with self.assertRaisesRegex(KeyError, "not present in"):
-            self.uc.update_configuration(
-                'test/test_data/config_bad_option.yaml')
+            with resources.path(self.resource_dir, resource_name) as path:
+                self.uc.update_configuration(path)
 
     def test_default_value(self):
-        self.uc.update_configuration('test/test_data/config_default.yaml')
+        resource_name = 'config_default.yaml'
+        with resources.path(self.resource_dir, resource_name) as path:
+            self.uc.update_configuration(path)
         res = self.f(('magnet_geometry', 'inter-block clearance'), 'cm')
         assert_near_equal(res, 0.2)
 
     def test_full_default(self):
-        self.uc.update_configuration('test/test_data/config_default.yaml')
+        with resources.path(self.resource_dir, 'config_default.yaml') as path:
+            self.uc.update_configuration(path)
         res = self.f(('magnet_geometry', 'ground wrap thickness'), 'cm')
         assert_near_equal(res, 0.4)
 
     def test_full_normal(self):
-        self.uc.update_configuration('test/test_data/config_normal.yaml')
+        with resources.path(self.resource_dir, 'config_normal.yaml') as path:
+            self.uc.update_configuration(path)
         res = self.f(('magnet_geometry', 'external structure thickness'), 'cm')
         assert_near_equal(res, 10)
 
     def test_okay_units(self):
-        self.uc.update_configuration('test/test_data/config_okay_units.yaml')
+        with resources.path(self.resource_dir, 'config_okay_units.yaml') as path:
+            self.uc.update_configuration(path)
         res = self.f(('magnet_geometry', 'inter-block clearance'), 'mm')
         assert_near_equal(res, 1)
 
 
 class TestUpdateConfigurationLoading(unittest.TestCase):
+
+    def setUp(self):
+        self.resource_dir = 'faroes.test.test_data'
+
     def test(self):
-        self.uc = UserConfigurator('test/test_data/config_okay_units.yaml')
+        with resources.path(self.resource_dir, 'config_okay_units.yaml') as path:
+            self.uc = UserConfigurator(path)
         self.f = self.uc.get_value
         res = self.f(('magnet_geometry', 'inter-block clearance'), 'mm')
         assert_near_equal(res, 1)
 
     def test_repeat_same(self):
-        self.uc = UserConfigurator('test/test_data/config_okay_units.yaml')
-        self.uc.update_configuration('test/test_data/config_okay_units.yaml')
+        with resources.path(self.resource_dir, 'config_okay_units.yaml') as path:
+            self.uc = UserConfigurator(path)
+            self.uc.update_configuration(path)
         self.f = self.uc.get_value
         res = self.f(('magnet_geometry', 'inter-block clearance'), 'mm')
         assert_near_equal(res, 1)
 
     def test_three(self):
-        self.uc = UserConfigurator('test/test_data/config_okay_units.yaml')
-        self.uc.update_configuration('test/test_data/config.yaml')
+        with resources.path(self.resource_dir, 'config_okay_units.yaml') as path:
+            self.uc = UserConfigurator(path)
+        with resources.path(self.resource_dir, 'config.yaml') as path:
+            self.uc.update_configuration(path)
         self.f = self.uc.get_value
         res = self.f(('magnet_geometry', 'inter-block clearance'), 'mm')
         assert_near_equal(res, 2)
