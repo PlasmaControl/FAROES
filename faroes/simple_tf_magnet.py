@@ -3,7 +3,7 @@ import numpy as np
 
 from scipy.constants import mu_0, mega
 
-from faroes.data.yaml_data import SimpleYamlData
+from faroes.yaml_data import SimpleYamlData
 from importlib import resources
 
 
@@ -684,4 +684,4 @@ if __name__ == "__main__":
 
     prob.run_driver()
 
-    #all_outputs = prob.model.list_outputs(values=True)
+    # all_outputs = prob.model.list_outputs(values=True)

@@ -1,0 +1,2 @@
+magnet_geometry:
+  inter-block clearance : {value: 0.001, units: m} # between winding packs and structural blocks

@@ -17,11 +17,14 @@ class SimpleYamlData():
     def __getitem__(self, key):
         return self.data[key]
 
+    def __repr__(self):
+        return str(self.data)
+
 
 if __name__ == "__main__":
+    from importlib import resources
 
     pd = SimpleYamlData()
-    pd.read_yaml("materials.yaml")
-    #   print(pd["lead"]["bulk cost"])
-    pd = SimpleYamlData("magnet_geometry.yaml")
-    print(pd["inter-block clearance"])
+    with resources.path("faroes.data", "materials.yaml") as mats:
+        pd.read_yaml(mats)
+    print(type(pd.data))

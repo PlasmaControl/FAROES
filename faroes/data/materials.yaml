@@ -6,49 +6,55 @@ stainless steel 316:
   references:
   - &AZOM "https://www.azom.com/properties.aspx?ArticleID=863"
   density: {value: 7930,
-  unit: kg/m**3,
+  units: kg/m**3,
   reference: *AZOM }
-  Young's modulus: {value: 200, unit: GPa, reference: *AZOM, note: "guess"}
-  elastic limit: {value: 250, unit: MPa, reference: *AZOM, note: guess between min and max}
-  maximum service temperature: {value: 1023, unit: K, reference: *AZOM, note: low end}
-  bulk cost: {value: 10, unit: dollar / t}
-  worked cost: {value: 1000, unit: dollar / t}
+  Young's modulus: {value: 200, units: GPa, reference: *AZOM, note: "guess"}
+  elastic limit: {value: 250, units: MPa, reference: *AZOM, note: guess between min and max}
+  maximum service temperature: {value: 1023, units: K, reference: *AZOM, note: low end}
+  bulk cost: {value: 10, units: USD / t}
+  worked cost: {value: 1000, units: USD / t}
 
 copper:
   references: 
   - &IACS "https://www.nde-ed.org/GeneralResources/IACS/IACS.htm"
-  density: 
-  electrical conductivity: {value: 5.8001e7, unit: Siemens / m,
-    reference: *IACS, reference conditions: {value: 20, unit: Celsius}}
+    #  density:
+  electrical conductivity: {value: 5.8001e7, units: S / m,
+    reference: *IACS, reference conditions: {value: 20, units: Celsius}}
 
 lead:
-  density: {interpolation table 1D, csvfilename: 'lead_density.csv', unit_in: Kelvin, unit_out: kg/m**3, reference: "Kirshenbaum, Cahill, and Crosse, 1961"}
-  bulk cost: {value : 1.76, unit: dollar / kg}
-  viscosity: {function1D, functionfilename: 'matfunctions', functionname: viscosity_lead,  unit_in: K, unit_out: mPa s}
+  #  density: {interpolation table 1D, csvfilename: 'lead_density.csv', units_in: Kelvin, units_out: kg/m**3, reference: "Kirshenbaum, Cahill, and Crosse, 1961"}
+  bulk cost: {value : 1.76, units: USD / kg}
+  atomic number: 82
+  #viscosity: {function1D, functionfilename: 'matfunctions', functionname: viscosity_lead,  units_in: K, units_out: mPa s}
 
 Aluminum silicate:
-  bulk cost per cubic meter: {value: 80, unit: dollar / m**3}
+  bulk cost per cubic meter: {value: 80, units: USD / m**3}
   # need a function that will convert this using the density
-  density: {value: 2.8e+3, unit: kg / m**3}
+  density: {value: 2.8e+3, units: kg / m**3}
 
 FLiBe:
-  density: {value: 1.94, unit: t / m**3, reference: SI team optimization.py}
-  bulk cost: {value: 169, unit: dollar / kg, reference: ARC paper, note: adjusted to $2020}
+  density: {value: 1.94, units: t / m**3, reference: SI team optimization.py}
+  bulk cost: {value: 169, units: USD / kg, reference: ARC paper, note: adjusted to $2020}
 
 TiH2:
-  bulk cost: {value: 28.985, unit: dollar / kg, reference: ARC paper, note: adjusted to $2020}
-  density: {unit_in: Kelvin, unit_out: dollar / m**3 , reference: test}
+  bulk cost: {value: 28.985, units: USD / kg, reference: ARC paper, note: adjusted to $2020}
+  #  density: {units_in: Kelvin, units_out: USD / m**3 , reference: test}
 
 tungsten:
-  DPA limit: {value: 100, unit: 1}
-  density: {value: 19.3, unit: g / cm**3}
-  bulk cost: {value: 31.36, unit: dollars / kg}
+  DPA limit: {value: 100}
+  density: {value: 19.3, units: g / cm**3}
+  bulk cost: {value: 31.36, units: USD / kg}
 
 Inconel 718:
-  bulk cost: {value: 50, unit: dollar / kg, reference: "Online"}
-  density: {value: 8172, unit: kg / m**3}
+  bulk cost: {value: 50, units: USD / kg, reference: "Online"}
+  density: {value: 8172, units: kg / m**3}
 
 SiC:
-  density: {value: 3.21e+3, unit: kg / m**3}
-  bulk cost: {value: 36, unit: dollars / kg, note: may not be updated}
-    
+  density: {value: 3.21e+3, units: kg / m**3}
+  bulk cost: {value: 36, units: USD / kg, note: may not be updated}
+
+test_material:
+  - 0 
+  - 10 
+  - 20
+  - {'value':30, 'units':'m'}  

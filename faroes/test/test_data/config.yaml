@@ -1,0 +1,4 @@
+magnet_geometry:
+  external structure thickness : {value: 5, units: cm} # corresponds to A_t thickness
+  ground wrap thickness : {value: 4, units: mm} # goes around the winding pack, on both inboard and outboard sides
+  inter-block clearance : {value: 2, units: mm} # between winding packs and structural blocks

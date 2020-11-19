@@ -1,0 +1,3 @@
+magnet_geometry:
+  inter-block clearance : {value: default, units: m} # between winding packs and structural blocks
+  ground wrap thickness : default # goes around the winding pack, on both inboard and outboard sides

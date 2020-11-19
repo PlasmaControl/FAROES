@@ -1,42 +1,49 @@
 import openmdao.api as om
 from openmdao.utils.assert_utils import assert_near_equal
-from faroes.yaml_setter import *
+import faroes.yaml_setter
 import unittest
 
 
-class TestYamlProblem(unittest.TestCase):
-    def test_validate_leaf_num(self):
-        self.assertIsNone(validateleaf(3))
+class TestYamlValidateLeaf(unittest.TestCase):
+    def setUp(self):
+        self.f = faroes.yaml_setter.validateleaf
 
-    def test_validate_dict_leaf_good(self):
-        self.assertIsNone(validateleaf({'value': 405, 'units': 'mm'}))
+    def test_num(self):
+        self.assertIsNone(self.f(3))
 
-    def test_validate_dict_leaf_good_two(self):
-        self.assertIsNone(validateleaf({'value': 405}))
+    def test_leaf_good(self):
+        self.assertIsNone(self.f({'value': 405, 'units': 'mm'}))
 
-    def test_validate_dict_leaf_bad(self):
+    def test_leaf_good_two(self):
+        self.assertIsNone(self.f({'value': 405}))
+
+    def test_leaf_bad(self):
         self.assertRaisesRegex(KeyError, "Unit specified without value",
-                               validateleaf, {'units': 'm'})
+                               self.f, {'units': 'm'})
 
-    def test_validate_dict_leaf_bad_two(self):
-        self.assertRaisesRegex(KeyError, "No value", validateleaf,
-                               {'Reference': 3})
+    def test_leaf_bad_two(self):
+        self.assertRaisesRegex(KeyError, "No value", self.f, {'Reference': 3})
 
-    def test_is_leaf_num(self):
-        self.assertTrue(is_leaf(3))
 
-    def test_is_leaf_dict(self):
-        self.assertTrue(is_leaf({'value': 3}))
+class TestYamlIsLeaf(unittest.TestCase):
+    def setUp(self):
+        self.f = faroes.yaml_setter.is_leaf
 
-    def test_is_leaf_dict_array(self):
-        self.assertTrue(is_leaf({'value': [1, 2, 3], 'units': 'm'}))
+    def test_num(self):
+        self.assertTrue(self.f(3))
 
-    def test_is_leaf_dict_subdict(self):
-        self.assertTrue(is_leaf({'value': {'a': 1, 'b': 2}, 'units': 'm'}))
+    def test_dict(self):
+        self.assertTrue(self.f({'value': 3}))
 
-    def test_is_leaf_dict_reference(self):
+    def test_dict_array(self):
+        self.assertTrue(self.f({'value': [1, 2, 3], 'units': 'm'}))
+
+    def test_dict_subdict(self):
+        self.assertTrue(self.f({'value': {'a': 1, 'b': 2}, 'units': 'm'}))
+
+    def test_dict_reference(self):
         self.assertTrue(
-            is_leaf({
+            self.f({
                 'value': {
                     'a': 1,
                     'b': 2
@@ -45,9 +52,11 @@ class TestYamlProblem(unittest.TestCase):
                 'reference': 'asdf'
             }))
 
-    def test_not_is_leaf_dict_subdict(self):
-        self.assertFalse(is_leaf({'a': {'value': 1}, 'reference': 'asdf'}))
+    def test_not_dict_subdict(self):
+        self.assertFalse(self.f({'a': {'value': 1}, 'reference': 'asdf'}))
 
+
+class TestFullProblem(unittest.TestCase):
     def test_full_loading(self):
         from faroes.simple_tf_magnet import MagnetRadialBuild
 
@@ -77,12 +86,12 @@ class TestYamlProblem(unittest.TestCase):
 
         # set constraints
         prob.model.add_constraint('max_stress_con', lower=0)
-        prob.model.add_constraint('con2', lower=0)
-        prob.model.add_constraint('con3', lower=0)
+        prob.model.add_constraint('constraint_B_on_coil', lower=0)
+        prob.model.add_constraint('constraint_wp_current_density', lower=0)
 
         prob.setup()
 
-        load_yaml_to_problem(prob, yaml_here_string)
+        faroes.yaml_setter.load_yaml_to_problem(prob, yaml_here_string)
 
         prob.run_driver()
         assert_near_equal(prob['B0'][0], 2.094, 1e-3)
