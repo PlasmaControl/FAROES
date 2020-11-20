@@ -248,36 +248,25 @@ class InnerTFCoilStrain(om.ExplicitComponent):
         fraction of the maximum allowed stress on the HTS material
     """
     def setup(self):
-        self.add_input('T1',
-                       0.002,
-                       units='MN',
-                       desc='Tension on the inner leg')
+        self.add_input('T1', units='MN', desc='Tension on the inner leg')
         self.add_input('A_s',
-                       0.06,
                        units='m**2',
                        desc='Inner TF leg inner structure area')
         self.add_input('A_t',
-                       0.012,
                        units='m**2',
                        desc='Inner TF leg outer structure area')
         self.add_input('A_m',
-                       0.012,
                        units='m**2',
                        desc='Inner TF leg winding pack area')
         self.add_input('f_HTS',
-                       0.01,
                        desc='Fraction of magnet area which is SC cable')
 
-        self.add_input('hts_max_stress', 0.1, units='MPa')
+        self.add_input('hts_max_stress', units='MPa')
         self.add_input('hts_E_young', units='GPa')
         self.add_input('struct_E_young', units='GPa')
 
-        self.add_output('s_HTS',
-                        0.066,
-                        units='MPa',
-                        desc='Strain on the HTS cable')
+        self.add_output('s_HTS', units='MPa', desc='Strain on the HTS cable')
         self.add_output('max_stress_con',
-                        0.5,
                         desc='fraction of maximum stress on the HTS cable')
 
     def compute(self, inputs, outputs):
@@ -448,15 +437,13 @@ class MagnetGeometry(om.ExplicitComponent):
             self.e_gap = 0.006
             self.Δr_t = 0.05
 
-        self.add_input('r_is', 0.1, units='m')
-        self.add_input('r_im', 0.22, units='m')
+        self.add_input('r_is', units='m')
+        self.add_input('r_im', units='m')
         self.add_input('r_ot',
-                       0.405,
                        units='m',
                        desc='Magnet inboard leg outer structure radius')
         self.add_discrete_input('n_coil', 18, desc='number of coils')
         self.add_input('r_iu',
-                       8.025,
                        units='m',
                        desc='Inner radius of outboard TF leg')
 
@@ -611,9 +598,9 @@ class MagnetCurrent(om.ExplicitComponent):
 
     """
     def setup(self):
-        self.add_input('A_m', 0.01, units='m**2')
-        self.add_input('f_HTS', 0.01)
-        self.add_input('j_HTS', 1, units='MA/m**2')
+        self.add_input('A_m', units='m**2')
+        self.add_input('f_HTS')
+        self.add_input('j_HTS', units='MA/m**2')
         self.add_output('I_leg', units='MA')
 
     def compute(self, inputs, outputs):

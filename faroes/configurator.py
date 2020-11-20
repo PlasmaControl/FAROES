@@ -13,7 +13,7 @@ class UserConfigurator():
         """Load all default configuration files
         """
         f_extension = '.yaml'
-        files = ["materials", "magnet_geometry"]
+        files = ["materials", "magnet_geometry", "fits"]
 
         default_data_dir = "faroes.data"
 
@@ -349,6 +349,8 @@ class UserConfigurator():
                 else:
                     return self._unit_conversion(entry['value'],
                                                  entry['units'], desired_units)
+            else:
+                return entry["value"]
         else:
             return entry
 

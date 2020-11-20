@@ -1,0 +1,10 @@
+marginal κ-ε scaling:
+  # Physics of Plasmas 11, 639 (2004);
+  # https://doi.org/10.1063/1.1640623
+  # "NSTX, FNSF-ST, DIII-D, EAST"
+  # T73 in the spreadsheet
+  Menard: &menardke {value: [1.9, 1.9, 1.4]}
+  constants: *menardke
+  test: 2
+
+κ multiplier: 0.95

@@ -41,15 +41,25 @@ class PlasmaGeometry(om.ExplicitComponent):
     R_max : float
         m, outermost plasma radius at midplane
     """
+    def initialize(self):
+        self.options.declare('config', default=None)
+
     def setup(self):
+        if self.options['config'] is not None:
+            self.config = self.options['config']
+            ac = self.config.accessor(['fits'])
+            self.kappa_multiplier = ac(["κ multiplier"])
+            self.κ_ε_scaling_constants = ac(
+                ["marginal κ-ε scaling", "constants"])
+
         self.add_input("R0", units='m', desc="Major radius")
-        self.add_input("A", 2.0, desc="Aspect Ratio")
+        self.add_input("A", desc="Aspect Ratio")
 
         self.add_output("a", units='m', desc="Minor radius")
         self.add_output("b", units='m', desc="Minor radius height")
-        self.add_output("ε", 0.5, desc="Inverse aspect ratio")
-        self.add_output("κ", 1.0, desc="Elongation")
-        self.add_output("δ", 0.0, desc="Triangularity")
+        self.add_output("ε", desc="Inverse aspect ratio")
+        self.add_output("κ", desc="Elongation")
+        self.add_output("δ", desc="Triangularity")
         self.add_output("full_plasma_height",
                         units='m',
                         desc="Top to bottom of the ellipse")
@@ -70,8 +80,7 @@ class PlasmaGeometry(om.ExplicitComponent):
         A = inputs["A"]
         a = R0 / A
 
-        kappa_multiplier = 0.95  # from cell S6
-        κ = kappa_multiplier * self.marginal_kappa_epsilon_scaling(A)
+        κ = self.kappa_multiplier * self.marginal_kappa_epsilon_scaling(A)
         b = κ * a
         sa = util.torus_surface_area(R0, a, b)
         V = util.torus_volume(R0, a, b)
@@ -109,9 +118,10 @@ class PlasmaGeometry(om.ExplicitComponent):
 
         Values are from the "Scaling Parameters" sheet
         """
-        sp_b12 = 1.9
-        sp_c12 = 1.9
-        sp_d12 = 1.4
+        constants = self.κ_ε_scaling_constants
+        sp_b12 = constants[0]
+        sp_c12 = constants[1]
+        sp_d12 = constants[2]
         return sp_b12 + sp_c12 / (t4_aspect_ratio**sp_d12)
 
     def setup_partials(self):
@@ -132,6 +142,9 @@ if __name__ == "__main__":
     prob = om.Problem()
 
     prob.model = PlasmaGeometry()
+
+    prob.model.kappa_multiplier = 0.95
+    prob.model.κ_ε_scaling_constants = [1.9, 1.9, 1.4]
 
     prob.setup()
 

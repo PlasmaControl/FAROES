@@ -103,6 +103,9 @@ class TestValidateDictLeaf(unittest.TestCase):
     def test_compat(self):
         self.f({'value': 3, 'units': 'm'}, units='mm')
 
+    def test_list_okay(self):
+        self.f({'value': [1, 2, 3]})
+
     def test_raises_if_extra(self):
         with self.assertRaisesRegex(KeyError, "Extra key"):
             self.f({'value': 3, 'units': 'm'})
@@ -503,6 +506,14 @@ class TestGetValue(unittest.TestCase):
     def test_index_dict(self):
         n = self.f(('materials', 'test_material', 3), 'm')
         self.assertEqual(n, 30)
+
+    def test_list(self):
+        n = self.f(('fits', 'marginal κ-ε scaling', 'constants'))
+        self.assertEqual(n, [1.9, 1.9, 1.4])
+
+    def test_index_list(self):
+        n = self.f(('fits', 'marginal κ-ε scaling', 'constants'))
+        self.assertEqual(n, [1.9, 1.9, 1.4])
 
 
 class TestUpdateConfiguration(unittest.TestCase):

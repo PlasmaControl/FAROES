@@ -1,7 +1,7 @@
 import openmdao.api as om
-from simple_tf_magnet import MagnetRadialBuild
-from elliptical_plasma import PlasmaGeometry
-from configurator import UserConfigurator
+from faroes.simple_tf_magnet import MagnetRadialBuild
+from faroes.elliptical_plasma import PlasmaGeometry
+from faroes.configurator import UserConfigurator
 
 
 class Machine(om.Group):
@@ -12,7 +12,7 @@ class Machine(om.Group):
         config = self.options['config']
 
         self.add_subsystem("plasma",
-                           PlasmaGeometry(),
+                           PlasmaGeometry(config=config),
                            promotes_inputs=["R0"],
                            promotes_outputs=["R_max", "R_min"])
         self.add_subsystem('connector_ob',
@@ -65,7 +65,6 @@ if __name__ == "__main__":
     prob.setup()
     prob.check_config(checks=['unconnected_inputs'])
 
-    #    prob.set_val('R0', 3.3)
     prob.set_val('plasma.A', 2)
     prob.set_val('magnets.n_coil', 18)
     prob.set_val('magnets.windingpack.j_eff_max', 160)
