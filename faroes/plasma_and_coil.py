@@ -1,10 +1,15 @@
 import openmdao.api as om
 from simple_tf_magnet import MagnetRadialBuild
 from elliptical_plasma import PlasmaGeometry
+from configurator import UserConfigurator
 
 
 class Machine(om.Group):
+    def initialize(self):
+        self.options.declare('config')
+
     def setup(self):
+        config = self.options['config']
 
         self.add_subsystem("plasma",
                            PlasmaGeometry(),
@@ -23,7 +28,7 @@ class Machine(om.Group):
                         R_min={'units': 'm'}))
 
         self.add_subsystem("magnets",
-                           MagnetRadialBuild(),
+                           MagnetRadialBuild(config=config),
                            promotes_inputs=["R0", 'r_iu'])
         self.connect('R_min', ['connector_ib.R_min'])
         self.connect('connector_ib.r_ot', ['magnets.r_ot'])
@@ -32,7 +37,8 @@ class Machine(om.Group):
 if __name__ == "__main__":
     prob = om.Problem()
 
-    prob.model = Machine()
+    uc = UserConfigurator()
+    prob.model = Machine(config=uc)
 
     model = prob.model
 

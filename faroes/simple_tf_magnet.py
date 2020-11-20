@@ -3,22 +3,52 @@ import numpy as np
 
 from scipy.constants import mu_0, mega
 
-from faroes.yaml_data import SimpleYamlData
+from faroes.configurator import UserConfigurator
 from importlib import resources
 
 
 class WindingPackProperties(om.ExplicitComponent):
+    def initialize(self):
+        self.options.declare('config', default=None)
+
     def setup(self):
-        self.add_output("max_stress", 525, units="MPa")
-        self.add_output("max_strain", 0.003)
-        self.add_output("Young's modulus", 175, units="GPa")
-        self.add_output("j_eff_max", 160, units='MA/m**2')
-        self.add_output("f_HTS", 0.76)
+        if self.options['config'] is not None:
+            config = self.options['config']
+
+            ac = config.accessor(["magnet_geometry"])
+            self.add_output("f_HTS", ac(["winding pack", "f_HTS"]))
+
+            ac = config.accessor(["materials", "HTS cable"])
+            max_strain = ac(["strain limit"])
+            youngs = ac(["Young's modulus"], units="GPa")
+            self.add_output("Young's modulus", youngs, units="GPa")
+            self.add_output("max_strain", max_strain)
+            self.add_output("max_stress", max_strain * youngs, units="GPa")
+
+            j_eff_max = config.get_value(
+                ["materials", "winding pack", "j_eff_max"], units='MA/m**2')
+            self.add_output("j_eff_max", j_eff_max, units='MA/m**2')
+        else:
+            self.add_output("Young's modulus", units="GPa")
+            self.add_output("max_strain")
+            self.add_output("max_stress", units="MPa")
+            self.add_output("j_eff_max", units='MA/m**2')
+            self.add_output("f_HTS")
 
 
 class MagnetStructureProperties(om.ExplicitComponent):
+    def initialize(self):
+        self.options.declare('config', default=None)
+
     def setup(self):
-        self.add_output("Young's modulus", 220, units="GPa")
+        if self.options['config'] is not None:
+            config = self.options['config']
+            ac = config.accessor(["materials", "structural steel"])
+            self.add_output("Young's modulus",
+                            ac(["Young's modulus"], units="GPa"),
+                            units="GPa")
+        else:
+            self.add_output("Young's modulus", units="GPa"),
 
 
 class InnerTFCoilTension(om.ExplicitComponent):
@@ -396,21 +426,27 @@ class MagnetGeometry(om.ExplicitComponent):
         m, Outer 'length' of the outer structure of the inboard leg.
 
     """
+    def initialize(self):
+        self.options.declare('config', default=None)
+
     def setup(self):
+        if self.options['config'] is not None:
+            config = self.options['config'].accessor(["magnet_geometry"])
 
-        with resources.path("faroes.data", "magnet_geometry.yaml") as mats:
-            data = SimpleYamlData(mats)
+            # e_gap is the space between the inner structure and the
+            # winding pack, and between the winding pack and the outer
+            # structure.
+            ground_wrap = config(["ground wrap thickness"], units="m")
+            inter_block = config(["inter-block clearance"], units="m")
 
-        # e_gap is the space between the inner structure and the
-        # winding pack, and between the winding pack and the outer
-        # structure.
-        ground_wrap = data["ground wrap thickness"]["value"]
-        # extra clearance space for assembly
-        inter_block = data["inter-block clearance"]["value"]
-        self.e_gap = (ground_wrap + inter_block) / 1000
+            self.e_gap = (ground_wrap + inter_block)
 
-        # radial thickness of the A_t external structure
-        self.Δr_t = data["external structure thickness"]["value"] / 100
+            # radial thickness of the A_t external structure
+            self.Δr_t = config(["external structure thickness"], units="m")
+        else:
+            # defaults for testing
+            self.e_gap = 0.006
+            self.Δr_t = 0.05
 
         self.add_input('r_is', 0.1, units='m')
         self.add_input('r_im', 0.22, units='m')
@@ -600,19 +636,24 @@ class MagnetCurrent(om.ExplicitComponent):
 
 
 class MagnetRadialBuild(om.Group):
+    def initialize(self):
+        self.options.declare('config', default=None)
+
     def setup(self):
+        config = self.options['config']
+
         self.add_subsystem(
             'geometry',
-            MagnetGeometry(),
+            MagnetGeometry(config=config),
             promotes_inputs=['r_ot', 'n_coil', 'r_iu', 'r_im', 'r_is'],
             promotes_outputs=[
                 'A_s', 'A_t', 'A_m', 'r1', 'r2', 'r_om', 'r_im_is_constraint'
             ])
         self.add_subsystem('windingpack',
-                           WindingPackProperties(),
+                           WindingPackProperties(config=config),
                            promotes=['f_HTS'])
         self.add_subsystem('magnetstructure_props',
-                           MagnetStructureProperties())
+                           MagnetStructureProperties(config=config))
         self.add_subsystem('current',
                            MagnetCurrent(),
                            promotes_inputs=['A_m', 'f_HTS', 'j_HTS'],
@@ -657,7 +698,12 @@ class MagnetRadialBuild(om.Group):
 if __name__ == "__main__":
     prob = om.Problem()
 
-    prob.model = MagnetRadialBuild()
+    resource_dir = 'faroes.test.test_data'
+    with resources.path(resource_dir,
+                        'config_menard_spreadsheet.yaml') as path:
+        uc = UserConfigurator(path)
+
+    prob.model = MagnetRadialBuild(config=uc)
 
     prob.driver = om.ScipyOptimizeDriver()
     prob.driver.options['optimizer'] = 'SLSQP'
@@ -672,16 +718,21 @@ if __name__ == "__main__":
     prob.model.add_constraint('max_stress_con', lower=0)
     prob.model.add_constraint('constraint_B_on_coil', lower=0)
     prob.model.add_constraint('constraint_wp_current_density', lower=0)
+    prob.model.add_constraint('A_s', lower=0)
 
     prob.setup()
 
     prob.set_val('R0', 3, 'm')
-    prob.set_val('geometry.r_ot', 0.405)
-    prob.set_val('geometry.r_iu', 8.025)
-    prob.set_val('windingpack.j_eff_max', 160)
+    prob.set_val('geometry.r_ot', 0.405, 'm')
+    prob.set_val('geometry.r_iu', 8.025, 'm')
+    prob.set_val('windingpack.max_stress', 525, "MPa")
+    prob.set_val('windingpack.max_strain', 0.003)
+    prob.set_val("windingpack.Young's modulus", 175, "GPa")
+    prob.set_val('windingpack.j_eff_max', 160, "MA/m**2")
     prob.set_val('windingpack.f_HTS', 0.76)
     prob.set_val("magnetstructure_props.Young's modulus", 220)
 
     prob.run_driver()
 
-    # all_outputs = prob.model.list_outputs(values=True)
+    # prob.model.list_inputs(values=True)
+    # prob.model.list_outputs(values=True)

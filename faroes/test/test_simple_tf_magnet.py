@@ -26,6 +26,7 @@ class TestSimpleTFMagnet(unittest.TestCase):
         prob.model.add_constraint('max_stress_con', lower=0)
         prob.model.add_constraint('constraint_B_on_coil', lower=0)
         prob.model.add_constraint('constraint_wp_current_density', lower=0)
+        prob.model.add_constraint('A_s', lower=0)
 
         prob.setup()
 
@@ -33,12 +34,16 @@ class TestSimpleTFMagnet(unittest.TestCase):
         prob.set_val('geometry.r_ot', 0.405)
         prob.set_val('geometry.r_iu', 8.025)
 
+        prob.set_val('windingpack.max_stress', 525, units="MPa")
         prob.set_val('windingpack.j_eff_max', 160)
+        prob.set_val('windingpack.f_HTS', 0.76)
+        prob.set_val("magnetstructure_props.Young's modulus", 220)
 
         prob.run_driver()
 
         assert_near_equal(prob['B0'][0], 2.094, 1e-3)
         assert_near_equal(prob['B_on_coil'][0], 18, 1e-3)
+
         # check radius order
         self.assertTrue(0 < prob['r_is'][0])
         self.assertTrue(prob['geometry.r_is'][0] < prob['geometry.r_os'][0])

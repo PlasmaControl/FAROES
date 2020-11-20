@@ -1,7 +1,4 @@
 ### materials
-# 
-# future improvements:
-# right now you can't just do density: 3.21e3 kg/m**3
 stainless steel 316:
   references:
   - &AZOM "https://www.azom.com/properties.aspx?ArticleID=863"
@@ -27,7 +24,7 @@ lead:
   atomic number: 82
   #viscosity: {function1D, functionfilename: 'matfunctions', functionname: viscosity_lead,  units_in: K, units_out: mPa s}
 
-Aluminum silicate:
+aluminum silicate:
   bulk cost per cubic meter: {value: 80, units: USD / m**3}
   # need a function that will convert this using the density
   density: {value: 2.8e+3, units: kg / m**3}
@@ -53,6 +50,20 @@ SiC:
   density: {value: 3.21e+3, units: kg / m**3}
   bulk cost: {value: 36, units: USD / kg, note: may not be updated}
 
+# Materials from Jon Menard's spreadsheet model
+structural steel:
+  # composition or alloy not specified
+  Young's modulus: {value: 220, units: GPa}
+
+HTS cable:
+  # type not specified
+  Young's modulus: {value: 175, units: GPa}
+  strain limit: 0.003
+
+winding pack:
+  j_eff_max : {value: 160, units: MA / m**2}
+
+# here for internal testing purposes
 test_material:
   - 0 
   - 10 

@@ -1,0 +1,17 @@
+magnet_geometry:
+  winding pack:
+    f_HTS : 0.76 # fraction of winding pack area which is HTS cable
+
+materials:
+# Materials from Jon Menard's spreadsheet model
+  structural steel:
+    # composition or alloy not specified
+    Young's modulus: {value: 220, units: GPa}
+
+  HTS cable:
+    # type not specified
+    Young's modulus: {value: 175, units: GPa}
+    strain limit: 0.003
+
+  winding pack:
+    j_eff_max : {value: 160, units: MA / m**2}

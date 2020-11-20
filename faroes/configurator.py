@@ -51,6 +51,31 @@ class UserConfigurator():
         updated_data = self._fold_in_new_data(self.data, ud.data, exclude_keys)
         self.data = updated_data
 
+    def accessor(self, pre_path):
+        """Helper accessor"""
+        def f(post_path, units=None):
+            return self.get_value(pre_path + post_path, units=units)
+
+        return f
+
+    def get_value(self, path, units=None):
+        """Retrieve a value, ensuring the correct units
+        """
+        if isinstance(path, str):
+            return self.get_value((path, ), units=units)
+
+        if units is not None:
+            self._validate_unit(units)
+
+        # multi-key tuple
+        entry = self.data
+        for key in path:
+            entry = entry[key]
+
+        self._validate_entry(entry, units=units, string_acceptable=True)
+        value = self._convert_or_pass_through(entry, desired_units=units)
+        return value
+
     def _fold_in_new_data(self, old_data, new_data, exclude_keys):
         """Folds in a subset of the user data.
         """
@@ -326,24 +351,6 @@ class UserConfigurator():
                                                  entry['units'], desired_units)
         else:
             return entry
-
-    def get_value(self, path, units=None):
-        """Retrieve a value, ensuring the correct units
-        """
-        if isinstance(path, str):
-            return self.get_value((path, ), units=units)
-
-        if units is not None:
-            self._validate_unit(units)
-
-        # multi-key tuple
-        entry = self.data
-        for key in path:
-            entry = entry[key]
-
-        self._validate_entry(entry, units=units, string_acceptable=True)
-        value = self._convert_or_pass_through(entry, desired_units=units)
-        return value
 
 
 if __name__ == "__main__":

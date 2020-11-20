@@ -543,26 +543,28 @@ class TestUpdateConfiguration(unittest.TestCase):
         assert_near_equal(res, 10)
 
     def test_okay_units(self):
-        with resources.path(self.resource_dir, 'config_okay_units.yaml') as path:
+        with resources.path(self.resource_dir,
+                            'config_okay_units.yaml') as path:
             self.uc.update_configuration(path)
         res = self.f(('magnet_geometry', 'inter-block clearance'), 'mm')
         assert_near_equal(res, 1)
 
 
 class TestUpdateConfigurationLoading(unittest.TestCase):
-
     def setUp(self):
         self.resource_dir = 'faroes.test.test_data'
 
     def test(self):
-        with resources.path(self.resource_dir, 'config_okay_units.yaml') as path:
+        with resources.path(self.resource_dir,
+                            'config_okay_units.yaml') as path:
             self.uc = UserConfigurator(path)
         self.f = self.uc.get_value
         res = self.f(('magnet_geometry', 'inter-block clearance'), 'mm')
         assert_near_equal(res, 1)
 
     def test_repeat_same(self):
-        with resources.path(self.resource_dir, 'config_okay_units.yaml') as path:
+        with resources.path(self.resource_dir,
+                            'config_okay_units.yaml') as path:
             self.uc = UserConfigurator(path)
             self.uc.update_configuration(path)
         self.f = self.uc.get_value
@@ -570,7 +572,8 @@ class TestUpdateConfigurationLoading(unittest.TestCase):
         assert_near_equal(res, 1)
 
     def test_three(self):
-        with resources.path(self.resource_dir, 'config_okay_units.yaml') as path:
+        with resources.path(self.resource_dir,
+                            'config_okay_units.yaml') as path:
             self.uc = UserConfigurator(path)
         with resources.path(self.resource_dir, 'config.yaml') as path:
             self.uc.update_configuration(path)
