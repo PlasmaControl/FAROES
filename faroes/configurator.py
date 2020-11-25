@@ -5,6 +5,44 @@ from copy import deepcopy
 import numbers
 
 
+class Accessor():
+    def __init__(self, config=None):
+        self.config = config
+
+    def accessor(self, pre_path):
+        """Helper accessor"""
+        if self.config is not None:
+
+            def f(post_path, units=None):
+                return self.config.get_value(pre_path + post_path, units=units)
+
+            return f
+        else:
+            return None
+
+    def _wrap_if_str(self, name):
+        if isinstance(name, str):
+            name = [name]
+        return name
+
+    def set_output(self,
+                   component,
+                   accessor,
+                   name,
+                   component_name=None,
+                   units=None):
+        config_name = self._wrap_if_str(name)
+
+        if component_name is None:
+            component_name = config_name[-1]
+
+        if accessor is not None:
+            val = accessor(config_name, units=units)
+            component.add_output(component_name, val, units=units)
+        else:
+            component.add_output(component_name, units=units)
+
+
 class UserConfigurator():
     default_str = "default"
     ignore_units = 6666666
@@ -13,7 +51,7 @@ class UserConfigurator():
         """Load all default configuration files
         """
         f_extension = '.yaml'
-        files = ["materials", "magnet_geometry", "fits"]
+        files = ["materials", "magnet_geometry", "fits", "radial_build"]
 
         default_data_dir = "faroes.data"
 
