@@ -3,7 +3,7 @@ import numpy as np
 
 from scipy.constants import mu_0, mega
 
-from faroes.configurator import UserConfigurator
+from faroes.configurator import UserConfigurator, Accessor
 from importlib import resources
 
 
@@ -12,28 +12,25 @@ class WindingPackProperties(om.ExplicitComponent):
         self.options.declare('config', default=None)
 
     def setup(self):
+        acc = Accessor(self.options['config'])
+        f = acc.accessor(["magnet_geometry", "winding pack"])
+        acc.set_output(self, f, "f_HTS")
+
+        f = acc.accessor(["materials", "winding pack"])
+        acc.set_output(self, f, "j_eff_max", units='MA/m**2')
+
         if self.options['config'] is not None:
-            config = self.options['config']
-
-            ac = config.accessor(["magnet_geometry"])
-            self.add_output("f_HTS", ac(["winding pack", "f_HTS"]))
-
-            ac = config.accessor(["materials", "HTS cable"])
-            max_strain = ac(["strain limit"])
-            youngs = ac(["Young's modulus"], units="GPa")
+            f = acc.accessor(["materials", "HTS cable"])
+            max_strain = f(["strain limit"])
+            youngs = f(["Young's modulus"], units="GPa")
             self.add_output("Young's modulus", youngs, units="GPa")
             self.add_output("max_strain", max_strain)
             self.add_output("max_stress", max_strain * youngs, units="GPa")
 
-            j_eff_max = config.get_value(
-                ["materials", "winding pack", "j_eff_max"], units='MA/m**2')
-            self.add_output("j_eff_max", j_eff_max, units='MA/m**2')
         else:
             self.add_output("Young's modulus", units="GPa")
             self.add_output("max_strain")
             self.add_output("max_stress", units="MPa")
-            self.add_output("j_eff_max", units='MA/m**2')
-            self.add_output("f_HTS")
 
 
 class MagnetStructureProperties(om.ExplicitComponent):
@@ -41,14 +38,9 @@ class MagnetStructureProperties(om.ExplicitComponent):
         self.options.declare('config', default=None)
 
     def setup(self):
-        if self.options['config'] is not None:
-            config = self.options['config']
-            ac = config.accessor(["materials", "structural steel"])
-            self.add_output("Young's modulus",
-                            ac(["Young's modulus"], units="GPa"),
-                            units="GPa")
-        else:
-            self.add_output("Young's modulus", units="GPa"),
+        acc = Accessor(self.options['config'])
+        f = acc.accessor(["materials", "structural steel"])
+        acc.set_output(self, f, "Young's modulus", units="GPa")
 
 
 class InnerTFCoilTension(om.ExplicitComponent):
