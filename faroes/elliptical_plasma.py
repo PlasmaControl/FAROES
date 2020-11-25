@@ -2,6 +2,69 @@ import openmdao.api as om
 import faroes.util as util
 
 
+class PlasmaBetaNTotal(om.ExplicitComponent):
+    r"""Total β_N from a scaling law
+
+    Inputs
+    ------
+    A : float
+        Aspect ratio
+
+    Outputs
+    -------
+    beta_N : float
+        β_N, the normalized beta
+
+    beta_N total : float
+        total β_N, the total normalized beta
+
+    Reference
+    ---------
+    Physics of Plasmas 11, 639 (2004);
+    https://doi.org/10.1063/1.1640623
+
+    No-wall limit, with 50% bootstrap fraction
+    """
+    def initialize(self):
+        self.options.declare('config', default=None)
+
+    def setup(self):
+        if self.options['config'] is not None:
+            self.config = self.options['config']
+            ac = self.config.accessor(['fits'])
+            self.β_ε_scaling_constants = ac(
+                ["no-wall β_N scaling with ε", "constants"])
+            self.β_N_multiplier = ac(["β_N multiplier"])
+
+        self.add_input("A", desc="Aspect Ratio")
+        self.add_output("beta_N", desc="Normalized beta")
+        self.add_output("beta_N total", desc="Normalized beta, total")
+
+    def beta_N_scaling(self, A):
+        """Estimated β_N from A
+
+        Parameters
+        ----------
+        A: float
+            aspect ratio of the plasma
+
+        """
+        const = self.β_ε_scaling_constants
+        b = const[0]
+        c = const[1]
+        d = const[2]
+        return b + c / (A**d)
+
+    def compute(self, inputs, outputs):
+        A = inputs["A"]
+        β_N = self.beta_N_scaling(A)
+        outputs["beta_N"] = β_N
+        outputs["beta_N total"] = β_N * self.β_N_multiplier
+
+    def setup_partials(self):
+        self.declare_partials('*', '*', method='cs')
+
+
 class PlasmaGeometry(om.ExplicitComponent):
     r"""Describes an elliptical plasma.
 

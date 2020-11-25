@@ -5,6 +5,15 @@ marginal κ-ε scaling:
   # T73 in the spreadsheet
   Menard: &menardke {value: [1.9, 1.9, 1.4]}
   constants: *menardke
-  test: 2
 
 κ multiplier: 0.95
+
+no-wall β_N scaling with ε:
+  # Physics of Plasmas 11, 639 (2004);
+  # https://doi.org/10.1063/1.1640623
+  #
+  # no-wall limit, with 50% bootstrap fraction
+  Menard: &menardbetae {value: [3.12, 3.5, 1.7]}
+  constants: *menardbetae
+
+β_N multiplier: 1.1
