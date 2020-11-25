@@ -1,0 +1,52 @@
+
+# From Menard's spreadsheet, roughly T413-T437
+inboard:
+  SOL width: {value: 4, units: cm}
+
+  # first wall 
+  fw thickness: {value: 3, units: cm}
+
+  # some designs have no room for an inboard breeding blanket
+  # (excel column T has 0; column W has 5 cm}
+  blanket thickness: {value: 0, units: cm}
+
+  # vacuum vessel true position tolerance
+  vv tpt: &vvtpt {value: 5, units: mm}
+
+  # tungsten carbide neutron shield thickness
+  WC n shield thickness: {value: 0.5, units: m}
+
+  # vacuum vessel shield thickness
+  vv shell thickness: {value: 12, units: mm}
+  vv shielding thickness: {value: 0.1, units: m}
+
+  # gap between the vv and the vv thermal shield
+  vv tf gap thickness: {value: 5, units: mm}
+
+  # thermal shield keeps the TF (and CS?) coils cold
+  thermal shield insulation thickness: {value: 8, units: mm}
+  # space needed for assembling the components
+  wedge assy fit-up thickness: {value: 1, units: mm}
+
+  # inner side true position tolerance
+  inner vv tpt gap: *vvtpt
+
+  # TF coil assembly true position tolerance gap
+  tf tpt: {value: 2, units: mm}
+
+  # assuming that there is an OH coil for startup
+  # the space between it and the inner radius of the inboard TF leg
+  # Notes: OH coil is another name for Central Solenoid (CS)
+  oh-tf gap thickness: {value: 0.01, units: m}
+
+  oh coil minimum radius: {value: 2, units: cm}
+
+# From Menard's spreadsheet, roughly T461-T465
+outboard:
+  SOL width: {value: 15, units: cm}
+  blanket thickness: {value: 1, units: m}
+  access thickness: {value: 1, units: m}
+  # this seems large
+  vv thickness: {value: 0.5, units: m}
+  # default value
+  shield thickness: {value: 0.5, units: m} 
