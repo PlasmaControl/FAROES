@@ -373,6 +373,9 @@ class MagnetGeometry(om.ExplicitComponent):
         m, Average radius of the winding pack of the inboard leg.
     r2 : float
         m, Average radius of the winding pack of the outer leg.
+    approximate cross section : float
+        m**2, Approximate magnet cross section; expands the trapezoid to a full
+           rectangle
 
     r_os : float
         m, Outer radius of the inner structure of the inboard leg.
@@ -464,6 +467,8 @@ class MagnetGeometry(om.ExplicitComponent):
         self.add_output('r1', units='m')
         self.add_output('r2', units='m')
 
+        self.add_output('approximate cross section', units='m**2')
+
         self.add_output('r_im_is_constraint', units='m')
 
     def compute(self, inputs, outputs, discrete_inputs, discrete_outputs):
@@ -521,6 +526,8 @@ class MagnetGeometry(om.ExplicitComponent):
         outputs['r1'] = (r_om + r_im) / 2
         outputs['r2'] = r_iu + (r_ot - r_is) / 2
 
+        outputs['approximate cross section'] = (r_ot - r_is) * l_ot
+
         outputs['r_im_is_constraint'] = r_im - self.e_gap - r_is
 
     def setup_partials(self):
@@ -536,6 +543,8 @@ class MagnetGeometry(om.ExplicitComponent):
         self.declare_partials('r2', ['r_ot', 'r_is', 'r_iu'])
         self.declare_partials('r_im_is_constraint', ['r_im', 'r_is'])
 
+        self.declare_partials('approximate cross section', ['r_ot', 'r_is'])
+
     def compute_partials(self, inputs, J, discrete_inputs):
         J['r_it', 'r_ot'] = 1
         J['r_os', 'r_im'] = 1
@@ -544,6 +553,7 @@ class MagnetGeometry(om.ExplicitComponent):
         n_coil = discrete_inputs['n_coil']
 
         whole_ang = np.sin(2 * np.pi / n_coil)
+        r_to_l = 2 * np.sin(np.pi / n_coil)
 
         r_im = inputs['r_im']
         r_is = inputs['r_is']
@@ -564,6 +574,9 @@ class MagnetGeometry(om.ExplicitComponent):
 
         J['r_im_is_constraint', 'r_is'] = -1
         J['r_im_is_constraint', 'r_im'] = 1
+
+        J['approximate cross section', 'r_ot'] = (2 * r_ot - r_is) * r_to_l
+        J['approximate cross section', 'r_is'] = - r_ot * r_to_l
 
 
 class MagnetCurrent(om.ExplicitComponent):
@@ -713,5 +726,5 @@ if __name__ == "__main__":
 
     prob.run_driver()
 
-    # prob.model.list_inputs(values=True)
-    # prob.model.list_outputs(values=True)
+    prob.model.list_inputs(values=True)
+    prob.model.list_outputs(values=True)
