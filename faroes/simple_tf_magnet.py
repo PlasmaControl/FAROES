@@ -18,6 +18,7 @@ class WindingPackProperties(om.ExplicitComponent):
 
         f = acc.accessor(["materials", "winding pack"])
         acc.set_output(self, f, "j_eff_max", units='MA/m**2')
+        acc.set_output(self, f, "B_max", units='T')
 
         if self.options['config'] is not None:
             f = acc.accessor(["materials", "HTS cable"])
@@ -437,7 +438,7 @@ class MagnetGeometry(om.ExplicitComponent):
         self.add_input('r_ot',
                        units='m',
                        desc='Magnet inboard leg outer structure radius')
-        self.add_discrete_input('n_coil', 18, desc='number of coils')
+        self.add_discrete_input('n_coil', desc='number of coils')
         self.add_input('r_iu',
                        units='m',
                        desc='Inner radius of outboard TF leg')
@@ -637,13 +638,13 @@ class MagnetRadialBuild(om.Group):
         self.add_subsystem(
             'geometry',
             MagnetGeometry(config=config),
-            promotes_inputs=['r_ot', 'n_coil', 'r_iu', 'r_im', 'r_is'],
+            promotes_inputs=['r_ot', 'n_coil', 'r_iu', 'r_im', 'r_is', 'n_coil'],
             promotes_outputs=[
                 'A_s', 'A_t', 'A_m', 'r1', 'r2', 'r_om', 'r_im_is_constraint'
             ])
         self.add_subsystem('windingpack',
                            WindingPackProperties(config=config),
-                           promotes=['f_HTS'])
+                           promotes=['f_HTS', ('B_max', 'B_wp_max')])
         self.add_subsystem('magnetstructure_props',
                            MagnetStructureProperties(config=config))
         self.add_subsystem('current',
@@ -668,9 +669,10 @@ class MagnetRadialBuild(om.Group):
                            om.ExecComp('obj = -B0', B0={'units': 'T'}),
                            promotes=['B0', 'obj'])
         self.add_subsystem('con_cmp2',
-                           om.ExecComp('constraint_B_on_coil = 18 - B_on_coil',
-                                       B_on_coil={'units': 'T'}),
-                           promotes=['constraint_B_on_coil', 'B_on_coil'])
+                           om.ExecComp('constraint_B_on_coil = B_wp_max - B_on_coil',
+                                       B_on_coil={'units': 'T'},
+                                       B_wp_max={'units' : 'T'}),
+                           promotes=['constraint_B_on_coil', 'B_on_coil', 'B_wp_max'])
         self.add_subsystem(
             'con_cmp3',
             om.ExecComp(
@@ -715,6 +717,7 @@ if __name__ == "__main__":
     prob.setup()
 
     prob.set_val('R0', 3, 'm')
+    prob.set_val('n_coil', 18)
     prob.set_val('geometry.r_ot', 0.405, 'm')
     prob.set_val('geometry.r_iu', 8.025, 'm')
     prob.set_val('windingpack.max_stress', 525, "MPa")
