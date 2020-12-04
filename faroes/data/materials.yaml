@@ -12,7 +12,7 @@ stainless steel 316:
   worked cost: {value: 1000, units: USD / t}
 
 copper:
-  references: 
+  references:
   - &IACS "https://www.nde-ed.org/GeneralResources/IACS/IACS.htm"
     #  density:
   electrical conductivity: {value: 5.8001e7, units: S / m,
@@ -63,9 +63,13 @@ HTS cable:
 winding pack:
   j_eff_max : {value: 160, units: MA / m**2}
 
+CS winding pack:
+  j_max: {value: 70, units: MA / m**2, reference: "Menard spreadsheet, cell T445"}
+  B_max: {value: 30, units: T, reference: "Guess from ARCH course"}
+
 # here for internal testing purposes
 test_material:
-  - 0 
-  - 10 
+  - 0
+  - 10
   - 20
-  - {'value':30, 'units':'m'}  
+  - {'value':30, 'units':'m'}
