@@ -1,6 +1,5 @@
 import openmdao.api as om
 from openmdao.utils.assert_utils import assert_check_partials
-from openmdao.utils.assert_utils import assert_near_equal
 
 import faroes.radialbuild
 from faroes.configurator import UserConfigurator
@@ -24,6 +23,7 @@ class TestMenardSTInboardRadialBuild(unittest.TestCase):
         check = prob.check_partials(out_stream=None, method='cs')
         assert_check_partials(check)
 
+
 class TestMenardSTOutboardRadialBuild(unittest.TestCase):
     def test_partials(self):
         prob = om.Problem()
@@ -39,6 +39,7 @@ class TestMenardSTOutboardRadialBuild(unittest.TestCase):
         prob.run_driver()
         check = prob.check_partials(out_stream=None, method='cs')
         assert_check_partials(check)
+
 
 if __name__ == '__main__':
     unittest.main()
