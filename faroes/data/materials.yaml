@@ -62,6 +62,7 @@ HTS cable:
 
 winding pack:
   j_eff_max : {value: 160, units: MA / m**2}
+  B_max : {value: 18, units: T}
 
 CS winding pack:
   j_max: {value: 70, units: MA / m**2, reference: "Menard spreadsheet, cell T445"}

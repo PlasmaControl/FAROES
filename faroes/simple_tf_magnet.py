@@ -374,6 +374,8 @@ class MagnetGeometry(om.ExplicitComponent):
         m, Average radius of the winding pack of the inboard leg.
     r2 : float
         m, Average radius of the winding pack of the outer leg.
+    r_ov : float,
+        m, Outer radius of the outboard leg.
     approximate cross section : float
         m**2, Approximate magnet cross section; expands the trapezoid to a full
            rectangle
@@ -438,7 +440,7 @@ class MagnetGeometry(om.ExplicitComponent):
         self.add_input('r_ot',
                        units='m',
                        desc='Magnet inboard leg outer structure radius')
-        self.add_discrete_input('n_coil', desc='number of coils')
+        self.add_discrete_input('n_coil', val=18, desc='number of coils')
         self.add_input('r_iu',
                        units='m',
                        desc='Inner radius of outboard TF leg')
@@ -467,6 +469,7 @@ class MagnetGeometry(om.ExplicitComponent):
 
         self.add_output('r1', units='m')
         self.add_output('r2', units='m')
+        self.add_output('r_ov', units='m')
 
         self.add_output('approximate cross section', units='m**2')
 
@@ -526,31 +529,34 @@ class MagnetGeometry(om.ExplicitComponent):
 
         outputs['r1'] = (r_om + r_im) / 2
         outputs['r2'] = r_iu + (r_ot - r_is) / 2
+        outputs['r_ov'] = r_iu + (r_ot - r_is)
 
         outputs['approximate cross section'] = (r_ot - r_is) * l_ot
 
         outputs['r_im_is_constraint'] = r_im - self.e_gap - r_is
 
     def setup_partials(self):
-        self.declare_partials('r_it', ['r_ot'])
-        self.declare_partials('r_os', ['r_im'])
-        self.declare_partials('r_om', ['r_ot'])
+        self.declare_partials('r_it', ['r_ot'], val=1)
+        self.declare_partials('r_os', ['r_im'], val=1)
+        self.declare_partials('r_om', ['r_ot'], val=1)
 
         self.declare_partials('A_m', ['r_ot', 'r_im'])
         self.declare_partials('A_t', ['r_ot'])
         self.declare_partials('A_s', ['r_is', 'r_im'])
 
-        self.declare_partials('r1', ['r_ot', 'r_im'])
-        self.declare_partials('r2', ['r_ot', 'r_is', 'r_iu'])
-        self.declare_partials('r_im_is_constraint', ['r_im', 'r_is'])
+        self.declare_partials('r1', ['r_ot', 'r_im'], val=1/2)
+        self.declare_partials('r2', 'r_ot', val=1/2)
+        self.declare_partials('r2', 'r_is', val=-1/2)
+        self.declare_partials('r2', 'r_iu', val=1)
+        self.declare_partials('r_ov', 'r_ot', val=1)
+        self.declare_partials('r_ov', 'r_is', val=-1)
+        self.declare_partials('r_ov', 'r_iu', val=1)
+        self.declare_partials('r_im_is_constraint', 'r_im', val=1)
+        self.declare_partials('r_im_is_constraint', 'r_is', val=-1)
 
         self.declare_partials('approximate cross section', ['r_ot', 'r_is'])
 
     def compute_partials(self, inputs, J, discrete_inputs):
-        J['r_it', 'r_ot'] = 1
-        J['r_os', 'r_im'] = 1
-        J['r_om', 'r_ot'] = 1
-
         n_coil = discrete_inputs['n_coil']
 
         whole_ang = np.sin(2 * np.pi / n_coil)
@@ -565,16 +571,6 @@ class MagnetGeometry(om.ExplicitComponent):
         J['A_m', 'r_im'] = -r_im * whole_ang
         J['A_m', 'r_ot'] = -(self.e_gap - r_ot + self.Δr_t) * whole_ang
         J['A_t', 'r_ot'] = self.Δr_t * whole_ang
-
-        J['r1', 'r_im'] = 1 / 2
-        J['r1', 'r_ot'] = 1 / 2
-
-        J['r2', 'r_iu'] = 1
-        J['r2', 'r_ot'] = 1 / 2
-        J['r2', 'r_is'] = -1 / 2
-
-        J['r_im_is_constraint', 'r_is'] = -1
-        J['r_im_is_constraint', 'r_im'] = 1
 
         J['approximate cross section', 'r_ot'] = (2 * r_ot - r_is) * r_to_l
         J['approximate cross section', 'r_is'] = - r_ot * r_to_l
@@ -644,7 +640,7 @@ class MagnetRadialBuild(om.Group):
             ])
         self.add_subsystem('windingpack',
                            WindingPackProperties(config=config),
-                           promotes=['f_HTS', ('B_max', 'B_wp_max')])
+                           promotes=['f_HTS', 'B_max'])
         self.add_subsystem('magnetstructure_props',
                            MagnetStructureProperties(config=config))
         self.add_subsystem('current',
@@ -669,10 +665,10 @@ class MagnetRadialBuild(om.Group):
                            om.ExecComp('obj = -B0', B0={'units': 'T'}),
                            promotes=['B0', 'obj'])
         self.add_subsystem('con_cmp2',
-                           om.ExecComp('constraint_B_on_coil = B_wp_max - B_on_coil',
+                           om.ExecComp('constraint_B_on_coil = B_max - B_on_coil',
                                        B_on_coil={'units': 'T'},
-                                       B_wp_max={'units' : 'T'}),
-                           promotes=['constraint_B_on_coil', 'B_on_coil', 'B_wp_max'])
+                                       B_max={'units' : 'T'}),
+                           promotes=['constraint_B_on_coil', 'B_on_coil', 'B_max'])
         self.add_subsystem(
             'con_cmp3',
             om.ExecComp(

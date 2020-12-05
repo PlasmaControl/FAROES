@@ -31,12 +31,14 @@ class TestSimpleTFMagnet(unittest.TestCase):
         prob.setup()
 
         prob.set_val('R0', 3)
+        prob.set_val('n_coil', 18)
         prob.set_val('geometry.r_ot', 0.405)
         prob.set_val('geometry.r_iu', 8.025)
 
         prob.set_val('windingpack.max_stress', 525, units="MPa")
         prob.set_val('windingpack.j_eff_max', 160)
         prob.set_val('windingpack.f_HTS', 0.76)
+        prob.set_val('windingpack.B_max', 18, units="T")
         prob.set_val("magnetstructure_props.Young's modulus", 220)
 
         prob.run_driver()

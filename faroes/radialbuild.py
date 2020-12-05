@@ -105,6 +105,54 @@ class MenardSTRadialBuild(om.Group):
 
 class MenardSTInboardRadialBuild(om.ExplicitComponent):
     r"""Radial build
+
+    Inputs
+    ------
+    plasma R_min : float
+        m, Inner radius of plasma at midplane
+    SOL width : float
+        m, Scrape-off-layer width
+    FW thickness : float
+        m, First wall thickness
+    blanket thickness : float
+        m, Inboard blanket thickness
+    WC shield thickness : float
+        m, Tungsten-carbide neutron shield thickness
+    WC VV shield thickness : float
+        m, Tungsten-carbide neutron shield b/w vacuum vessel shells
+    CS R_max : float
+        m, Central solenoid maximum radius
+
+    Outputs
+    -------
+    FW R_max : float
+        m, First wall outer radius
+    FW R_min : float
+        m, First wall inner radius
+    blanket R_max : float
+        m, Blanket outer radius
+    blanket R_min : float
+        m, Blanket inner radius
+    WC shield R_max : float
+        m, WC shield outer radius
+    WC shield R_min : float
+        m, WC shield inner radius
+    VV R_max : float
+        m, Vacuum vessel outer radius
+    VV 1st shell R_min : float
+        m, Inner radius of the outer VV shell
+    WC VV shield R_max : float
+        m, Inter-VV tungsten carbide neutron shield outer radius
+    WC VV shield R_min : float
+        m, Inter-VV tungsten carbide neutron shield inner radius
+    VV 2nd shell R_max : float
+        m, Inboard VV inner shell outer radius
+    VV R_min : float
+        m, Inboard VV inner radius
+    TF R_max : float
+        m, Inboard TF leg maximum radius
+    TF R_min : float
+        m, Inboard TF leg minimum radius
     """
     def initialize(self):
         self.options.declare('config', default=None)
@@ -128,7 +176,7 @@ class MenardSTInboardRadialBuild(om.ExplicitComponent):
 
         self.add_input("plasma R_min",
                        units="m",
-                       desc="inner radius of plasma at midplane")
+                       desc="Inner radius of plasma at midplane")
         self.add_input("SOL width", units="m", desc="scrape-off-layer width")
         self.add_input("FW thickness", units="m", desc="first wall thickness")
         self.add_input("blanket thickness",
@@ -167,7 +215,7 @@ class MenardSTInboardRadialBuild(om.ExplicitComponent):
         self.add_output("VV R_max", units='m', desc="VV outer radius")
         self.add_output("VV 1st shell R_min",
                         units='m',
-                        desc="VV outer shell outer radius")
+                        desc="VV outer shell inner radius")
 
         # second tungsten carbide shield, within the two VV halves
         self.add_output("WC VV shield R_max",
@@ -247,9 +295,20 @@ class MenardSTOutboardRadialBuild(om.ExplicitComponent):
     plasma R_max : float
         m, Outer radius of the core plasma at midplane
     SOL width : float
-        m,
+        m, low field side scrape-off-layer width
+    blanket thickness : float
+        m, Thickness of FW and blanket
+    access thickness : float
+        m, thickness of access region
+    VV thickness : float
+        m, thickness of vacuum vessel
+    shield thickness : float
+        m, thickness of neutron shield
 
-
+    Outputs
+    -------
+    TF R_min : float
+        m, minimum radius of inner part of TF outboard leg
     """
     def initialize(self):
         self.options.declare('config', default=None)
