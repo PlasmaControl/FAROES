@@ -3,7 +3,7 @@
 inboard:
   SOL width: {value: 4, units: cm}
 
-  # first wall 
+  # first wall
   fw thickness: {value: 3, units: cm}
 
   # some designs have no room for an inboard breeding blanket
@@ -49,4 +49,9 @@ outboard:
   # this seems large
   vv thickness: {value: 0.5, units: m}
   # default value
-  shield thickness: {value: 0.5, units: m} 
+  shield thickness: {value: 0.5, units: m}
+
+  # TF coils are here
+
+  # distance from outermost TF to cryostat outer wall
+  TF-cryostat thickness: {value: 2, units: m}

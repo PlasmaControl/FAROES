@@ -63,6 +63,44 @@ class RadialBuildProperties(om.ExplicitComponent):
                        "shield thickness",
                        component_name="Ob shield thickness",
                        units="m")
+        acc.set_output(self, f, "TF-cryostat thickness", units="m")
+
+
+class MenardSTOuterMachineRadialBuild(om.ExplicitComponent):
+    r"""Radial build outside the TF coils
+
+    Inputs
+    ------
+    Ob TF R_out : float
+        m, Outboard radius of the outboard leg
+    TF-cryostat thickness : float
+        m, Outboard TF outer radius to cryostat outer wall
+
+    Outputs
+    -------
+    cryostat R_out: float
+        m, Outer radius of the cryostat
+    """
+    def setup(self):
+        self.add_input("Ob TF R_out",
+                       units="m",
+                       desc="Outboard radius of the outboard leg")
+        self.add_input("TF-cryostat thickness",
+                       units="m",
+                       desc="Outboard TF outer radius to cryostat outer wall")
+        self.add_output("cryostat R_out",
+                        units="m",
+                        desc="Outer radius of the cryostat")
+
+    def compute(self, inputs, outputs):
+        TF_R_out = inputs["Ob TF R_out"]
+        TF_to_cryostat_thickness = inputs["TF-cryostat thickness"]
+
+        outputs["cryostat R_out"] = TF_R_out + TF_to_cryostat_thickness
+
+    def setup_partials(self):
+        self.declare_partials("cryostat R_out", "Ob TF R_out", val=1)
+        self.declare_partials("cryostat R_out", "TF-cryostat thickness", val=1)
 
 
 class MenardSTRadialBuild(om.Group):
@@ -87,6 +125,12 @@ class MenardSTRadialBuild(om.Group):
                            promotes_inputs=["plasma R_max"],
                            promotes_outputs=[("TF R_min", "Ob TF R_min")])
 
+        # to be computed after TF thickness is determined
+        self.add_subsystem('om',
+                           MenardSTOuterMachineRadialBuild(),
+                           promotes_inputs=["Ob TF R_out"],
+                           promotes_outputs=["cryostat R_out"])
+
         # connect inputs
         self.connect('props.Ib SOL width', ['ib.SOL width'])
         self.connect('props.Ib FW thickness', ['ib.FW thickness'])
@@ -101,6 +145,9 @@ class MenardSTRadialBuild(om.Group):
         self.connect('props.Ob access thickness', ['ob.access thickness'])
         self.connect('props.Ob vv thickness', ['ob.VV thickness'])
         self.connect('props.Ob shield thickness', ['ob.shield thickness'])
+
+        self.connect('props.TF-cryostat thickness',
+                     ['om.TF-cryostat thickness'])
 
 
 class MenardSTInboardRadialBuild(om.ExplicitComponent):

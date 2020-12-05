@@ -1,11 +1,13 @@
 import numpy as np
 from math import pi as π
 
+
 def tube_segment_volume(r_i, r_o, h):
     """Volume of a finite tube's wall
     """
     V = π * (r_o**2 - r_i**2) * h
     return V
+
 
 def tube_segment_volume_derivatives(r_i, r_o, h):
     """Derivatives for volume of a finite tube's wall
@@ -14,6 +16,7 @@ def tube_segment_volume_derivatives(r_i, r_o, h):
     dVdr_o = 2 * π * h * r_o
     dVdh = π * (r_o**2 - r_i**2)
     return {'r_i': dVdr_i, 'r_o': dVdr_o, 'h': dVdh}
+
 
 def ellipse_perimeter_simple(a, b):
     """Often seen as √((1 + κ^2)/2)
@@ -51,6 +54,7 @@ def ellipse_perimeter_ramanujan(a, b):
     """
     P = π * (3 * (a + b) - np.sqrt((3 * a + b) * (3 * b + a)))
     return P
+
 
 def ellipse_perimeter_ramanujan_derivatives(a, b):
     """Partial derivatives for ellipse_perimeter_ramanujan

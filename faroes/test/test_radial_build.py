@@ -7,6 +7,17 @@ from faroes.configurator import UserConfigurator
 import unittest
 
 
+class TestMenardSTOuterMachineRadialBuild(unittest.TestCase):
+    def test_partials(self):
+        prob = om.Problem()
+        prob.model = faroes.radialbuild.MenardSTOuterMachineRadialBuild()
+        prob.setup(force_alloc_complex=True)
+        prob.set_val('TF-cryostat thickness', 2.0)
+        prob.run_driver()
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+
 class TestMenardSTInboardRadialBuild(unittest.TestCase):
     def test_partials(self):
         prob = om.Problem()
