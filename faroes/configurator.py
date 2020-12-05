@@ -51,7 +51,9 @@ class UserConfigurator():
         """Load all default configuration files
         """
         f_extension = '.yaml'
-        files = ["materials", "magnet_geometry", "fits", "radial_build"]
+        files = [
+            "materials", "magnet_geometry", "fits", "radial_build", "machine"
+        ]
 
         default_data_dir = "faroes.data"
 
