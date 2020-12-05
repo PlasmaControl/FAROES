@@ -57,7 +57,7 @@ if __name__ == "__main__":
     prob.model.add_objective('magnets.obj')
 
     # set constraints
-    prob.model.add_constraint('magnets.max_stress_con', lower=0)
+    prob.model.add_constraint('magnets.constraint_max_stress', lower=0)
     prob.model.add_constraint('magnets.constraint_B_on_coil', lower=0)
     prob.model.add_constraint('magnets.constraint_wp_current_density', lower=0)
     prob.model.add_constraint('magnets.r_im_is_constraint', lower=0)

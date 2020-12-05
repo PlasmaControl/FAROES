@@ -23,7 +23,7 @@ class TestSimpleTFMagnet(unittest.TestCase):
         prob.model.add_objective('obj')
 
         # set constraints
-        prob.model.add_constraint('max_stress_con', lower=0)
+        prob.model.add_constraint('constraint_max_stress', lower=0)
         prob.model.add_constraint('constraint_B_on_coil', lower=0)
         prob.model.add_constraint('constraint_wp_current_density', lower=0)
         prob.model.add_constraint('A_s', lower=0)

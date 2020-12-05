@@ -237,7 +237,7 @@ class InnerTFCoilStrain(om.ExplicitComponent):
     -------
     s_HTS : float
         MPa, strain on the HTS material
-    max_stress_con: float
+    constraint_max_stress: float
         fraction of the maximum allowed stress on the HTS material
     """
     def setup(self):
@@ -259,7 +259,7 @@ class InnerTFCoilStrain(om.ExplicitComponent):
         self.add_input('struct_E_young', units='GPa')
 
         self.add_output('s_HTS', units='MPa', desc='Strain on the HTS cable')
-        self.add_output('max_stress_con',
+        self.add_output('constraint_max_stress',
                         desc='fraction of maximum stress on the HTS cable')
 
     def compute(self, inputs, outputs):
@@ -275,13 +275,13 @@ class InnerTFCoilStrain(om.ExplicitComponent):
 
         sigma_HTS = T1 / ((A_s + A_t) * E_rat + f_HTS * A_m)
         outputs['s_HTS'] = sigma_HTS
-        outputs['max_stress_con'] = (σ_hts_max - sigma_HTS) / σ_hts_max
+        outputs['constraint_max_stress'] = (σ_hts_max - sigma_HTS) / σ_hts_max
 
     def setup_partials(self):
         self.declare_partials('s_HTS', [
             'A_s', 'A_m', 'A_t', 'f_HTS', 'T1', 'struct_E_young', 'hts_E_young'
         ])
-        self.declare_partials('max_stress_con', [
+        self.declare_partials('constraint_max_stress', [
             'A_s', 'A_m', 'A_t', 'f_HTS', 'T1', 'hts_max_stress',
             'struct_E_young', 'hts_E_young'
         ])
@@ -309,16 +309,16 @@ class InnerTFCoilStrain(om.ExplicitComponent):
           'hts_E_young'] = (A_s + A_t) * struct_E_y * T1 / (hts_E_y**2 *
                                                             denom**2)
 
-        J['max_stress_con', 'T1'] = -1 / (denom * σ_hts_max)
-        J['max_stress_con', 'A_s'] = -J['s_HTS', 'A_s'] / σ_hts_max
-        J['max_stress_con', 'A_t'] = -J['s_HTS', 'A_t'] / σ_hts_max
-        J['max_stress_con', 'A_m'] = -J['s_HTS', 'A_m'] / σ_hts_max
-        J['max_stress_con', 'f_HTS'] = -J['s_HTS', 'f_HTS'] / σ_hts_max
-        J['max_stress_con', 'hts_max_stress'] = T1 / (denom * σ_hts_max**2)
-        J['max_stress_con',
+        J['constraint_max_stress', 'T1'] = -1 / (denom * σ_hts_max)
+        J['constraint_max_stress', 'A_s'] = -J['s_HTS', 'A_s'] / σ_hts_max
+        J['constraint_max_stress', 'A_t'] = -J['s_HTS', 'A_t'] / σ_hts_max
+        J['constraint_max_stress', 'A_m'] = -J['s_HTS', 'A_m'] / σ_hts_max
+        J['constraint_max_stress', 'f_HTS'] = -J['s_HTS', 'f_HTS'] / σ_hts_max
+        J['constraint_max_stress', 'hts_max_stress'] = T1 / (denom * σ_hts_max**2)
+        J['constraint_max_stress',
           'struct_E_young'] = (A_s + A_t) * T1 / (hts_E_y * denom**2 *
                                                   σ_hts_max)
-        J['max_stress_con', 'hts_E_young'] = -(A_s + A_t) * struct_E_y * T1 / (
+        J['constraint_max_stress', 'hts_E_young'] = -(A_s + A_t) * struct_E_y * T1 / (
             hts_E_y**2 * denom**2 * σ_hts_max)
 
 
@@ -623,7 +623,6 @@ class MagnetCurrent(om.ExplicitComponent):
         J['I_leg', 'f_HTS'] = A_m * j_HTS
         J['I_leg', 'j_HTS'] = A_m * f_HTS
 
-
 class MagnetRadialBuild(om.Group):
     def initialize(self):
         self.options.declare('config', default=None)
@@ -633,13 +632,11 @@ class MagnetRadialBuild(om.Group):
 
         self.add_subsystem('geometry',
                            MagnetGeometry(config=config),
-                           promotes_inputs=[
-                               'r_ot', 'n_coil', 'r_iu', 'r_im', 'r_is',
-                               'n_coil'
-                           ],
+                           promotes_inputs=['r_ot', 'n_coil', 'r_iu', 'r_im', 'r_is'],
                            promotes_outputs=[
                                'A_s', 'A_t', 'A_m', 'r1', 'r2', 'r_om',
-                               'r_im_is_constraint', ('r_ov', 'Ob TF R_out')
+                               'r_im_is_constraint', ('r_ov', 'Ob TF R_out'),
+                               'approximate cross section'
                            ])
         self.add_subsystem('windingpack',
                            WindingPackProperties(config=config),
@@ -662,7 +659,7 @@ class MagnetRadialBuild(om.Group):
             'strain',
             InnerTFCoilStrain(),
             promotes_inputs=['T1', 'A_m', 'A_t', 'A_s', 'f_HTS'],
-            promotes_outputs=['s_HTS', 'max_stress_con'])
+            promotes_outputs=['s_HTS', 'constraint_max_stress'])
 
         self.add_subsystem('obj_cmp',
                            om.ExecComp('obj = -B0', B0={'units': 'T'}),
@@ -709,7 +706,7 @@ if __name__ == "__main__":
     prob.model.add_objective('obj')
 
     # set constraints
-    prob.model.add_constraint('max_stress_con', lower=0)
+    prob.model.add_constraint('constraint_max_stress', lower=0)
     prob.model.add_constraint('constraint_B_on_coil', lower=0)
     prob.model.add_constraint('constraint_wp_current_density', lower=0)
     prob.model.add_constraint('A_s', lower=0)
@@ -725,9 +722,9 @@ if __name__ == "__main__":
     prob.set_val("windingpack.Young's modulus", 175, "GPa")
     prob.set_val('windingpack.j_eff_max', 160, "MA/m**2")
     prob.set_val('windingpack.f_HTS', 0.76)
-    prob.set_val("magnetstructure_props.Young's modulus", 220)
+#    prob.set_val("magnetstructure_props.Young's modulus", 220)
 
     prob.run_driver()
 
-#    prob.model.list_inputs(values=True)
+    prob.model.list_inputs(values=True)
 #    prob.model.list_outputs(values=True)
