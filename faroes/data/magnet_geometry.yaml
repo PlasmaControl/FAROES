@@ -1,3 +1,5 @@
+# Radial build
+
 # outer casing of the inboard TF leg. Corresponds to A_t thickness
 external structure thickness : {value: 5, units: cm}
 
@@ -9,3 +11,8 @@ inter-block clearance : {value: 2, units: mm}
 
 winding pack:
   f_HTS : 0.76 # fraction of winding pack area which is HTS cable
+
+# Poloidal shape
+
+profile:
+  elongation_multiplier : {value: 0.7}

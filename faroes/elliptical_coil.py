@@ -1,10 +1,19 @@
 import openmdao.api as om
 import faroes.util as util
 from scipy.constants import pi
+from faroes.configurator import Accessor
 
+class TFSetProperties(om.ExplicitComponent):
+    def initialize(self):
+        self.options.declare('config', default=None)
+
+    def setup(self):
+        acc = Accessor(self.options['config'])
+        f = acc.accessor(["magnet_geometry", "profile"])
+        acc.set_output(self, f, "elongation_multiplier")
 
 class SimpleEllipticalTFSet(om.ExplicitComponent):
-    r"""Simple elliptical TF coil
+    r"""Simple elliptical TF coil set
 
     Inputs
     ------
