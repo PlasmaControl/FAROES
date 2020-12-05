@@ -314,12 +314,14 @@ class InnerTFCoilStrain(om.ExplicitComponent):
         J['constraint_max_stress', 'A_t'] = -J['s_HTS', 'A_t'] / σ_hts_max
         J['constraint_max_stress', 'A_m'] = -J['s_HTS', 'A_m'] / σ_hts_max
         J['constraint_max_stress', 'f_HTS'] = -J['s_HTS', 'f_HTS'] / σ_hts_max
-        J['constraint_max_stress', 'hts_max_stress'] = T1 / (denom * σ_hts_max**2)
+        J['constraint_max_stress',
+          'hts_max_stress'] = T1 / (denom * σ_hts_max**2)
         J['constraint_max_stress',
           'struct_E_young'] = (A_s + A_t) * T1 / (hts_E_y * denom**2 *
                                                   σ_hts_max)
-        J['constraint_max_stress', 'hts_E_young'] = -(A_s + A_t) * struct_E_y * T1 / (
-            hts_E_y**2 * denom**2 * σ_hts_max)
+        J['constraint_max_stress',
+          'hts_E_young'] = -(A_s + A_t) * struct_E_y * T1 / (
+              hts_E_y**2 * denom**2 * σ_hts_max)
 
 
 class MagnetGeometry(om.ExplicitComponent):
@@ -623,6 +625,7 @@ class MagnetCurrent(om.ExplicitComponent):
         J['I_leg', 'f_HTS'] = A_m * j_HTS
         J['I_leg', 'j_HTS'] = A_m * f_HTS
 
+
 class MagnetRadialBuild(om.Group):
     def initialize(self):
         self.options.declare('config', default=None)
@@ -630,14 +633,14 @@ class MagnetRadialBuild(om.Group):
     def setup(self):
         config = self.options['config']
 
-        self.add_subsystem('geometry',
-                           MagnetGeometry(config=config),
-                           promotes_inputs=['r_ot', 'n_coil', 'r_iu', 'r_im', 'r_is'],
-                           promotes_outputs=[
-                               'A_s', 'A_t', 'A_m', 'r1', 'r2', 'r_om',
-                               'r_im_is_constraint', ('r_ov', 'Ob TF R_out'),
-                               'approximate cross section'
-                           ])
+        self.add_subsystem(
+            'geometry',
+            MagnetGeometry(config=config),
+            promotes_inputs=['r_ot', 'n_coil', 'r_iu', 'r_im', 'r_is'],
+            promotes_outputs=[
+                'A_s', 'A_t', 'A_m', 'r1', 'r2', 'r_om', 'r_im_is_constraint',
+                ('r_ov', 'Ob TF R_out'), 'approximate cross section'
+            ])
         self.add_subsystem('windingpack',
                            WindingPackProperties(config=config),
                            promotes=['f_HTS', 'B_max'])
@@ -722,7 +725,7 @@ if __name__ == "__main__":
     prob.set_val("windingpack.Young's modulus", 175, "GPa")
     prob.set_val('windingpack.j_eff_max', 160, "MA/m**2")
     prob.set_val('windingpack.f_HTS', 0.76)
-#    prob.set_val("magnetstructure_props.Young's modulus", 220)
+    #    prob.set_val("magnetstructure_props.Young's modulus", 220)
 
     prob.run_driver()
 
