@@ -75,7 +75,8 @@ class UserConfigurator():
         excl = ["references"]
 
         def validator(x):
-            self._validate_entry(x, units=self.ignore_units)
+            self._validate_entry(x, units=self.ignore_units,
+                    string_acceptable=True)
 
         self._walk_yaml_tree(self.default_data,
                              leaf_fun=validator,
