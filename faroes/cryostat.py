@@ -1,6 +1,6 @@
-from faroes.configurator import Accessor
 import openmdao.api as om
 from scipy.constants import pi
+
 
 class SimpleCryostat(om.ExplicitComponent):
     r"""Simple cryostat model
@@ -19,7 +19,6 @@ class SimpleCryostat(om.ExplicitComponent):
     V : float
         m**3, volume
     """
-
     def initialize(self):
         self.options.declare('config', default=None)
 
@@ -56,6 +55,7 @@ class SimpleCryostat(om.ExplicitComponent):
         J["h", "TF half-height"] = 2 * self.tf_height_multiple
         J["V", "TF half-height"] = pi * R**2 * J["h", "TF half-height"]
         J["V", "R_out"] = 2 * pi * R * h
+
 
 if __name__ == "__main__":
     prob = om.Problem()
