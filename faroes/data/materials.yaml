@@ -35,7 +35,7 @@ FLiBe:
 
 TiH2:
   bulk cost: {value: 28.985, units: USD / kg, reference: ARC paper, note: adjusted to $2020}
-  #  density: {units_in: Kelvin, units_out: USD / m**3 , reference: test}
+  density: {value: 3760, units: kg / m**3, reference: test}
 
 tungsten:
   DPA limit: {value: 100}
@@ -50,7 +50,10 @@ SiC:
   density: {value: 3.21e+3, units: kg / m**3}
   bulk cost: {value: 36, units: USD / kg, note: may not be updated}
 
+###############################################
 # Materials from Jon Menard's spreadsheet model
+###############################################
+
 structural steel:
   # composition or alloy not specified
   Young's modulus: {value: 220, units: GPa}
@@ -67,6 +70,13 @@ winding pack:
 CS winding pack:
   j_max: {value: 70, units: MA / m**2, reference: "Menard spreadsheet, cell T445"}
   B_max: {value: 30, units: T, reference: "Guess from ARCH course"}
+
+HFS neutron shield:
+  10x decay length: {value: 0.155, units: m, reference: Menard T557}
+  CCFE reference thickness : {value: 0.57, units: m, reference: Menard N558}
+
+blanket:
+  relative shielding: {value: 0.5, reference: Menard S459}
 
 # here for internal testing purposes
 test_material:

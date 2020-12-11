@@ -1,6 +1,5 @@
 import openmdao.api as om
 from openmdao.utils.assert_utils import assert_check_partials
-from openmdao.utils.assert_utils import assert_near_equal
 
 import faroes.cryostat
 

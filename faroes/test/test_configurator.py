@@ -20,6 +20,7 @@ class TestWalkYamlTree(unittest.TestCase):
         myprop:
           a: 3
           b: {value: 1.0, units: m}
+          c: astring
         """
         data = yaml.load(tree)
         ret = self.uc._walk_yaml_tree(data)
