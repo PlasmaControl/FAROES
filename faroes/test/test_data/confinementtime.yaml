@@ -1,0 +1,31 @@
+# confinement time scalings
+fits:
+  τe:
+    default: H98y2
+    # standard ITER98(y,2) scaling
+    H98y2:
+      value: {c0: 0.0562, Ip: 0.93, Bt: 0.15, n19: 0.41,
+              PL: -0.69, R: 1.97, ε: 0.58, κa: 0.78, M: 0.19}
+      reference: >
+        Doyle, E. J. et al. Plasma Confinement and Transport.
+        Nuclear Fusion 2007, 47 (6), S18–S127.
+        https://doi.org/10.1088/0029-5515/47/6/S02.
+    NSTX-MG:
+      value: {c0: 0.0950, Ip: 0.57, Bt: 1.08, n19: 0.44,
+              PL: -0.73, R: 1.97, ε: 0.58, κa: 0.78, M: 0.19}
+    # has an extra value
+    MAST-MG:
+      value: {c0: 0.2520, Ip: 0.59, Bt: 1.40, n19: 0, cow: 123.45,
+              PL: -0.73, R: 1.97, ε: 0.58, κa: 0.78, M: 0.19}
+    NSTX-U design:
+      value: {c0: 0.1900, Ip: 0.60, Bt: 1.20, n19: 0.20,
+              PL: -0.70, R: 2.00, ε: 0.60, κa: 0.78, M: 0.19}
+    Petty:
+      value: {c0: 0.0520, Ip: 0.75, Bt: 0.30, n19: 0.32,
+              PL: -0.47, R: 2.09, ε: 0.84, κa: 0.88, M: 0}
+      reference: >
+        Petty, C. C. Sizing up Plasmas Using Dimensionless Parameters.
+        Physics of Plasmas 2008, 15 (8), 080501.
+        https://doi.org/10.1063/1.2961043.
+    User:
+      value: {c0: 0.01, Ip: -1, Bt: 3}
