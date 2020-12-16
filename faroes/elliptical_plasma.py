@@ -93,6 +93,10 @@ class PlasmaGeometry(om.ExplicitComponent):
         inverse aspect ratio
     κ : float
         elongation
+    κa : float
+        effective elongation, S_c / (π a^2),
+        where S_c is the plasma cross-sectional area
+        same as κ for this elliptical plasma.
     full plasma height : float
         m, Twice b
     surface area : float
@@ -122,6 +126,7 @@ class PlasmaGeometry(om.ExplicitComponent):
         self.add_output("b", units='m', desc="Minor radius height")
         self.add_output("ε", desc="Inverse aspect ratio")
         self.add_output("κ", desc="Elongation")
+        self.add_output("κa", desc="Elongation")
         self.add_output("δ", desc="Triangularity")
         self.add_output("full_plasma_height",
                         units='m',
@@ -148,6 +153,7 @@ class PlasmaGeometry(om.ExplicitComponent):
         sa = util.torus_surface_area(R0, a, b)
         V = util.torus_volume(R0, a, b)
         outputs["κ"] = κ
+        outputs["κa"] = κ
         outputs["a"] = a
         outputs["ε"] = 1 / A
         outputs["b"] = b

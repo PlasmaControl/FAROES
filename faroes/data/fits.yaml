@@ -7,6 +7,7 @@ marginal κ-ε scaling:
   constants: *menardke
 
 κ multiplier: 0.95
+κ area fraction: {value: 0.8, reference: Menard T7}
 
 no-wall β_N scaling with ε:
   # Physics of Plasmas 11, 639 (2004);
