@@ -3,6 +3,39 @@ import faroes.util as util
 from faroes.configurator import UserConfigurator
 
 
+class ConfinementTime(om.ExplicitComponent):
+    r"""
+
+    Inputs
+    ------
+    τe_law : float
+        s, confinement time as determined by scaling law
+    H : float
+        H-factor; multiple of the confinement time
+
+    Outputs
+    -------
+    τe : float
+        s, confinement time
+    """
+    def setup(self):
+        self.add_input("τe_law", units="s",
+                desc="Confinement time as determined by scaling law")
+        self.add_input("H", val=1, desc="H-factor; multiplies confinement time")
+        self.add_output("τe")
+
+    def compute(self, inputs, outputs):
+        outputs["τe"] = inputs["H"] * inputs["τe_law"]
+
+    def setup_partials(self):
+        self.declare_partials("τe", ["H", "τe_law"])
+
+    def compute_partials(self, inputs, J):
+        J["τe", "H"] = inputs["τe_law"]
+        J["τe", "τe_law"] = inputs["H"]
+
+
+
 class ConfinementTimeScaling(om.ExplicitComponent):
     r"""Confinement time scaling law
 
