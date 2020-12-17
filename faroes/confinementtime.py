@@ -1,5 +1,4 @@
 import openmdao.api as om
-import faroes.util as util
 from faroes.configurator import UserConfigurator
 
 
@@ -19,9 +18,12 @@ class ConfinementTime(om.ExplicitComponent):
         s, confinement time
     """
     def setup(self):
-        self.add_input("τe_law", units="s",
-                desc="Confinement time as determined by scaling law")
-        self.add_input("H", val=1, desc="H-factor; multiplies confinement time")
+        self.add_input("τe_law",
+                       units="s",
+                       desc="Confinement time as determined by scaling law")
+        self.add_input("H",
+                       val=1,
+                       desc="H-factor; multiplies confinement time")
         self.add_output("τe")
 
     def compute(self, inputs, outputs):
@@ -33,7 +35,6 @@ class ConfinementTime(om.ExplicitComponent):
     def compute_partials(self, inputs, J):
         J["τe", "H"] = inputs["τe_law"]
         J["τe", "τe_law"] = inputs["H"]
-
 
 
 class ConfinementTimeScaling(om.ExplicitComponent):

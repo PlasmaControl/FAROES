@@ -17,6 +17,7 @@ class TestSimpleFusionRateCoefficient(unittest.TestCase):
         prob.setup(force_alloc_complex=True)
         prob.set_val("T", 10., units="keV")
         self.prob = prob
+
     def test_partials(self):
         prob = self.prob
         check = prob.check_partials(out_stream=None, method='cs')
@@ -27,6 +28,7 @@ class TestSimpleFusionRateCoefficient(unittest.TestCase):
         prob.run_driver()
         ratecoeff = prob.get_val('<σv>', units="m**3/s")
         assert_near_equal(ratecoeff, 1.1e-22)
+
 
 class TestVolumetricThermalFusionRate(unittest.TestCase):
     def setUp(self):

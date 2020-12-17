@@ -1,9 +1,9 @@
 from plasmapy.particles import nuclear_reaction_energy
 import astropy.units as u
-import faroes.units
+from faroes.units import add_local_units
 
 import openmdao.api as om
-from openmdao.api import convert_units, unit_conversion
+from openmdao.api import unit_conversion
 
 from scipy.constants import mega
 
@@ -39,8 +39,9 @@ class SimpleRateCoeff(om.ExplicitComponent):
 
 class VolumetricThermalFusionRate(om.ExplicitComponent):
     def setup(self):
+        add_local_units()
         REACTION_ENERGY = nuclear_reaction_energy(reactants=['D', 'T'],
-                                                products=['alpha', 'n'])
+                                                  products=['alpha', 'n'])
         self.ENERGY_J = REACTION_ENERGY.to(u.J).value
         self.α_fraction = 1 / 5
         self.n_fraction = 4 / 5
@@ -92,7 +93,8 @@ class VolumetricThermalFusionRate(om.ExplicitComponent):
 
         J["P_fus/V", "n_D"] = self.n_conv * n_T * σv_avg * self.ENERGY_J / mega
         J["P_fus/V", "n_T"] = self.n_conv * n_D * σv_avg * self.ENERGY_J / mega
-        J["P_fus/V", "<σv>"] = self.sigma_conv * n_D * n_T * self.ENERGY_J / mega
+        J["P_fus/V",
+          "<σv>"] = self.sigma_conv * n_D * n_T * self.ENERGY_J / mega
         J["P_α/V", "n_D"] = self.α_fraction * J["P_fus/V", "n_D"]
         J["P_α/V", "n_T"] = self.α_fraction * J["P_fus/V", "n_T"]
         J["P_α/V", "<σv>"] = self.α_fraction * J["P_fus/V", "<σv>"]
@@ -109,8 +111,8 @@ if __name__ == "__main__":
     prob.setup(force_alloc_complex=True)
 
     prob.set_val("<σv>", 1.1e-24, units="m**3/s")
-    prob.set_val("nD", 0.5, units="n20")
-    prob.set_val("nT", 0.5, units="n20")
+    prob.set_val("n_D", 0.5, units="n20")
+    prob.set_val("n_T", 0.5, units="n20")
 
     prob.run_driver()
     all_inputs = prob.model.list_inputs(values=True)
