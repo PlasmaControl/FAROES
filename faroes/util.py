@@ -1,6 +1,31 @@
 import numpy as np
 from math import pi as π
 
+from plasmapy.particles import Particle, common_isotopes, atomic_number, isotopic_abundance
+
+def most_common_isotope(sp):
+    """A Particle of the most common isotope and
+    maximum charge for the given species.
+
+    Parameters
+    ----------
+    sp : str
+       Element name or symbol of the species
+
+    Returns
+    -------
+    Particle
+    """
+    isotopes = common_isotopes(sp)
+    max_charge = atomic_number(sp)
+    abundances = []
+    for i in isotopes:
+        abundances.append(isotopic_abundance(i))
+    isotope_index = np.argmax(abundances)
+    most_common_isotope = isotopes[isotope_index]
+    mass_number = Particle(most_common_isotope).mass_number
+    impurity = Particle(max_charge, Z=max_charge, mass_numb=mass_number)
+    return impurity
 
 def tube_segment_volume(r_i, r_o, h):
     """Volume of a finite tube's wall

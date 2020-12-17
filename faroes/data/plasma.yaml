@@ -12,7 +12,7 @@ impurities:
   model: oneimpurity
   oneimpurity:
     value:
-      species: C
+      species: C-12 +6
       Z_eff: 2.0
     references:
       - Menard T30-T32

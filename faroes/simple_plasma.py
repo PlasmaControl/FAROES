@@ -1,9 +1,8 @@
 import numpy as np
 import openmdao.api as om
-import faroes.util as util
 from faroes.configurator import UserConfigurator
 from plasmapy.particles import deuteron, triton
-from plasmapy.particles import Particle, common_isotopes, atomic_number, isotopic_abundance
+from plasmapy.particles import Particle
 from scipy.constants import mega, kilo, atm, eV
 
 from faroes.fusionreaction import SimpleRateCoeff, VolumetricThermalFusionRate
@@ -30,55 +29,47 @@ class MainIonMix(om.ExplicitComponent):
     def setup(self):
         self.add_input("f_D", val=0.5, desc="Fraction of D in main ions")
         self.add_output("f_T", val=0.5, desc="Fraction of T in main ions")
-        self.add_output("M",
+        self.add_output("A",
                         val=2.5,
                         lower=1,
                         upper=3,
                         desc="Averaged ion mass number")
+        self.add_output("m", units='kg', desc="Averaged ion mass")
+
+    def mass_kg(self, p):
+        """get mass in kg of Particle p
+        """
+        return p.mass.value
 
     def compute(self, inputs, outputs):
         f_D = inputs["f_D"]
         f_T = 1 - f_D
         outputs["f_T"] = f_T
-        m_D = deuteron.mass_number
-        m_T = triton.mass_number
-        M = f_D * m_D + f_T * m_T
-        outputs["M"] = M
+        a_D = deuteron.mass_number
+        a_T = triton.mass_number
+        A = f_D * a_D + f_T * a_T
+        outputs["A"] = A
+
+        m_D = self.mass_kg(deuteron)
+        m_T = self.mass_kg(triton)
+        m = f_D * m_D + f_T * m_T
+        outputs["m"] = m
+
 
     def setup_partials(self):
         self.declare_partials("f_T", "f_D", val=-1)
-        m_D = deuteron.mass_number
-        m_T = triton.mass_number
-        self.declare_partials("M", "f_D", val=(m_D - m_T))
+        a_D = deuteron.mass_number
+        a_T = triton.mass_number
+        self.declare_partials("A", "f_D", val=(a_D - a_T))
+        m_D = self.mass_kg(deuteron)
+        m_T = self.mass_kg(triton)
+        self.declare_partials("m", "f_D", val=(m_D - m_T))
 
 
 class ZeroDPlasmaProperties(om.ExplicitComponent):
     def initialize(self):
         self.options.declare('config', default=None)
 
-    def most_common_isotope(self, sp):
-        """A Particle of the most common isotope and
-        maximum charge for the given species.
-
-        Parameters
-        ----------
-        sp : str
-           Element name or symbol of the species
-
-        Returns
-        -------
-        Particle
-        """
-        isotopes = common_isotopes(sp)
-        max_charge = atomic_number(sp)
-        abundances = []
-        for i in isotopes:
-            abundances.append(isotopic_abundance(i))
-        isotope_index = np.argmax(abundances)
-        most_common_isotope = isotopes[isotope_index]
-        mass_number = Particle(most_common_isotope).mass_number
-        impurity = Particle(max_charge, Z=max_charge, mass_numb=mass_number)
-        return impurity
 
     def setup(self):
         if self.options['config'] is None:
@@ -101,14 +92,14 @@ class ZeroDPlasmaProperties(om.ExplicitComponent):
         imp = config(['impurities', imp_model])
         z_eff = imp["Z_eff"]
         self.add_output('Z_eff', val=z_eff, desc="Effective ion charge")
-        impurity = self.most_common_isotope(imp["species"])
+        impurity = Particle(imp["species"])
         self.add_output('Z_imp',
                         val=impurity.integer_charge,
                         desc='Impurity charge')
-        #self.add_output('A_imp', val=impurity.mass_number, desc="Impurity mass number")
+        self.add_output('A_imp', val=impurity.mass_number, desc="Impurity mass number")
 
-        #f_GW = config(['Greenwald fraction'])
-        #self.add_output('f_GW', val=f_GW, desc="Greenwald fraction")
+        f_GW = config(['Greenwald fraction'])
+        self.add_output('f_GW', val=f_GW, desc="Greenwald fraction")
 
 
 class ZeroDPlasmaDensities(om.ExplicitComponent):
