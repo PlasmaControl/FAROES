@@ -15,4 +15,4 @@ winding pack:
 # Poloidal shape
 
 profile:
-  elongation_multiplier : {value: 0.7}
+  elongation_multiplier : {value: 0.7, reference: Menard T523}
