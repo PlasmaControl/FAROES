@@ -42,5 +42,9 @@ no-wall β_N scaling with ε:
   Petty:
     value: {c0: 0.0520, Ip: 0.75, Bt: 0.30, n19: 0.32,
             PL: -0.47, R: 2.09, ε: 0.84, κa: 0.88, M: 0}
+    reference: >
+      Petty, C. C. Sizing up Plasmas Using Dimensionless Parameters.
+      Physics of Plasmas 2008, 15 (8), 080501.
+      https://doi.org/10.1063/1.2961043.
   User:
     value: {}
