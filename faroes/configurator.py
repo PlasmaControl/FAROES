@@ -52,7 +52,8 @@ class UserConfigurator():
         """
         f_extension = '.yaml'
         files = [
-            "materials", "magnet_geometry", "fits", "radial_build", "machine"
+            "materials", "magnet_geometry", "fits", "radial_build", "machine",
+            "plasma",
         ]
 
         default_data_dir = "faroes.data"

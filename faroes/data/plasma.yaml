@@ -1,0 +1,18 @@
+# References to Menard [A-Z][###] are spreadsheet cells
+
+q_min : {value : 2.2, reference : Menard T12}
+Greenwald fraction : {value : 0.8, reference : Menard S13}
+Ti/Te: {value: 1.1, reference: Menard T34}
+
+radiation fraction : {value: 0.3, reference: Menard T33}
+
+Fusion enhancement from p-peaking: {value: 1.2, reference: Menard T38}
+
+impurities:
+  model: oneimpurity
+  oneimpurity:
+    value:
+      species: C
+      Z_eff: 2.0
+    references:
+      - Menard T30-T32
