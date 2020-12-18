@@ -1,9 +1,8 @@
-import numpy as np
 import openmdao.api as om
 from faroes.configurator import UserConfigurator
 from plasmapy.particles import deuteron, triton
 from plasmapy.particles import Particle
-from scipy.constants import mega, kilo, atm, eV
+from scipy.constants import mega, kilo, atm, eV, electron_mass
 
 from faroes.fusionreaction import SimpleRateCoeff, VolumetricThermalFusionRate
 
@@ -33,8 +32,8 @@ class MainIonMix(om.ExplicitComponent):
                         val=2.5,
                         lower=1,
                         upper=3,
-                        desc="Averaged ion mass number")
-        self.add_output("m", units='kg', desc="Averaged ion mass")
+                        desc="Averaged main ion mass number")
+        self.add_output("m", units='kg', desc="Averaged main ion mass")
 
     def mass_kg(self, p):
         """get mass in kg of Particle p
@@ -55,7 +54,6 @@ class MainIonMix(om.ExplicitComponent):
         m = f_D * m_D + f_T * m_T
         outputs["m"] = m
 
-
     def setup_partials(self):
         self.declare_partials("f_T", "f_D", val=-1)
         a_D = deuteron.mass_number
@@ -69,7 +67,6 @@ class MainIonMix(om.ExplicitComponent):
 class ZeroDPlasmaProperties(om.ExplicitComponent):
     def initialize(self):
         self.options.declare('config', default=None)
-
 
     def setup(self):
         if self.options['config'] is None:
@@ -96,7 +93,13 @@ class ZeroDPlasmaProperties(om.ExplicitComponent):
         self.add_output('Z_imp',
                         val=impurity.integer_charge,
                         desc='Impurity charge')
-        self.add_output('A_imp', val=impurity.mass_number, desc="Impurity mass number")
+        self.add_output('A_imp',
+                        val=impurity.mass_number,
+                        desc="Impurity mass number")
+        self.add_output('m_imp',
+                        val=impurity.mass.value,
+                        units='kg',
+                        desc="Impurity mass")
 
         f_GW = config(['Greenwald fraction'])
         self.add_output('f_GW', val=f_GW, desc="Greenwald fraction")
@@ -113,6 +116,10 @@ class ZeroDPlasmaDensities(om.ExplicitComponent):
         Default: 2.0
     Z_imp : float
         Main impurity charge
+    m_imp : float
+        kg, Main impurity mass
+    m_main : float
+        kg, Main ion mass
     f_D : float
         Fraction of main plasma ions which are deuterium.
         Defaults to 0.5.
@@ -136,8 +143,10 @@ class ZeroDPlasmaDensities(om.ExplicitComponent):
     """
     def setup(self):
         self.add_input("f_D", val=0.5)
+        self.add_input("m_main_i", units="kg", desc="Main ion mass")
         self.add_input("Z_eff", val=2.0)
         self.add_input("Z_imp", desc="Impurity charge state")
+        self.add_input("m_imp", units="kg", desc="Impurity mass")
         self.add_input("n_e", units="m**-3", desc="Electron density")
 
         self.add_output("n_main_i/ne",
@@ -146,6 +155,10 @@ class ZeroDPlasmaDensities(om.ExplicitComponent):
         self.add_output("n_imp/ne",
                         lower=0,
                         desc="Ratio of impurities to electrons")
+        self.add_output("n_imp",
+                        units="m**-3",
+                        lower=0,
+                        desc="Impurity density")
         self.add_output("ni/ne",
                         lower=0,
                         desc="Ratio of impurities to electrons")
@@ -157,47 +170,66 @@ class ZeroDPlasmaDensities(om.ExplicitComponent):
         self.add_output("Z_ave", desc="Average ion charge")
         self.add_output("n_D", units="m**-3", desc="Deuterium ion density")
         self.add_output("n_T", units="m**-3", desc="Tritium ion density")
+        self.add_output("ρ", units="kg/m**3", desc="Plasma mass density")
 
     def compute(self, inputs, outputs):
         f_D = inputs["f_D"]
         n_e = inputs["n_e"]
         z_eff = inputs["Z_eff"]
         z_imp = inputs["Z_imp"]
+        m_imp = inputs["m_imp"]
         n_main_i_frac = (z_imp - z_eff) / (z_imp - 1)
         n_imp_frac = (1 - n_main_i_frac) / z_imp
         n_ion_frac = n_main_i_frac + n_imp_frac
         n_main_i = n_main_i_frac * n_e
+        m_main_i = inputs["m_main_i"]
 
         outputs["n_main_i/ne"] = n_main_i_frac
         outputs["n_imp/ne"] = n_imp_frac
+        n_imp = n_imp_frac * n_e
+        outputs["n_imp"] = n_imp
         outputs["ni/ne"] = n_ion_frac
         outputs["n_main_i"] = n_main_i
         outputs["Z_ave"] = 1 / n_ion_frac
         outputs["n_D"] = n_main_i * f_D
         outputs["n_T"] = n_main_i * (1 - f_D)
 
+        ρ = electron_mass * n_e + m_main_i * n_main_i + m_imp * n_imp
+        outputs["ρ"] = ρ
+
     def setup_partials(self):
         self.declare_partials("n_main_i/ne", ["Z_imp", "Z_eff"])
         self.declare_partials("n_imp/ne", ["Z_imp", "Z_eff"])
+        self.declare_partials("n_imp", ["Z_imp", "Z_eff", 'n_e'])
         self.declare_partials("ni/ne", ["Z_imp", "Z_eff"])
         self.declare_partials("n_main_i", ["Z_imp", "Z_eff", "n_e"])
         self.declare_partials("Z_ave", ["Z_imp", "Z_eff"])
         self.declare_partials("n_D", ["Z_imp", "Z_eff", "n_e", "f_D"])
         self.declare_partials("n_T", ["Z_imp", "Z_eff", "n_e", "f_D"])
+        self.declare_partials("ρ",
+                              ["m_main_i", "Z_imp", "Z_eff", "m_imp", "n_e"])
 
     def compute_partials(self, inputs, J):
         f_D = inputs["f_D"]
         n_e = inputs["n_e"]
         z_eff = inputs["Z_eff"]
         z_imp = inputs["Z_imp"]
+        m_imp = inputs["m_imp"]
+        m_main_i = inputs["m_main_i"]
         n_main_i_frac = (z_imp - z_eff) / (z_imp - 1)
         n_main_i = n_main_i_frac * n_e
+        n_imp_frac = (1 - n_main_i_frac) / z_imp
+        n_imp = n_imp_frac * n_e
 
         J["n_main_i/ne", "Z_imp"] = (z_eff - 1) / (z_imp - 1)**2
         J["n_main_i/ne", "Z_eff"] = 1 / (1 - z_imp)
         denom = (z_imp * (z_imp - 1))
         J["n_imp/ne", "Z_imp"] = -(z_eff - 1) * (2 * z_imp - 1) / denom**2
         J["n_imp/ne", "Z_eff"] = 1 / denom
+        J["n_imp", "Z_imp"] = -n_e * (z_eff - 1) * (2 * z_imp - 1) / denom**2
+        J["n_imp", "Z_eff"] = n_e / denom
+        J["n_imp", "n_e"] = n_imp_frac
+
         J["ni/ne", "Z_imp"] = (z_eff - 1) / z_imp**2
         J["ni/ne", "Z_eff"] = -1 / z_imp
         J["n_main_i", "n_e"] = (z_imp - z_eff) / (z_imp - 1)
@@ -214,6 +246,15 @@ class ZeroDPlasmaDensities(om.ExplicitComponent):
         J["n_T", "Z_imp"] = (1 - f_D) * J["n_main_i", "Z_imp"]
         J["n_T", "Z_eff"] = (1 - f_D) * J["n_main_i", "Z_eff"]
         J["n_T", "f_D"] = -n_main_i
+
+        J["ρ", "n_e"] = (electron_mass + m_main_i * J["n_main_i", "n_e"] +
+                         m_imp * J["n_imp", "n_e"])
+        J["ρ", "Z_imp"] = (m_main_i * J["n_main_i", "Z_imp"] +
+                           m_imp * J["n_imp", "Z_imp"])
+        J["ρ", "Z_eff"] = (m_main_i * J["n_main_i", "Z_eff"] +
+                           m_imp * J["n_imp", "Z_eff"])
+        J["ρ", "m_main_i"] = n_main_i
+        J["ρ", "m_imp"] = n_imp
 
 
 class ZeroDPlasmaStoredEnergy(om.ExplicitComponent):
@@ -508,7 +549,6 @@ class ZeroDThermalFusion(om.Group):
         self.options.declare('config', default=None)
 
     def setup(self):
-        config = self.options['config']
         self.add_subsystem('ratecoeff',
                            SimpleRateCoeff(),
                            promotes_inputs=["T"],
@@ -533,6 +573,7 @@ class ZeroDPlasma(om.Group):
 
     def setup(self):
         config = self.options['config']
+        self.add_subsystem('mix', MainIonMix(), promotes_outputs=["*"])
         self.add_subsystem('props',
                            ZeroDPlasmaProperties(config=config),
                            promotes_outputs=["*"])
