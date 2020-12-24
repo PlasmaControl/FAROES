@@ -1,7 +1,9 @@
 import numpy as np
 from math import pi as π
 
-from plasmapy.particles import Particle, common_isotopes, atomic_number, isotopic_abundance
+from plasmapy.particles import Particle, common_isotopes
+from plasmapy.particles import atomic_number, isotopic_abundance
+
 
 def most_common_isotope(sp):
     """A Particle of the most common isotope and
@@ -26,6 +28,7 @@ def most_common_isotope(sp):
     mass_number = Particle(most_common_isotope).mass_number
     impurity = Particle(max_charge, Z=max_charge, mass_numb=mass_number)
     return impurity
+
 
 def tube_segment_volume(r_i, r_o, h):
     """Volume of a finite tube's wall
