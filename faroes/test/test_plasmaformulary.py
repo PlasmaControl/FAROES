@@ -31,6 +31,52 @@ class TestAlfvenSpeed(unittest.TestCase):
         prob.run_driver()
         assert_near_equal(prob["V_A"], 892.062, tolerance=1e-5)
 
+class TestFastParticleHeatingFractions(unittest.TestCase):
+    def setUp(self):
+        prob = om.Problem()
+
+        prob.model = faroes.plasmaformulary.FastParticleHeatingFractions()
+
+        prob.setup(force_alloc_complex=True)
+
+        prob.set_val('W/Wc', 1.0)
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+        prob.run_driver()
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+    def test_value(self):
+        prob = self.prob
+        prob.run_driver()
+        expected = (2/9) * (3**(1/2) * np.pi - 3 * np.log(2))
+        assert_near_equal(prob["f_i"], expected, tolerance=1e-5)
+
+
+class TestSlowingThermalizationTime(unittest.TestCase):
+    def setUp(self):
+        prob = om.Problem()
+
+        prob.model = faroes.plasmaformulary.SlowingThermalizationTime()
+
+        prob.setup(force_alloc_complex=True)
+
+        prob.set_val('W/Wc', 1.0)
+        prob.set_val('ts', 1.0)
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+    def test_value(self):
+        prob = self.prob
+        prob.run_driver()
+        assert_near_equal(prob["τth"], 0.231049, tolerance=1e-5)
+
 
 class TestCriticalSlowingEnergy(unittest.TestCase):
     def setUp(self):
