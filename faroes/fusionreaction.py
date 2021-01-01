@@ -11,7 +11,8 @@ from scipy.constants import mega
 class SimpleRateCoeff(om.ExplicitComponent):
     r"""Simple fusion rate coefficient
 
-    .. math:
+    .. math::
+
        \sigma v = 1.1 \times 10^{-24} T^2
 
     """

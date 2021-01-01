@@ -18,6 +18,11 @@ class SimpleCryostat(om.ExplicitComponent):
         m, height
     V : float
         m**3, volume
+
+    Notes
+    -----
+    A "TF height multiple" is loaded from the configuration files.
+
     """
     def initialize(self):
         self.options.declare('config', default=None)
