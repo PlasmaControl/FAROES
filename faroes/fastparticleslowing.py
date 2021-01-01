@@ -3,8 +3,7 @@ from scipy.special import hyp2f1
 import numpy as np
 import openmdao.api as om
 from openmdao.utils.units import unit_conversion
-
-from faroes.units import add_local_units
+import faroes.units  # noqa: F401
 
 
 class SlowingThermalizationTime(om.ExplicitComponent):
@@ -236,7 +235,6 @@ class CriticalSlowingEnergy(om.ExplicitComponent):
         keV, Critical energy
     """
     def setup(self):
-        add_local_units()
         self.add_input('At', units="u", desc="Test particle atomic mass")
         self.add_input('ne', units='n20', desc="Electron density")
         self.add_input('Te', units='keV', desc="Electron temperature")
@@ -411,7 +409,6 @@ if __name__ == "__main__":
     from openmdao.utils.assert_utils import assert_check_partials
     from scipy.constants import m_p
     prob = om.Problem()
-    add_local_units()
 
     prob.model.add_subsystem('ivc',
                              om.IndepVarComp('ni', val=np.ones(2),

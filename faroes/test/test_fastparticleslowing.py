@@ -1,6 +1,6 @@
 import faroes.fastparticleslowing
 from scipy.constants import pi
-from faroes.units import add_local_units
+import faroes.units
 import numpy as np
 
 import openmdao.api as om
@@ -122,7 +122,6 @@ class TestAverageEnergyWhileSlowing(unittest.TestCase):
 class TestFastParticleSlowing(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
-        add_local_units()
 
         prob.model.add_subsystem('ivc',
                                  om.IndepVarComp('ni',
@@ -164,7 +163,6 @@ class TestFastParticleSlowing(unittest.TestCase):
 class TestCriticalSlowingEnergy(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
-        add_local_units()
 
         prob.model.add_subsystem('ivc',
                                  om.IndepVarComp('ni',

@@ -1,6 +1,6 @@
 from plasmapy.particles import nuclear_reaction_energy
 import astropy.units as u
-from faroes.units import add_local_units
+import faroes.units  # noqa: F401
 
 import openmdao.api as om
 from openmdao.api import unit_conversion
@@ -40,7 +40,6 @@ class SimpleRateCoeff(om.ExplicitComponent):
 
 class VolumetricThermalFusionRate(om.ExplicitComponent):
     def setup(self):
-        add_local_units()
         REACTION_ENERGY = nuclear_reaction_energy(reactants=['D', 'T'],
                                                   products=['alpha', 'n'])
         self.ENERGY_J = REACTION_ENERGY.to(u.J).value
