@@ -68,11 +68,36 @@ class PlasmaBetaNTotal(om.ExplicitComponent):
 class PlasmaGeometry(om.ExplicitComponent):
     r"""Describes an elliptical plasma.
 
+    .. image :: images/ellipticalplasmageometry.png
+
+    .. math::
+
+        a &= R_0 / A \\
+        \delta &= 0
+
     κ is determined by a "marginal kappa scaling"
     from Jon Menard:
 
+    .. math:: \kappa = 0.95 (1.9 + 1.9 / (A^{1.4})).
+
+    κa an 'effective elongation' which is the same as κ,
+    since this is an elliptical plasma:
+
     .. math::
-        \kappa = 0.95 (1.9 + 1.9 / (A^{1.4}))
+
+        {\kappa}a \equiv \kappa.
+
+    Other properties are determined using standard geometry formulas:
+
+    .. math::
+
+        b &= \kappa * a \\
+        \epsilon &= 1 / A \\
+        \textrm{full plasma height} &= 2 b \\
+        \textrm{surface area} &= 2 \pi R * \textrm{ellipse_perimeter(a, b)} \\
+        V &= 2 \pi R * \pi a b \\
+        R_\mathrm{min} &= R - a \\
+        R_\mathrm{max} &= R + a.
 
     Inputs
     ------

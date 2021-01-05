@@ -47,13 +47,21 @@ class MagnetStructureProperties(om.ExplicitComponent):
 class InnerTFCoilTension(om.ExplicitComponent):
     r"""Total vertical tension on the inner leg of the TF coil
 
-    Assumes a thin current-carrying TF coil loop.
 
     .. math::
 
-       k \equiv \log(r2/r1)
+       k & \equiv \log(r2/r1)\\
+       T_1 &= \frac{1}{2} I_\mathrm{leg} B_0 R_0 \frac{r_1 + r_2 (k -1)}{r2-r1}
 
-       T_1 = \frac{1}{2} I_\mathrm{leg} B_0 R_0 \frac{r_1 + r_2 (k -1)}{r2-r1}
+    Assumes a thin current-carrying TF coil loop.
+    This can be easily derived by finding the total vertical force on the
+    two magnet legs, which depends only on :math:`r1, r2, I_\mathrm{leg}`.
+    The linear force density varies inversely with radius. The factor
+    :math:`1/2` comes about by assuming that the field decreases linearly
+    across the conductor. The tensions in the inner and outer legs
+    can be found by ensuring the torque around the 'center of force' is zero.
+    The inner leg tension is larger than the outer one, and is more limiting
+    since the inner build is more space-constrained.
 
     Inputs
     ------
@@ -325,7 +333,7 @@ class InnerTFCoilStrain(om.ExplicitComponent):
 
 
 class MagnetGeometry(om.ExplicitComponent):
-    """Footprint of the inner and outer TF coil legs
+    r"""Footprint of the inner and outer TF coil legs
 
     This closely follows Menard's spreadsheet model, though it may not
     be exactly identical. The TF coil inboard leg is a trapezoidal wedge shape.
@@ -350,6 +358,8 @@ class MagnetGeometry(om.ExplicitComponent):
     part of the outboard leg inner structure to r2. The circumferential width
     "l" of the outboard leg is not described here. For the outboard leg,
     the distinction between 'r' and 'w' measurements is dropped.
+
+    .. image:: images/magnet_cross_section_map.png
 
     Inputs
     ------

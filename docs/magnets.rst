@@ -1,10 +1,5 @@
-Source documentation
-====================
-
-Plasma Geometry
----------------
-
-.. autoclass:: faroes.elliptical_plasma.PlasmaGeometry
+TF magnets
+==========
 
 Magnet Geometry
 ---------------

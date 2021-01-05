@@ -7,7 +7,8 @@ Welcome to FAROES's documentation!
    :caption: Contents:
 
    about
-   sources
+   plasma
+   magnets
 
 This is a test
 
