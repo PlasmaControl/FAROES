@@ -440,6 +440,7 @@ class ZeroDPlasmaPressures(om.ExplicitComponent):
         J["<p_i>", "<p_th>"] = T_rat / (T_rat + z_ave)
         J["<p_i>", "Ti/Te"] = p_th * z_ave / (T_rat + z_ave)**2
 
+
 class ZeroDPlasmaTemperatures(om.ExplicitComponent):
     r"""Zero-D plasma pressures and temperature
     Inputs
@@ -502,6 +503,7 @@ class ZeroDPlasmaTemperatures(om.ExplicitComponent):
         J["<T_i>", "<n_e>"] = -p_i / (eV * n_e**2 * n_ion_frac)
         J["<T_i>", "ni/ne"] = -p_i / (eV * n_e * n_ion_frac**2)
 
+
 class ZeroDThermalVelocity(om.ExplicitComponent):
     r"""Simple thermal velocity for a fixed mass
 
@@ -534,14 +536,15 @@ class ZeroDThermalVelocity(om.ExplicitComponent):
     def compute(self, inputs, outputs):
         print(inputs["T"])
         mass = self.options['mass']
-        outputs["vth"] = (inputs["T"]/mass)**(1/2)
+        outputs["vth"] = (inputs["T"] / mass)**(1 / 2)
 
     def setup_partials(self):
         self.declare_partials("vth", ["T"])
 
     def compute_partials(self, inputs, J):
         mass = self.options['mass']
-        J["vth", "T"] = 1 / (2 * (inputs["T"] * mass)**(1/2))
+        J["vth", "T"] = 1 / (2 * (inputs["T"] * mass)**(1 / 2))
+
 
 class ZeroDThermalFusionPower(om.ExplicitComponent):
     def setup(self):

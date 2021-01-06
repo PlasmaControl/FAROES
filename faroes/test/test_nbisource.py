@@ -25,6 +25,5 @@ class TestNBISource(unittest.TestCase):
         assert_near_equal(prob["v"], 6.92e6, tolerance=1e-3)
 
 
-
 if __name__ == '__main__':
     unittest.main()

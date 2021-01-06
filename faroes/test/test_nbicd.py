@@ -7,6 +7,31 @@ import openmdao.api as om
 
 import unittest
 
+
+class TestCurrentDriveBeta1(unittest.TestCase):
+    def setUp(self):
+        prob = om.Problem()
+
+        prob.model = faroes.nbicd.CurrentDriveBeta1()
+
+        prob.setup(force_alloc_complex=True)
+        prob.set_val('Ab', 2)
+        prob.set_val('Ai', 2.5)
+        prob.set_val('Z_eff', 1.2)
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+    def test_values(self):
+        prob = self.prob
+
+        prob.run_driver()
+        assert_near_equal(prob["β1"], 1.5, tolerance=1e-3)
+
+
 class TestCurrentDriveAlphaCubed(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
@@ -16,10 +41,9 @@ class TestCurrentDriveAlphaCubed(unittest.TestCase):
                                                  val=np.ones(2),
                                                  units='n20'),
                                  promotes_outputs=["*"])
-        prob.model.add_subsystem(
-            'cda',
-            faroes.nbicd.CurrentDriveAlphaCubed(),
-            promotes_inputs=["*"])
+        prob.model.add_subsystem('cda',
+                                 faroes.nbicd.CurrentDriveAlphaCubed(),
+                                 promotes_inputs=["*"])
 
         prob.setup(force_alloc_complex=True)
         prob.set_val("ni", np.array([0.53e20, 0.53e20]), units='m**-3')
@@ -42,6 +66,7 @@ class TestCurrentDriveAlphaCubed(unittest.TestCase):
         check = prob.check_partials(out_stream=None, method='cs')
         assert_check_partials(check)
 
+
 class TestCurrentDriveA(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
@@ -63,7 +88,8 @@ class TestCurrentDriveA(unittest.TestCase):
         prob = self.prob
 
         prob.run_driver()
-        assert_near_equal(prob["A"], 10/7, tolerance=1e-3)
+        assert_near_equal(prob["A"], 10 / 7, tolerance=1e-3)
+
 
 class TestCurrentDriveIntegral(unittest.TestCase):
     def setUp(self):

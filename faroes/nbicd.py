@@ -1,14 +1,70 @@
 import openmdao.api as om
-from plasmapy.particles import Particle
-from faroes.configurator import UserConfigurator, Accessor
-from astropy import units as apunits
+from faroes.configurator import UserConfigurator
 from scipy.special import hyp2f1
-from scipy.constants import eV, pi
+from scipy.constants import pi
 from scipy.constants import physical_constants
 import faroes.units  # noqa: F401
 import numpy as np
 
 electron_mass_in_u = physical_constants["electron mass in u"][0]
+
+
+class CurrentDriveBeta1(om.ExplicitComponent):
+    r"""Current drive parameter β1
+
+    This is special case of the more general parameter
+    for the fast ion distribution βn,
+
+    .. math::
+
+        \beta_n = m_i Z_\mathrm{eff} n (n+1) / (2 m_b)
+
+    Only the :math:`n=1` term is needed to compute the current drive efficiency
+
+    Inputs
+    ------
+    Ab : float
+        u, Neutral beam particle mass
+    Ai : float
+        u, (average?) plasma ion mass
+    Z_eff : float
+        Plasma effective charge
+
+    Outputs
+    -------
+    β1 : float
+        Fast ion distribution parameter
+
+    References
+    ----------
+    After Equation (44) of
+    Start, D. F. H.; Cordey, J. G.; Jones, E. M.
+    The Effect of Trapped Electrons on Beam Driven Currents
+    in Toroidal Plasmas. Plasma Physics 1980, 22 (4), 303–316.
+    https://doi.org/10.1088/0032-1028/22/4/002.
+    """
+    def setup(self):
+        self.add_input("Z_eff")
+        self.add_input("Ab", units='u')
+        self.add_input("Ai", units='u')
+        self.add_output("β1")
+
+    def compute(self, inputs, outputs):
+        zeff = inputs["Z_eff"]
+        Ab = inputs["Ab"]
+        Ai = inputs["Ai"]
+        outputs["β1"] = (Ai / Ab) * zeff
+
+    def setup_partials(self):
+        self.declare_partials("β1", ["Z_eff", "Ab", "Ai"])
+
+    def compute_partials(self, inputs, J):
+        zeff = inputs["Z_eff"]
+        Ab = inputs["Ab"]
+        Ai = inputs["Ai"]
+        J["β1", "Z_eff"] = (Ai / Ab)
+        J["β1", "Ai"] = (zeff / Ab)
+        J["β1", "Ab"] = -(Ai * zeff / Ab**2)
 
 
 class CurrentDriveA(om.ExplicitComponent):
@@ -213,7 +269,8 @@ class CurrentDriveIntegral(om.ExplicitComponent):
 
     .. math::
 
-        i = \int_0^1 x^{3 + \beta_1} \left(\frac{1 + \alpha^3}{x^3 + \alpha^3}\right)^{1+\beta_1/3} \; dx
+        i = \int_0^1 x^{3 + \beta_1}
+           \left(\frac{1 + \alpha^3}{x^3 + \alpha^3}\right)^{1+\beta_1/3} \; dx
 
     Inputs
     ------
