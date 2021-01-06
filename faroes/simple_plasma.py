@@ -440,7 +440,6 @@ class ZeroDPlasmaPressures(om.ExplicitComponent):
         J["<p_i>", "<p_th>"] = T_rat / (T_rat + z_ave)
         J["<p_i>", "Ti/Te"] = p_th * z_ave / (T_rat + z_ave)**2
 
-
 class ZeroDPlasmaTemperatures(om.ExplicitComponent):
     r"""Zero-D plasma pressures and temperature
     Inputs
@@ -503,6 +502,46 @@ class ZeroDPlasmaTemperatures(om.ExplicitComponent):
         J["<T_i>", "<n_e>"] = -p_i / (eV * n_e**2 * n_ion_frac)
         J["<T_i>", "ni/ne"] = -p_i / (eV * n_e * n_ion_frac**2)
 
+class ZeroDThermalVelocity(om.ExplicitComponent):
+    r"""Simple thermal velocity for a fixed mass
+
+    Notes
+    -----
+    sqrt(T/m)
+
+    Options
+    -------
+    mass : float
+        kg
+
+    Inputs
+    ------
+    T : float
+        J, temperature
+
+    Outputs
+    -------
+    vth : float
+        m/s, simple thermal velocity
+    """
+    def initialize(self):
+        self.options.declare('mass', default=electron_mass)
+
+    def setup(self):
+        self.add_input("T", units='J')
+        self.add_output("vth", units='m/s')
+
+    def compute(self, inputs, outputs):
+        print(inputs["T"])
+        mass = self.options['mass']
+        outputs["vth"] = (inputs["T"]/mass)**(1/2)
+
+    def setup_partials(self):
+        self.declare_partials("vth", ["T"])
+
+    def compute_partials(self, inputs, J):
+        mass = self.options['mass']
+        J["vth", "T"] = 1 / (2 * (inputs["T"] * mass)**(1/2))
 
 class ZeroDThermalFusionPower(om.ExplicitComponent):
     def setup(self):
@@ -593,6 +632,10 @@ class ZeroDPlasma(om.Group):
                            ZeroDPlasmaTemperatures(),
                            promotes_inputs=["*"],
                            promotes_outputs=["*"])
+        self.add_subsystem('vthe',
+                           ZeroDThermalVelocity(mass=electron_mass),
+                           promotes_inputs=[("T", "<T_e>")],
+                           promotes_outputs=[('vth', 'vth_e')])
         self.add_subsystem('th_fus',
                            ZeroDThermalFusion(),
                            promotes_inputs=[

@@ -1,0 +1,7 @@
+NBI:
+  energy: {value: 500, units: keV}
+  ion: D+
+  power: {value: 50, units: MW}
+
+RF:
+  power: {value: 0, units: MW}
