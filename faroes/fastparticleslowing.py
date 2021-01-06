@@ -220,7 +220,7 @@ class CriticalSlowingEnergy(om.ExplicitComponent):
         u, test particle mass
     ni : array
         m**-3, ion densities
-    mi : array
+    Ai : array
         u, ion masses
     Zi : array
         units of fundamental charge
