@@ -1,69 +1,7 @@
 import openmdao.api as om
 import faroes.util as util
 import numpy as np
-
-# class PlasmaBetaNTotal(om.ExplicitComponent):
-#     r"""Total β_N from a scaling law
-#
-#     Inputs
-#     ------
-#     A : float
-#         Aspect ratio
-#
-#     Outputs
-#     -------
-#     beta_N : float
-#         β_N, the normalized beta
-#
-#     beta_N total : float
-#         total β_N, the total normalized beta
-#
-#     Reference
-#     ---------
-#     Physics of Plasmas 11, 639 (2004);
-#     https://doi.org/10.1063/1.1640623
-#
-#     No-wall limit, with 50% bootstrap fraction
-#     """
-#     def initialize(self):
-#         self.options.declare('config', default=None)
-#
-#     def setup(self):
-#         if self.options['config'] is not None:
-#             self.config = self.options['config']
-#             ac = self.config.accessor(['fits'])
-#             self.β_ε_scaling_constants = ac(
-#                 ["no-wall β_N scaling with ε", "constants"])
-#             self.β_N_multiplier = ac(["β_N multiplier"])
-#
-#         self.add_input("A", desc="Aspect Ratio")
-#         self.add_output("beta_N", desc="Normalized beta")
-#         self.add_output("beta_N total", desc="Normalized beta, total")
-#
-#     def beta_N_scaling(self, A):
-#         """Estimated β_N from A
-#
-#         Parameters
-#         ----------
-#         A: float
-#             aspect ratio of the plasma
-#
-#         """
-#         const = self.β_ε_scaling_constants
-#         b = const[0]
-#         c = const[1]
-#         d = const[2]
-#         return b + c / (A**d)
-#
-#     def compute(self, inputs, outputs):
-#         A = inputs["A"]
-#         β_N = self.beta_N_scaling(A)
-#         outputs["beta_N"] = β_N
-#         outputs["beta_N total"] = β_N * self.β_N_multiplier
-#
-#     def setup_partials(self):
-#         self.declare_partials('*', '*', method='cs')
-
+import matplotlib.pyplot as plt
 
 class SauterGeometry(om.ExplicitComponent):
     r"""Describes a D-shaped plasma based on Sauter's formulas.
@@ -216,6 +154,18 @@ class SauterGeometry(om.ExplicitComponent):
     #     J["R_max", "R0"] = 1 + 1 / A
     #     J["R_max", "A"] = -R0 / A**2
 
+    def plot(self, ax=plt.subplot(111), **kwargs):
+        label = 'R0={}, a={}, κ={}, δ={}, ξ={}'.format(self.get_val('R0')[0],
+                        self.get_val('a')[0], self.get_val('κ')[0],
+                        self.get_val('δ')[0], self.get_val('ξ')[0])
+
+        ax.plot(self.get_val('R0'), self.get_val('Z0'), marker='x', **kwargs)
+        ax.plot(self.get_val('R'), self.get_val('Z'), label=label, **kwargs)
+
+        ax.axis('equal')
+        ax.set_xlabel('R (m)')
+        ax.set_ylabel('Z (m)')
+        ax.set_title(label)
 
 if __name__ == "__main__":
     prob = om.Problem()
@@ -226,14 +176,12 @@ if __name__ == "__main__":
 
     prob.set_val('R0', 3, 'm')
     prob.set_val('a', 1, 'm')
-    prob.set_val('κ', 0.5)
+    prob.set_val('κ', 2)
     prob.set_val('δ', 0.5)
     prob.set_val('ξ', 0.)
 
     prob.run_driver()
 
     # test by plotting
-    # import matplotlib.pyplot as plt
-    # plt.figure()
-    # plt.plot(prob.get_val('R'),prob.get_val('Z'))
-    # plt.show()
+    prob.model.plot(c='k', ls='-')
+    plt.show()
