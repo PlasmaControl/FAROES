@@ -1,7 +1,10 @@
 import faroes.simple_plasma
+
 import openmdao.api as om
 from openmdao.utils.assert_utils import assert_near_equal
 from openmdao.utils.assert_utils import assert_check_partials
+
+from scipy.constants import electron_mass
 
 import unittest
 
@@ -14,6 +17,21 @@ class TestMainIonMix(unittest.TestCase):
 
         prob.setup(force_alloc_complex=True)
 
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+
+class TestThermalVelocity(unittest.TestCase):
+    def setUp(self):
+        prob = om.Problem()
+
+        prob.model = faroes.simple_plasma.ThermalVelocity(mass=electron_mass)
+        prob.setup(force_alloc_complex=True)
+        prob.set_val('T', 10, units='keV')
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
         check = prob.check_partials(out_stream=None, method='cs')
         assert_check_partials(check)
 

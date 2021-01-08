@@ -2,7 +2,7 @@ import openmdao.api as om
 from faroes.configurator import UserConfigurator
 from plasmapy.particles import deuteron, triton
 from plasmapy.particles import Particle
-from scipy.constants import mega, kilo, atm, eV, electron_mass
+from scipy.constants import mega, kilo, atm, eV, electron_mass, pi
 
 from faroes.fusionreaction import SimpleRateCoeff, VolumetricThermalFusionRate
 
@@ -504,19 +504,34 @@ class ZeroDPlasmaTemperatures(om.ExplicitComponent):
         J["<T_i>", "ni/ne"] = -p_i / (eV * n_e * n_ion_frac**2)
 
 
-class ZeroDThermalVelocity(om.ExplicitComponent):
-    r"""Simple thermal velocity for a fixed mass
+class ThermalVelocity(om.ExplicitComponent):
+    r"""Thermal velocities for a fixed mass
 
-    Notes
-    -----
+    Thermal velocity can be the root mean square of the velocity in any one
+    dimension
+
     .. math::
 
-       v_{th} = \sqrt(T/m)
+       v_\mathrm{th} = \sqrt(T/m)
 
-       v_{2th} = \sqrt(2T/m)
+    Or in 3D, the most probable speed
 
-    The second option is referred to as such to not
-    be confused with :math:`v_th^2`
+    .. math::
+
+       v_\mathrm{mps} = \sqrt(2T/m)
+
+    Or in 3D, the root mean square of the total velocity
+
+    .. math::
+
+       v_\mathrm{rms3D} = \sqrt(3 T / m)
+
+    Or the mean of the magnitude of the velocity
+
+    .. math::
+
+       v_\mathrm{meanmag} = \sqrt{8 T / \pi m}
+
 
     Options
     -------
@@ -526,37 +541,55 @@ class ZeroDThermalVelocity(om.ExplicitComponent):
     Inputs
     ------
     T : float
-        J, temperature
+        eV, temperature
 
     Outputs
     -------
     vth : float
         m/s, simple thermal velocity
-    v2th : float
-        m/s, simple thermal velocity
+    v_mps : float
+        m/s, Most probable speed in 3D
+    v_rms : float
+        m/s, Root mean square of the total velocity in 3D
+    v_meanmag : float
+        m/s, Mean of the magnitude of velocity
+
+    Notes
+    -----
+    Units of eV are used here for temperature rather than J to avoid
+    small numbers in J; this is bad for the derivatives.
     """
     def initialize(self):
         self.options.declare('mass', default=electron_mass)
 
     def setup(self):
-        self.add_input("T", units='J')
-        self.add_output("vth", units='m/s')
-        self.add_output("v2th", units='m/s')
+        self.add_input("T", units='eV')
+        self.add_output("v_th", units='m/s')
+        self.add_output("v_mps", units='m/s')
+        self.add_output("v_rms", units='m/s')
+        self.add_output("v_meanmag", units='m/s')
 
     def compute(self, inputs, outputs):
-        print(inputs["T"])
         mass = self.options['mass']
-        outputs["vth"] = (inputs["T"] / mass)**(1 / 2)
-        outputs["v2th"] = (2 * inputs["T"] / mass)**(1 / 2)
+        TeV = eV * inputs["T"]
+        outputs["v_th"] = (TeV / mass)**(1 / 2)
+        outputs["v_mps"] = (2 * TeV / mass)**(1 / 2)
+        outputs["v_rms"] = (3 * TeV / mass)**(1 / 2)
+        outputs["v_meanmag"] = (8 * TeV / mass / pi)**(1 / 2)
 
     def setup_partials(self):
-        self.declare_partials("vth", ["T"])
-        self.declare_partials("v2th", ["T"])
+        self.declare_partials("v_th", ["T"])
+        self.declare_partials("v_mps", ["T"])
+        self.declare_partials("v_rms", ["T"])
+        self.declare_partials("v_meanmag", ["T"])
 
     def compute_partials(self, inputs, J):
         mass = self.options['mass']
-        J["vth", "T"] = 1 / (2 * (inputs["T"] * mass)**(1 / 2))
-        J["v2th", "T"] = 1 / (2**(1/2) * (inputs["T"] * mass)**(1 / 2))
+        T = inputs["T"]
+        J["v_th", "T"] = (1 * eV)**(1/2) / (2 * (T * mass)**(1 / 2))
+        J["v_mps", "T"] = (2 * eV)**(1/2) / (2 * (T * mass)**(1 / 2))
+        J["v_rms", "T"] = (3 * eV)**(1/2) / (2 * (T * mass)**(1 / 2))
+        J["v_meanmag", "T"] = (8 * eV / pi)**(1/2) / (2 * (T * mass)**(1 / 2))
 
 
 class ZeroDThermalFusionPower(om.ExplicitComponent):
@@ -634,7 +667,7 @@ class ZeroDPlasma(om.Group):
                            promotes_outputs=["*"])
         self.add_subsystem('densities',
                            ZeroDPlasmaDensities(),
-                           promotes_inputs=[("n_e", "<n_e>"), "*"],
+                           promotes_inputs=["*", ("n_e", "<n_e>")],
                            promotes_outputs=["*"])
         self.add_subsystem('storedenergy',
                            ZeroDPlasmaStoredEnergy(),
@@ -649,9 +682,9 @@ class ZeroDPlasma(om.Group):
                            promotes_inputs=["*"],
                            promotes_outputs=["*"])
         self.add_subsystem('vthe',
-                           ZeroDThermalVelocity(mass=electron_mass),
+                           ThermalVelocity(mass=electron_mass),
                            promotes_inputs=[("T", "<T_e>")],
-                           promotes_outputs=[('vth', 'vth_e')])
+                           promotes_outputs=[('v_th', 'vth_e')])
         self.add_subsystem('th_fus',
                            ZeroDThermalFusion(),
                            promotes_inputs=[
