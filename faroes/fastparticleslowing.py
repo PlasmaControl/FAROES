@@ -1,9 +1,11 @@
+import faroes.units  # noqa: F401
+
+import openmdao.api as om
+from openmdao.utils.units import unit_conversion
+
 from scipy.constants import pi, electron_mass
 from scipy.special import hyp2f1
 import numpy as np
-import openmdao.api as om
-from openmdao.utils.units import unit_conversion
-import faroes.units  # noqa: F401
 
 
 class SlowingThermalizationTime(om.ExplicitComponent):
@@ -108,7 +110,7 @@ class SlowingTimeOnElectrons(om.ExplicitComponent):
     """
     def setup(self):
         # the constant is equal to
-        # 4 π ε0² u² / (10^20 m³ e⁴ 4 / (3 √π) (u / me) (me / (2 keV))^(3/2))
+        # 4 π ε0² u² / (10^20 m⁻³ e⁴ 4 / (3 √π) (u / me) (me / (2 keV))^(3/2))
         # where
         # u is the atomic mass unit,
         # m is meters

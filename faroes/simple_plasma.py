@@ -509,7 +509,14 @@ class ZeroDThermalVelocity(om.ExplicitComponent):
 
     Notes
     -----
-    sqrt(T/m)
+    .. math::
+
+       v_{th} = \sqrt(T/m)
+
+       v_{2th} = \sqrt(2T/m)
+
+    The second option is referred to as such to not
+    be confused with :math:`v_th^2`
 
     Options
     -------
@@ -525,6 +532,8 @@ class ZeroDThermalVelocity(om.ExplicitComponent):
     -------
     vth : float
         m/s, simple thermal velocity
+    v2th : float
+        m/s, simple thermal velocity
     """
     def initialize(self):
         self.options.declare('mass', default=electron_mass)
@@ -532,18 +541,22 @@ class ZeroDThermalVelocity(om.ExplicitComponent):
     def setup(self):
         self.add_input("T", units='J')
         self.add_output("vth", units='m/s')
+        self.add_output("v2th", units='m/s')
 
     def compute(self, inputs, outputs):
         print(inputs["T"])
         mass = self.options['mass']
         outputs["vth"] = (inputs["T"] / mass)**(1 / 2)
+        outputs["v2th"] = (2 * inputs["T"] / mass)**(1 / 2)
 
     def setup_partials(self):
         self.declare_partials("vth", ["T"])
+        self.declare_partials("v2th", ["T"])
 
     def compute_partials(self, inputs, J):
         mass = self.options['mass']
         J["vth", "T"] = 1 / (2 * (inputs["T"] * mass)**(1 / 2))
+        J["v2th", "T"] = 1 / (2**(1/2) * (inputs["T"] * mass)**(1 / 2))
 
 
 class ZeroDThermalFusionPower(om.ExplicitComponent):
