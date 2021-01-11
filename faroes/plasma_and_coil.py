@@ -1,3 +1,5 @@
+# This is an example of how to join components together
+
 import openmdao.api as om
 from faroes.simple_tf_magnet import MagnetRadialBuild
 from faroes.elliptical_plasma import PlasmaGeometry
