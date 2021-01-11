@@ -56,7 +56,7 @@ class SimpleNBISource(om.Group):
 
     Outputs
     -------
-    rate : float
+    S : float
         s^{-1}, particles per second
     v : float
         m/s, particle velocity
@@ -70,9 +70,9 @@ class SimpleNBISource(om.Group):
                            SimpleNBISourceProperties(config=config),
                            promotes_outputs=["P", "E", "A", "Z", "m"])
         self.add_subsystem(
-            "flow",
-            om.ExecComp("f = P/E",
-                        f={'units': '1/s'},
+            "rate",
+            om.ExecComp("S = P/E",
+                        S={'units': '1/s'},
                         P={'units': 'W'},
                         E={'units': 'J'}), promotes_outputs=["*"])
         self.add_subsystem(
@@ -83,8 +83,8 @@ class SimpleNBISource(om.Group):
                 E={'units': 'J'},
                 m={'units': 'kg'},
             ), promotes_outputs=["*"])
-        self.connect('E', ['flow.E', 'v.E'])
-        self.connect('P', ['flow.P'])
+        self.connect('E', ['rate.E', 'v.E'])
+        self.connect('P', ['rate.P'])
         self.connect('m', ['v.m'])
 
 

@@ -3,7 +3,7 @@ import faroes.units  # noqa: F401
 import openmdao.api as om
 from openmdao.utils.units import unit_conversion
 
-from scipy.constants import pi, electron_mass
+from scipy.constants import pi, electron_mass, kilo, mega, eV
 from scipy.special import hyp2f1
 import numpy as np
 
@@ -349,6 +349,8 @@ class FastParticleSlowing(om.Group):
     r"""
     Inputs
     ------
+    S : float
+        1/s, Fast particle source rate
     At : float
         u, Test particle mass
     Zt : int
@@ -360,7 +362,8 @@ class FastParticleSlowing(om.Group):
         m**-3, electron density
     Te : float
         keV, electron temperature
-    logΛe:
+    logΛe: float
+        Coulomb logarithm
 
     ni : Array
         m**-3, ion densities
@@ -379,6 +382,8 @@ class FastParticleSlowing(om.Group):
         Fraction of energy which heats electrons
     Wbar : float
         keV, Average energy while thermalizing from Wt
+    Wfast : float
+        MJ, Fast particle energy in plasma
     """
     def setup(self):
         self.add_subsystem(
@@ -400,6 +405,13 @@ class FastParticleSlowing(om.Group):
         self.add_subsystem("averagew",
                            AverageEnergyWhileSlowing(),
                            promotes_outputs=["*"])
+        self.add_subsystem("Wfast", om.ExecComp("Wfast = (Wbar) * tauth * S / mega",
+            Wfast={"units":"MJ"},
+            Wbar={"units":"J"},
+            tauth={"units": "s"},
+            mega={"value": mega},
+            S={"units": "1/s"}), promotes_inputs=["Wbar", "tauth", "S"],
+            promotes_outputs=["Wfast"])
 
         self.connect("Wcrit.W_crit", ["WcRat.W_crit", "averagew.Wc"])
         self.connect("WcRat.W/Wc",
@@ -413,21 +425,25 @@ if __name__ == "__main__":
     prob = om.Problem()
 
     prob.model.add_subsystem('ivc',
-                             om.IndepVarComp('ni', val=np.ones(2),
+                             om.IndepVarComp('ni', val=np.ones(3),
                                              units='n20'),
                              promotes_outputs=["*"])
-    prob.model.add_subsystem('cse',
-                             CriticalSlowingEnergy(),
+    prob.model.add_subsystem('fps',
+                             FastParticleSlowing(),
                              promotes_inputs=["*"])
 
     prob.setup(force_alloc_complex=True)
 
+    prob.set_val("S", 6.24e20, units='1/s')
     prob.set_val("At", 2 * m_p, units='kg')
-    prob.set_val("ne", 1.0e20, units='m**-3')
-    prob.set_val("Te", 1.0, units='keV')
-    prob.set_val("ni", np.array([0.5e20, 0.5e20]), units='m**-3')
-    prob.set_val("Ai", [2, 3], units='u')
-    prob.set_val("Zi", [1, 1])
+    prob.set_val("Zt", 1)
+    prob.set_val("Wt", 500, units='keV')
+    prob.set_val("ne", 1.06e20, units='m**-3')
+    prob.set_val("Te", 9.2, units='keV')
+    prob.set_val("logΛe", 17.37)
+    prob.set_val("ni", np.array([0.424e20, 0.424e20, 0.0353e20]), units='m**-3')
+    prob.set_val("Ai", [2, 3, 12], units='u')
+    prob.set_val("Zi", [1, 1, 6])
 
     check = prob.check_partials(out_stream=None, method='cs')
     assert_check_partials(check)
