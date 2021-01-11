@@ -22,8 +22,10 @@ class MainIonMix(om.ExplicitComponent):
     -------
     f_T: float
         Fraction of tritium in main ions. Defaults to 0.5.
-    M: float
-        averaged ion mass number
+    A : float
+        Averaged ion mass number
+    m : float
+        kg, Averaged main ion mass
     """
     def setup(self):
         self.add_input("f_D", val=0.5, desc="Fraction of D in main ions")
@@ -267,7 +269,6 @@ class ZeroDPlasmaStoredEnergy(om.ExplicitComponent):
         s, Thermal energy confinement time
     P_loss : float
         MW, Thermal gradient loss power
-        Note: ask Oak?
     W_fast_NBI : float
         MJ, Energy of NBI fast ions in plasma
     W_fast_α : float
