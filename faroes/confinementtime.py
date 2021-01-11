@@ -3,7 +3,7 @@ from faroes.configurator import UserConfigurator
 
 
 class ConfinementTime(om.ExplicitComponent):
-    r"""
+    r"""Confinement time
 
     Inputs
     ------
@@ -16,6 +16,11 @@ class ConfinementTime(om.ExplicitComponent):
     -------
     τe : float
         s, confinement time
+
+    Notes
+    -----
+    This is a component in order to allow use of greek variables; otherwise it
+    would be fine as an ExecComp.
     """
     def setup(self):
         self.add_input("τe_law",
@@ -63,7 +68,7 @@ class ConfinementTimeScaling(om.ExplicitComponent):
         effective elongation, S_c / (π a^2),
         where S_c is the plasma cross-sectional area
     M : float
-        ion mass number
+        main ion mass number
 
     Outputs
     -------
