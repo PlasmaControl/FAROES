@@ -77,4 +77,3 @@ if __name__ == "__main__":
 
     all_inputs = prob.model.list_inputs(values=True)
     all_outputs = prob.model.list_outputs(values=True)
-    print(prob.get_val('R0'))
