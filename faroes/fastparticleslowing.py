@@ -3,7 +3,7 @@ import faroes.units  # noqa: F401
 import openmdao.api as om
 from openmdao.utils.units import unit_conversion
 
-from scipy.constants import pi, electron_mass, kilo, mega, eV
+from scipy.constants import pi, electron_mass, mega
 from scipy.special import hyp2f1
 import numpy as np
 
@@ -407,13 +407,15 @@ class FastParticleSlowing(om.Group):
         self.add_subsystem("averagew",
                            AverageEnergyWhileSlowing(),
                            promotes_outputs=["*"])
-        self.add_subsystem("Wfast", om.ExecComp("Wfast = (Wbar) * tauth * S / mega",
-            Wfast={"units":"MJ"},
-            Wbar={"units":"J"},
-            tauth={"units": "s"},
-            mega={"value": mega},
-            S={"units": "1/s"}), promotes_inputs=["Wbar", "tauth", "S"],
-            promotes_outputs=["Wfast"])
+        self.add_subsystem("Wfast",
+                           om.ExecComp("Wfast = (Wbar) * tauth * S / mega",
+                                       Wfast={"units": "MJ"},
+                                       Wbar={"units": "J"},
+                                       tauth={"units": "s"},
+                                       mega={"value": mega},
+                                       S={"units": "1/s"}),
+                           promotes_inputs=["Wbar", "tauth", "S"],
+                           promotes_outputs=["Wfast"])
 
         self.connect("Wcrit.W_crit", ["WcRat.W_crit", "averagew.Wc"])
         self.connect("WcRat.W/Wc",
@@ -443,7 +445,9 @@ if __name__ == "__main__":
     prob.set_val("ne", 1.06e20, units='m**-3')
     prob.set_val("Te", 9.2, units='keV')
     prob.set_val("logΛe", 17.37)
-    prob.set_val("ni", np.array([0.424e20, 0.424e20, 0.0353e20]), units='m**-3')
+    prob.set_val("ni",
+                 np.array([0.424e20, 0.424e20, 0.0353e20]),
+                 units='m**-3')
     prob.set_val("Ai", [2, 3, 12], units='u')
     prob.set_val("Zi", [1, 1, 6])
 

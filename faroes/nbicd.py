@@ -12,6 +12,7 @@ import numpy as np
 
 electron_mass_in_u = physical_constants["electron mass in u"][0]
 
+
 class CurrentDriveProperties(om.ExplicitComponent):
     """Helper class to load properties
     """
@@ -22,6 +23,7 @@ class CurrentDriveProperties(om.ExplicitComponent):
         acc = Accessor(self.options['config'])
         f = acc.accessor(["h_cd", "NBI", "current drive estimate"])
         acc.set_output(self, f, "ε fraction")
+
 
 class CurrentDriveBeta1(om.ExplicitComponent):
     r"""Current drive parameter β1
@@ -382,7 +384,7 @@ class CurrentDriveEfficiencyTerm1(om.ExplicitComponent):
         α3 = inputs["α³"]
         E_NBI = inputs["E_NBI"]
         line1 = τs * (mega * v0) * zb * G / (2 * pi * R * (1 + α3) *
-                                              (kilo * E_NBI))
+                                             (kilo * E_NBI))
         outputs["line1"] = line1
 
     def setup_partials(self):
@@ -597,7 +599,6 @@ class CurrentDriveEfficiencyEquation(om.ExplicitComponent):
         J["It/P", "line3"] = line1 * line2
 
 
-
 class CurrentDriveEfficiency(om.Group):
     r"""
 
@@ -649,11 +650,14 @@ class CurrentDriveEfficiency(om.Group):
 
     def setup(self):
         config = self.options["config"]
-        self.add_subsystem('props', CurrentDriveProperties(config=config),
-                promotes_outputs=["ε fraction"])
-        self.add_subsystem('eps_neo', om.ExecComp("eps_neo = eps_frac * eps"),
-                promotes_inputs=[("eps_frac", "ε fraction"), ("eps", "ε")],
-                promotes_outputs=[("eps_neo", "ε_neoclass")])
+        self.add_subsystem('props',
+                           CurrentDriveProperties(config=config),
+                           promotes_outputs=["ε fraction"])
+        self.add_subsystem('eps_neo',
+                           om.ExecComp("eps_neo = eps_frac * eps"),
+                           promotes_inputs=[("eps_frac", "ε fraction"),
+                                            ("eps", "ε")],
+                           promotes_outputs=[("eps_neo", "ε_neoclass")])
         self.add_subsystem('A_bar',
                            AverageIonMass(),
                            promotes_inputs=["ni", "Ai"],
@@ -699,6 +703,7 @@ class CurrentDriveEfficiency(om.Group):
                            CurrentDriveEfficiencyEquation(),
                            promotes_inputs=["*"],
                            promotes_outputs=["It/P"])
+
 
 class NBICurrent(om.ExplicitComponent):
     r"""Incorporate beams with multiple energy components
@@ -766,7 +771,7 @@ if __name__ == "__main__":
     prob.set_val("Eb", 500, units="keV")
 
     prob.set_val("R0", 3.0, units="m")
-    prob.set_val("ε", 1/1.6)
+    prob.set_val("ε", 1 / 1.6)
 
     prob.set_val("Z_eff", 2)
     prob.set_val("ne", 1.06, units="n20")

@@ -202,9 +202,10 @@ class TestCurrentDriveEfficiency(unittest.TestCase):
                                                  val=np.ones(3),
                                                  units="n20"),
                                  promotes_outputs=["*"])
-        prob.model.add_subsystem("cde",
-                                 faroes.nbicd.CurrentDriveEfficiency(config=uc),
-                                 promotes_inputs=["*"])
+        prob.model.add_subsystem(
+            "cde",
+            faroes.nbicd.CurrentDriveEfficiency(config=uc),
+            promotes_inputs=["*"])
 
         prob.setup()
 
@@ -214,7 +215,7 @@ class TestCurrentDriveEfficiency(unittest.TestCase):
         prob.set_val("Eb", 500, units="keV")
 
         prob.set_val("R0", 3.0, units="m")
-        prob.set_val("A", 1.6)
+        prob.set_val("ε", 1/1.6)
 
         prob.set_val("Z_eff", 2)
         prob.set_val("ne", 1.06, units="n20")
@@ -232,6 +233,7 @@ class TestCurrentDriveEfficiency(unittest.TestCase):
         prob = self.prob
         prob.run_driver()
         assert_near_equal(prob["cde.It/P"], 0.1313, tolerance=1e-3)
+
 
 class TestNBICurrent(unittest.TestCase):
     def setUp(self):
@@ -257,13 +259,18 @@ class TestNBICurrent(unittest.TestCase):
         prob = self.prob
         expected_I_NBI = 7.7417
         prob.run_driver()
+        assert_near_equal(prob["cd.I_NBI"], expected_I_NBI, tolerance=1e-3)
 
     def test_partials(self):
         prob = self.prob
-        check = prob.check_partials(out_stream=None, method='cs', excludes=["S"])
-        check = prob.check_partials(out_stream=None, method='cs', includes=["S"], step=1e18j)
+        check = prob.check_partials(out_stream=None,
+                                    method='cs',
+                                    excludes=["S"])
+        check = prob.check_partials(out_stream=None,
+                                    method='cs',
+                                    includes=["S"],
+                                    step=1e18j)
         assert_check_partials(check)
-
 
 
 if __name__ == '__main__':
