@@ -1,3 +1,4 @@
+from faroes.configurator import UserConfigurator
 import faroes.nbicd
 
 import openmdao.api as om
@@ -194,13 +195,15 @@ class TestCurrentDriveEfficiency(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
 
+        uc = UserConfigurator()
+
         prob.model.add_subsystem("ivc",
                                  om.IndepVarComp("ni",
                                                  val=np.ones(3),
                                                  units="n20"),
                                  promotes_outputs=["*"])
         prob.model.add_subsystem("cde",
-                                 faroes.nbicd.CurrentDriveEfficiency(),
+                                 faroes.nbicd.CurrentDriveEfficiency(config=uc),
                                  promotes_inputs=["*"])
 
         prob.setup()
@@ -211,7 +214,7 @@ class TestCurrentDriveEfficiency(unittest.TestCase):
         prob.set_val("Eb", 500, units="keV")
 
         prob.set_val("R0", 3.0, units="m")
-        prob.set_val("ε_neoclass", 0.31)
+        prob.set_val("A", 1.6)
 
         prob.set_val("Z_eff", 2)
         prob.set_val("ne", 1.06, units="n20")
@@ -228,7 +231,39 @@ class TestCurrentDriveEfficiency(unittest.TestCase):
     def test_val(self):
         prob = self.prob
         prob.run_driver()
-        assert_near_equal(prob["cde.It/P"], 0.1311, tolerance=1e-3)
+        assert_near_equal(prob["cde.It/P"], 0.1313, tolerance=1e-3)
+
+class TestNBICurrent(unittest.TestCase):
+    def setUp(self):
+        prob = om.Problem()
+
+        prob.model.add_subsystem('ivc',
+                                 om.IndepVarComp('S',
+                                                 val=np.ones(3),
+                                                 units='1/s'),
+                                 promotes_outputs=["*"])
+        prob.model.add_subsystem('cd',
+                                 faroes.nbicd.NBICurrent(),
+                                 promotes_inputs=["*"])
+
+        prob.setup(force_alloc_complex=True)
+        prob.set_val("S", np.array([7.0e20, 4.0e20, 2.0e20]), units="1/s")
+        prob.set_val("It/P", [0.1, 0.1, 0.1])
+        prob.set_val("Eb", [500, 250, 166], units="keV")
+
+        self.prob = prob
+
+    def test_value(self):
+        prob = self.prob
+        expected_I_NBI = 7.7417
+        prob.run_driver()
+
+    def test_partials(self):
+        prob = self.prob
+        check = prob.check_partials(out_stream=None, method='cs', excludes=["S"])
+        check = prob.check_partials(out_stream=None, method='cs', includes=["S"], step=1e18j)
+        assert_check_partials(check)
+
 
 
 if __name__ == '__main__':

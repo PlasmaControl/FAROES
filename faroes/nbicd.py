@@ -1,17 +1,27 @@
-from faroes.configurator import UserConfigurator
+from faroes.configurator import UserConfigurator, Accessor
 from faroes.plasmaformulary import AverageIonMass
 import faroes.units  # noqa: F401
 
 import openmdao.api as om
 
 from scipy.special import hyp2f1
-from scipy.constants import pi, kilo, mega
+from scipy.constants import eV, pi, kilo, mega
 from scipy.constants import physical_constants
 
 import numpy as np
 
 electron_mass_in_u = physical_constants["electron mass in u"][0]
 
+class CurrentDriveProperties(om.ExplicitComponent):
+    """Helper class to load properties
+    """
+    def initialize(self):
+        self.options.declare('config', default=None)
+
+    def setup(self):
+        acc = Accessor(self.options['config'])
+        f = acc.accessor(["h_cd", "NBI", "current drive estimate"])
+        acc.set_output(self, f, "ε fraction")
 
 class CurrentDriveBeta1(om.ExplicitComponent):
     r"""Current drive parameter β1
@@ -131,6 +141,10 @@ class TrappedParticleFractionUpperEst(om.ExplicitComponent):
     This is derived for "... the case of concentric, elliptical
     flux surfaces that are adequate to describe low-β,
     up-down symmetric equilibria"
+
+    This might be enhanced in the future into a 'mid-range'
+    trapped-particle-fraction estimate, by programming in the lower estimate
+    and the suggested interpolation given in the paper.
 
     Inputs
     ------
@@ -582,9 +596,7 @@ class CurrentDriveEfficiencyEquation(om.ExplicitComponent):
         J["It/P", "line2"] = line1 * line3
         J["It/P", "line3"] = line1 * line2
 
-class NBICurrentDrive(om.Group):
-    r"""
-    """
+
 
 class CurrentDriveEfficiency(om.Group):
     r"""
@@ -602,9 +614,8 @@ class CurrentDriveEfficiency(om.Group):
 
     R0 : float
         m, Major radius of plasma
-    ε_neoclass : float
-        Inverse aspect ratio of flux surface for which
-        current drive efficiency should be computed
+    A : float
+        Aspect ratio R/a
 
     Z_eff : float
         Effective charge of plasma
@@ -633,7 +644,16 @@ class CurrentDriveEfficiency(om.Group):
         A/W, Ratio of the net current flowing parallel to the magnetic field
             to the injected neutral beam power
     """
+    def initialize(self):
+        self.options.declare("config", default=None)
+
     def setup(self):
+        config = self.options["config"]
+        self.add_subsystem('props', CurrentDriveProperties(config=config),
+                promotes_outputs=["ε fraction"])
+        self.add_subsystem('eps_neo', om.ExecComp("eps_neo = eps_frac * eps"),
+                promotes_inputs=[("eps_frac", "ε fraction"), ("eps", "ε")],
+                promotes_outputs=[("eps_neo", "ε_neoclass")])
         self.add_subsystem('A_bar',
                            AverageIonMass(),
                            promotes_inputs=["ni", "Ai"],
@@ -680,6 +700,50 @@ class CurrentDriveEfficiency(om.Group):
                            promotes_inputs=["*"],
                            promotes_outputs=["It/P"])
 
+class NBICurrent(om.ExplicitComponent):
+    r"""Incorporate beams with multiple energy components
+
+    .. math::
+
+        I_\mathrm{NBI} = \sum (S Eb It/P)
+
+    Inputs
+    ------
+    S : array
+        1/s, Neutral beam source rates
+    It/P: array
+        A/W, efficiency of current drive
+    Eb : array
+        keV, Initial energy of beam ions
+
+    Outputs
+    -------
+    I_NBI : float
+        MA, total neutral-beam-driven current
+    """
+    def setup(self):
+        self.add_input("S", units="1/s", shape_by_conn=True)
+        self.add_input("Eb", units="keV", shape_by_conn=True, copy_shape="S")
+        self.add_input("It/P", units="A/W", shape_by_conn=True, copy_shape="S")
+        self.add_output("I_NBI", units="MA")
+
+    def compute(self, inputs, outputs):
+        S = inputs["S"]
+        Eb = inputs["Eb"]
+        eff = inputs["It/P"]
+        outputs["I_NBI"] = kilo * eV * np.sum(S * Eb * eff) / mega
+
+    def setup_partials(self):
+        self.declare_partials("I_NBI", ["S", "Eb", "It/P"])
+
+    def compute_partials(self, inputs, J):
+        S = inputs["S"]
+        Eb = inputs["Eb"]
+        eff = inputs["It/P"]
+        J["I_NBI", "S"] = kilo * eV * Eb * eff / mega
+        J["I_NBI", "Eb"] = kilo * eV * S * eff / mega
+        J["I_NBI", "It/P"] = kilo * eV * Eb * S / mega
+
 
 if __name__ == "__main__":
     prob = om.Problem()
@@ -691,7 +755,7 @@ if __name__ == "__main__":
                                              units="n20"),
                              promotes_outputs=["*"])
     prob.model.add_subsystem("cde",
-                             CurrentDriveEfficiency(),
+                             CurrentDriveEfficiency(config=uc),
                              promotes_inputs=["*"])
 
     prob.setup()
@@ -702,7 +766,7 @@ if __name__ == "__main__":
     prob.set_val("Eb", 500, units="keV")
 
     prob.set_val("R0", 3.0, units="m")
-    prob.set_val("ε_neoclass", 0.31)
+    prob.set_val("ε", 1/1.6)
 
     prob.set_val("Z_eff", 2)
     prob.set_val("ne", 1.06, units="n20")
