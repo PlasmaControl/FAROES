@@ -21,7 +21,7 @@ class TestNBISource(unittest.TestCase):
         prob.set_val('m', deuteron.mass, units='kg')
 
         prob.run_driver()
-        assert_near_equal(prob["f"], 6.2415094e20, tolerance=1e-3)
+        assert_near_equal(prob["S"], 6.2415094e20, tolerance=1e-3)
         assert_near_equal(prob["v"], 6.92e6, tolerance=1e-3)
 
 

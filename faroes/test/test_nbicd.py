@@ -126,7 +126,7 @@ class TestCurrentDriveEfficiencyTerm1(unittest.TestCase):
         prob.set_val("E_NBI", 500, units='keV')
         prob.set_val("G", 0.97)
         prob.set_val('α³', 0.32)
-        prob.set_val('τse', 0.599, units="s")
+        prob.set_val('τs', 0.599, units="s")
         prob.set_val('R', 3.0, units="m")
         self.prob = prob
 
@@ -218,7 +218,7 @@ class TestCurrentDriveEfficiency(unittest.TestCase):
         prob.set_val("<T_e>", 9.20, units="keV")
         prob.set_val("vth_e", 56922, units="km/s")
 
-        prob.set_val("τse", 0.599, units="s")
+        prob.set_val("τs", 0.599, units="s")
 
         prob.set_val("ni", np.array([0.424, 0.424, 0.0353]), units="n20")
         prob.set_val("Ai", [2, 3, 12], units="u")

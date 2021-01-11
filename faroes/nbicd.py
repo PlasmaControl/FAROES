@@ -321,7 +321,7 @@ class CurrentDriveEfficiencyTerm1(om.ExplicitComponent):
 
     Inputs
     ------
-    τse : float
+    τs : float
         s, Slowing time of beam particles on electrons
     v0 : float
         m/s, Initial velocity of beam particles
@@ -350,7 +350,7 @@ class CurrentDriveEfficiencyTerm1(om.ExplicitComponent):
     https://doi.org/10.1088/0032-1028/22/4/002.
     """
     def setup(self):
-        self.add_input("τse", units="s")
+        self.add_input("τs", units="s")
         self.add_input("v0", units="Mm/s")
         self.add_input("Zb")
         self.add_input("G")
@@ -360,35 +360,35 @@ class CurrentDriveEfficiencyTerm1(om.ExplicitComponent):
         self.add_output("line1", units="A/W")
 
     def compute(self, inputs, outputs):
-        τse = inputs["τse"]
+        τs = inputs["τs"]
         v0 = inputs["v0"]
         zb = inputs["Zb"]
         G = inputs["G"]
         R = inputs["R"]
         α3 = inputs["α³"]
         E_NBI = inputs["E_NBI"]
-        line1 = τse * (mega * v0) * zb * G / (2 * pi * R * (1 + α3) *
+        line1 = τs * (mega * v0) * zb * G / (2 * pi * R * (1 + α3) *
                                               (kilo * E_NBI))
         outputs["line1"] = line1
 
     def setup_partials(self):
         self.declare_partials("line1",
-                              ["τse", "v0", "Zb", "G", "R", "α³", "E_NBI"])
+                              ["τs", "v0", "Zb", "G", "R", "α³", "E_NBI"])
 
     def compute_partials(self, inputs, J):
-        τse = inputs["τse"]
+        τs = inputs["τs"]
         v0 = inputs["v0"]
         zb = inputs["Zb"]
         G = inputs["G"]
         R = inputs["R"]
         α3 = inputs["α³"]
         E_NBI = inputs["E_NBI"]
-        numer = τse * (mega * v0) * zb * G
+        numer = τs * (mega * v0) * zb * G
         denom = (2 * pi * R * (1 + α3) * (kilo * E_NBI))
-        J["line1", "τse"] = (mega * v0) * zb * G / denom
-        J["line1", "v0"] = τse * mega * zb * G / denom
-        J["line1", "Zb"] = τse * (mega * v0) * G / denom
-        J["line1", "G"] = τse * (mega * v0) * zb / denom
+        J["line1", "τs"] = (mega * v0) * zb * G / denom
+        J["line1", "v0"] = τs * mega * zb * G / denom
+        J["line1", "Zb"] = τs * (mega * v0) * G / denom
+        J["line1", "G"] = τs * (mega * v0) * zb / denom
         J["line1", "R"] = -numer / denom / R
         J["line1", "E_NBI"] = -numer / denom / E_NBI
         J["line1", "α³"] = -numer / (2 * pi * R * (1 + α3)**2 * (kilo * E_NBI))
@@ -582,6 +582,9 @@ class CurrentDriveEfficiencyEquation(om.ExplicitComponent):
         J["It/P", "line2"] = line1 * line3
         J["It/P", "line3"] = line1 * line2
 
+class NBICurrentDrive(om.Group):
+    r"""
+    """
 
 class CurrentDriveEfficiency(om.Group):
     r"""
@@ -612,7 +615,7 @@ class CurrentDriveEfficiency(om.Group):
     vth_e : float
         m/s, Electron thermal velocity
 
-    τse : float
+    τs : float
         s, Slowing time of beam ions on electrons
 
     ni : array
@@ -622,6 +625,13 @@ class CurrentDriveEfficiency(om.Group):
     Zi : array
         Fundamental charges, charges of plasma ions
 
+    Outputs
+    -------
+    ftrap_u : float
+        Trapped particle fraction
+    It/P : float
+        A/W, Ratio of the net current flowing parallel to the magnetic field
+            to the injected neutral beam power
     """
     def setup(self):
         self.add_subsystem('A_bar',
@@ -652,7 +662,7 @@ class CurrentDriveEfficiency(om.Group):
         self.add_subsystem("line1",
                            CurrentDriveEfficiencyTerm1(),
                            promotes_inputs=[
-                               "τse", ("v0", "vb"), "Zb", "G", ("R", "R0"),
+                               "τs", ("v0", "vb"), "Zb", "G", ("R", "R0"),
                                "α³", ("E_NBI", "Eb")
                            ],
                            promotes_outputs=["line1"])
@@ -699,7 +709,7 @@ if __name__ == "__main__":
     prob.set_val("<T_e>", 9.20, units="keV")
     prob.set_val("vth_e", 56922, units="km/s")
 
-    prob.set_val("τse", 0.599, units="s")
+    prob.set_val("τs", 0.599, units="s")
 
     prob.set_val("ni", np.array([0.424, 0.424, 0.0353]), units="n20")
     prob.set_val("Ai", [2, 3, 12], units="u")

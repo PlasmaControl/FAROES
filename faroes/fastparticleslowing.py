@@ -374,6 +374,8 @@ class FastParticleSlowing(om.Group):
 
     Outputs
     -------
+    τs : float
+        s, Slowing time on electrons
     τth : float
         s, Fast particle thermalization time
     f_i : float
