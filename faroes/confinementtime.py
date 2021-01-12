@@ -48,10 +48,14 @@ class ConfinementTime(om.Group):
     def setup(self):
         config = self.options['config']
         scaling = self.options['scaling']
-        self.add_subsystem("law", ConfinementTimeScaling(config=config, scaling=scaling),
-                promotes_inputs=["*"])
-        self.add_subsystem("withH", ConfinementTimeMultiplication(),
-                promotes_inputs=["H"], promotes_outputs=["τe"])
+        self.add_subsystem("law",
+                           ConfinementTimeScaling(config=config,
+                                                  scaling=scaling),
+                           promotes_inputs=["*"])
+        self.add_subsystem("withH",
+                           ConfinementTimeMultiplication(),
+                           promotes_inputs=["H"],
+                           promotes_outputs=["τe"])
         self.connect("law.τe", ["withH.τe_law"])
 
 

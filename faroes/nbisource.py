@@ -22,8 +22,9 @@ class SimpleNBISourceProperties(om.ExplicitComponent):
 
     Notes
     -----
-    A and Z are (nearly) integers and won't change over the course of the simulation,
-    but for (me as a naive-user) technical reasons, they can't easily be
+    A and Z are (nearly) integers and won't change over
+    the course of the simulation, but for (me as a naive-user)
+    technical reasons, they can't easily be
     converted to being a discrete output.
     """
     def initialize(self):
@@ -82,20 +83,20 @@ class SimpleNBISource(om.Group):
         self.add_subsystem("props",
                            SimpleNBISourceProperties(config=config),
                            promotes_outputs=["P", "E", "A", "Z", "m"])
-        self.add_subsystem(
-            "rate",
-            om.ExecComp("S = P/E",
-                        S={'units': '1/s'},
-                        P={'units': 'W'},
-                        E={'units': 'J'}), promotes_outputs=["*"])
-        self.add_subsystem(
-            "v",
-            om.ExecComp(
-                "v = (2 * E/m)**(1/2)",
-                v={'units': 'm/s'},
-                E={'units': 'J'},
-                m={'units': 'kg'},
-            ), promotes_outputs=["*"])
+        self.add_subsystem("rate",
+                           om.ExecComp("S = P/E",
+                                       S={'units': '1/s'},
+                                       P={'units': 'W'},
+                                       E={'units': 'J'}),
+                           promotes_outputs=["*"])
+        self.add_subsystem("v",
+                           om.ExecComp(
+                               "v = (2 * E/m)**(1/2)",
+                               v={'units': 'm/s'},
+                               E={'units': 'J'},
+                               m={'units': 'kg'},
+                           ),
+                           promotes_outputs=["*"])
         self.connect('E', ['rate.E', 'v.E'])
         self.connect('P', ['rate.P'])
         self.connect('m', ['v.m'])
