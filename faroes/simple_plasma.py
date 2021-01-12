@@ -132,16 +132,20 @@ class ZeroDPlasmaDensities(om.ExplicitComponent):
         Ratio of main ion density to electron density
     n_imp/ne : float
         Ratio of impurity density to electron density
+    n_imp : float
+        m**-3, Impurity density
     ni/ne : float
         Ratio of ion density to electron density
     n_main_i : float
         m**-3, Main ion density
     n_D : float
-        m**-3, deuterium density
+        m**-3, Deuterium density
     n_T : float
-        m**-3, deuterium density
+        m**-3, Tritium density
     Z_ave : float
         Average ion charge
+    ρ : float
+        kg/m**3, Mass density
     """
     def setup(self):
         self.add_input("f_D", val=0.5)
@@ -397,7 +401,7 @@ class ZeroDPlasmaPressures(om.ExplicitComponent):
     -------
     <p_e> : float
         kPa, Averaged electron pressure
-    <p_ion> : float
+    <p_i> : float
         kPa, Averaged ion pressure
     """
     def setup(self):
@@ -444,6 +448,7 @@ class ZeroDPlasmaPressures(om.ExplicitComponent):
 
 class ZeroDPlasmaTemperatures(om.ExplicitComponent):
     r"""Zero-D plasma pressures and temperature
+
     Inputs
     ------
     <n_e> : float
@@ -594,6 +599,29 @@ class ThermalVelocity(om.ExplicitComponent):
 
 
 class ZeroDThermalFusionPower(om.ExplicitComponent):
+    r"""
+    Inputs
+    ------
+    V : float
+        m**3, Plasma volume
+    enhancement : float
+        Fusion enhancement from pressure peaking
+    P_fus/V : float
+        MW/m**3, Thermal fusion power density
+    P_α/V : float
+        MW/m**3, Thermal fusion alpha power density
+    P_n/V : float
+        MW/m**3, Thermal neutron power density
+
+    Outputs
+    -------
+    P_fus : float
+        MW, Thermal fusion power
+    P_α : float
+        MW, Thermal fusion alpha power
+    P_n : float
+        MW, Thermal neutron power
+    """
     def setup(self):
         self.add_input("V", units="m**3", desc="Plasma volume")
         self.add_input("P_fus/V", units="MW/m**3")
@@ -634,6 +662,8 @@ class ZeroDThermalFusionPower(om.ExplicitComponent):
 
 
 class ZeroDThermalFusion(om.Group):
+    r"""
+    """
     def initialize(self):
         self.options.declare('config', default=None)
 
@@ -657,6 +687,77 @@ class ZeroDThermalFusion(om.Group):
 
 
 class ZeroDPlasma(om.Group):
+    r"""
+    Notes
+    -----
+    Loaded from configuration files, these are effectively inputs as well
+
+    f_GW : float
+        Greenwald fraction
+    Z_eff : float
+        Plasma effective charge
+    Z_imp : float
+        Fundamental charges, Impurity charge
+    A_imp : float
+        u, Impurity mass
+    m_imp : float
+        kg, Impurity mass
+    P_fus enhancement from p-peaking : float
+        Enhancement of fusion power over that from assuming
+        the plasma is uniform. This is attributed to the pressure shape
+
+    Inputs
+    ------
+    <n_e> : float
+        m**-3, Averaged electron density
+    V : float
+        m**3, Plasma volume
+    τ_th : float
+        s, Energy confinement time
+    P_loss : float
+        MW, Plasma loss power
+    W_fast_NBI : float
+        MJ, Energy of NBI ions in the plasma
+    W_fast_α : float
+        MJ, Energy of fast alphas in the plasma
+
+    Outputs
+    -------
+    W_th : float
+        MJ, Thermal particle energy
+    W_fast : float
+        MJ, Total fast particle energy
+    W_tot : float
+        MJ, Total energy of plasma
+    <p_th> : float
+        kPa, Averaged thermal particle pressure
+    <p_tot> : float
+        kPa, Averaged total pressure, thermal + fast
+    A : float
+        Averaged ion mass number
+    <p_e> : float
+        kPa, Averaged electron pressure
+    <p_i> : float
+        kPa, Averaged ion pressure
+    <T_e> : float
+        keV, Averaged electron temperature
+    <T_i> : float
+        keV, Averaged ion temperature
+    n_main_i : float
+        m**-3, Main ion density
+    n_D : float
+        m**-3, deuterium density
+    n_T : float
+        m**-3, tritium density
+    Z_ave : float
+        Average ion charge
+    vth_e : float
+        m/s, Simple electron thermal velocity
+
+    Notes
+    -----
+    <q> refers to the volume average of a quantity q
+    """
     def initialize(self):
         self.options.declare('config', default=None)
 
@@ -696,6 +797,7 @@ class ZeroDPlasma(om.Group):
                            promotes_outputs=[("P_fus", "P_fus_th"),
                                              ("P_α", "P_α_th"),
                                              ("P_n", "P_n_th")])
+        self.connect("m", ["m_main_i"])
 
 
 if __name__ == "__main__":
