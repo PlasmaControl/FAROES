@@ -1,5 +1,6 @@
 import numpy as np
 from math import pi as π
+import scipy as scipy
 
 from plasmapy.particles import Particle, common_isotopes
 from plasmapy.particles import atomic_number, isotopic_abundance
@@ -139,4 +140,99 @@ def torus_volume(R, a, b=None):
     area = π * a * b
     circum = 2 * π * R
     V = area * circum
+    return V
+
+def cross_section_area_RZ(R, Z, nx=1000):
+    """Cross-sectional area of a poloidal slice
+
+    Parameters
+    ----------
+    R : fltarray
+        radial positions of separatrix
+    Z : fltarray
+        vertical positions of separatrix
+    nx : init
+        number of horizontal slices used for integration
+
+    Returns
+    -------
+    A : float
+        cross-sectional area
+    """
+
+    x = np.linspace(min(R), max(R), nx)
+
+    pos_inds = (Z >= 0)
+    neg_inds = (Z <= 0)
+
+    ypos = scipy.interpolate.interp1d(R[pos_inds], Z[pos_inds], bounds_error=False)
+    yneg = scipy.interpolate.interp1d(R[neg_inds], Z[neg_inds], bounds_error=False)
+
+    A = np.trapz(ypos(x)-yneg(x), x=x)
+
+    return A
+
+def surface_area_RZ(R, Z, nx=1000):
+    """Surface area of plasma
+
+    Parameters
+    ----------
+    R : fltarray
+        radial positions of separatrix
+    Z : fltarray
+        vertical positions of separatrix
+    nx : init
+        number of horizontal slices used for integration
+
+    Returns
+    -------
+    V : float
+        toroidal plasma volume
+    """
+
+    x = np.linspace(min(R), max(R), nx)
+
+    pos_inds = (Z >= 0)
+    neg_inds = (Z <= 0)
+
+    ypos = scipy.interpolate.interp1d(R[pos_inds], Z[pos_inds], bounds_error=False)
+    yneg = scipy.interpolate.interp1d(R[neg_inds], Z[neg_inds], bounds_error=False)
+
+    gradypos = np.gradient(ypos(x)) / np.gradient(x)
+    S1 = 2 * np.pi * np.trapz(x * np.sqrt(1 + gradypos**2), x=x)
+
+    gradyneg = np.gradient(yneg(x)) / np.gradient(x)
+    S2 = 2 * np.pi * np.trapz(x * np.sqrt(1 + gradyneg**2), x=x)
+
+    return S1 + S2
+
+def volume_RZ(R, Z, nx=1000):
+    """Volume of plasma by cylindrical shells
+
+    Parameters
+    ----------
+    R : fltarray
+        radial positions of separatrix
+    Z : fltarray
+        vertical positions of separatrix
+    nx : init
+        number of horizontal slices used for integration
+
+    Returns
+    -------
+    V : float
+        toroidal plasma volume
+    """
+
+    x = np.linspace(min(R), max(R), nx)
+
+    pos_inds = (Z >= 0)
+    neg_inds = (Z <= 0)
+
+    ypos = scipy.interpolate.interp1d(R[pos_inds], Z[pos_inds], bounds_error=False)
+    yneg = scipy.interpolate.interp1d(R[neg_inds], Z[neg_inds], bounds_error=False)
+
+    # volume by cylindrical shells
+    V = 2 * np.pi * np.trapz(x * (ypos(x)-yneg(x)), x=x)
+
     return V

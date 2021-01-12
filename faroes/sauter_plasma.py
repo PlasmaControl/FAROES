@@ -56,6 +56,8 @@ class SauterGeometry(om.ExplicitComponent):
     #     same as κ for this elliptical plasma.
     full plasma height : float
         m, twice b
+    A : float
+        m**2, cross-section area
     S : float
         m**2, surface area
     V : float
@@ -100,9 +102,8 @@ class SauterGeometry(om.ExplicitComponent):
         self.add_output("full_plasma_height",
                         units='m',
                         desc="Full plasma height")
-        self.add_output("S",
-                        units='m**2',
-                        desc="Surface area")
+        self.add_output("A", units='m**2', desc="Cross-section area")
+        self.add_output("S", units='m**2', desc="Surface area")
         self.add_output("V", units='m**3', desc="Volume")
         self.add_output("R_min",
                         units='m',
@@ -121,12 +122,11 @@ class SauterGeometry(om.ExplicitComponent):
         nθ = self.options["nθ"]
         θ = np.linspace(0, 2 * np.pi, nθ)
 
+        # from Sauter FED 2016
         R = R0 + a * np.cos(θ + δ * np.sin(θ) - ξ * np.sin(2 * θ))
         Z = κ * a * np.sin(θ + ξ * np.sin(2 * θ))
 
         b = max(Z) - min(Z)
-        #S = util.torus_surface_area(R0, a, b)
-        #V = util.torus_volume(R0, a, b)
 
         outputs["R"] = R
         outputs["Z"] = Z
@@ -135,8 +135,9 @@ class SauterGeometry(om.ExplicitComponent):
         outputs["b"] = b
         outputs["ε"] = a / R0
         outputs["full_plasma_height"] = 2 * b
-        #outputs["S"] = S
-        #outputs["V"] = V
+        outputs["A"] = util.cross_section_area_RZ(R, Z)
+        outputs["S"] = util.surface_area_RZ(R, Z)
+        outputs["V"] = util.volume_RZ(R, Z)
 
         outputs["R_min"] = R0 - a
         outputs["R_max"] = R0 + a
