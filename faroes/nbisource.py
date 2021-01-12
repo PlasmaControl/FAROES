@@ -7,9 +7,22 @@ from astropy import units as apunits
 class SimpleNBISourceProperties(om.ExplicitComponent):
     r"""Helper for the SimpleNBISource
 
+    Outputs
+    -------
+    P : float
+        MW, Neutral beam power to plasma
+    E : float
+        keV, energy per particle
+    A : float
+        u, mass of beam particles
+    Z : int
+        Fundamental charges, Charge of beam particles
+    m : float
+        kg, Mass of beam particles
+
     Notes
     -----
-    A and Z are integers and won't change over the course of the simulation,
+    A and Z are (nearly) integers and won't change over the course of the simulation,
     but for (me as a naive-user) technical reasons, they can't easily be
     converted to being a discrete output.
     """
@@ -39,27 +52,27 @@ class SimpleNBISource(om.Group):
     Does not handle geometry (incidence angles) etc,
     or beams with multiple energy components.
 
-    Notes
-    -----
-    A, Z will typically be fixed during a given set of simulation runs.
-
-    Inputs
-    ------
+    Outputs
+    -------
     P : float
         MW, Neutral beam power to plasma
     E : float
         keV, energy per particle
     A : float
-        mass number of beam particles
+        u, mass of beam particles
     Z : int
-        charge number of beam particles
-
-    Outputs
-    -------
+        Fundamental charges, Charge of beam particles
+    m : float
+        kg, Mass of beam particles
     S : float
         s^{-1}, particles per second
     v : float
         m/s, particle velocity
+
+    Notes
+    -----
+    A, Z will typically be fixed during a given set of simulation runs.
+
     """
     def initialize(self):
         self.options.declare("config", default=None)
