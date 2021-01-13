@@ -21,6 +21,25 @@ class TestMainIonMix(unittest.TestCase):
         assert_check_partials(check)
 
 
+class TestIonMixMux(unittest.TestCase):
+    def setUp(self):
+        prob = om.Problem()
+
+        prob.model = faroes.simple_plasma.IonMixMux()
+
+        prob.setup(force_alloc_complex=True)
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+    def test_value(self):
+        prob = self.prob
+        prob.run_driver()
+
+
 class TestThermalVelocity(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()

@@ -6,6 +6,8 @@ from scipy.constants import mega, kilo, atm, eV, electron_mass, pi
 
 from faroes.fusionreaction import SimpleRateCoeff, VolumetricThermalFusionRate
 
+import numpy as np
+
 
 class MainIonMix(om.ExplicitComponent):
     r"""Main ion species mix
@@ -592,10 +594,11 @@ class ThermalVelocity(om.ExplicitComponent):
     def compute_partials(self, inputs, J):
         mass = self.options['mass']
         T = inputs["T"]
-        J["v_th", "T"] = (1 * eV)**(1/2) / (2 * (T * mass)**(1 / 2))
-        J["v_mps", "T"] = (2 * eV)**(1/2) / (2 * (T * mass)**(1 / 2))
-        J["v_rms", "T"] = (3 * eV)**(1/2) / (2 * (T * mass)**(1 / 2))
-        J["v_meanmag", "T"] = (8 * eV / pi)**(1/2) / (2 * (T * mass)**(1 / 2))
+        J["v_th", "T"] = (1 * eV)**(1 / 2) / (2 * (T * mass)**(1 / 2))
+        J["v_mps", "T"] = (2 * eV)**(1 / 2) / (2 * (T * mass)**(1 / 2))
+        J["v_rms", "T"] = (3 * eV)**(1 / 2) / (2 * (T * mass)**(1 / 2))
+        J["v_meanmag",
+          "T"] = (8 * eV / pi)**(1 / 2) / (2 * (T * mass)**(1 / 2))
 
 
 class ZeroDThermalFusionPower(om.ExplicitComponent):
@@ -662,7 +665,33 @@ class ZeroDThermalFusionPower(om.ExplicitComponent):
 
 
 class ZeroDThermalFusion(om.Group):
-    r"""
+    r"""Thermal fusion power
+
+    Inputs
+    ------
+    T : float
+        keV, Ion temperature
+    V : float
+        m**3, Plasma volume
+    enhancement : float
+        Fusion enhancement from pressure peaking
+
+    Outputs
+    -------
+    <σv> : float
+        m**3/s, Fusion reaction rate coefficient
+    P_fus/V : float
+        MW/m**3, Volumetric thermal fusion energy production rate
+    P_n/V : float
+        MW/m**3, Volumetric thermal fusion neutron energy production rate
+    P_α/V : float
+        MW/m**3, Volumetric thermal fusion alpha energy production rate
+    P_fus : float
+        MW, Thermal fusion power
+    P_α : float
+        MW, Thermal fusion alpha power
+    P_n : float
+        MW, Thermal neutron power
     """
     def initialize(self):
         self.options.declare('config', default=None)
@@ -684,6 +713,90 @@ class ZeroDThermalFusion(om.Group):
                            ZeroDThermalFusionPower(),
                            promotes_inputs=["*"],
                            promotes_outputs=["*"])
+
+
+class IonMixMux(om.ExplicitComponent):
+    r"""Multiplex ion data into arrays
+
+    Inputs
+    ------
+    n_D : float
+        n20, Deuterium density
+    n_T : float
+        n20, Tritium density
+    n_imp : float
+        n20, Impurity density
+    A_imp : float
+        u, Impurity mass
+    Z_imp : float
+        e, Impurity charge
+
+    Outputs
+    -------
+    ni : array
+        n20, Ion densities
+    Ai : array
+        u, ion masses
+    Zi : array
+        e, ion charges
+    Zi2 : array
+        e**2, squares of ion charges
+    """
+    def setup(self):
+        n = 3
+        self.add_input('n_D', units='n20')
+        self.add_input('n_T', units='n20')
+        self.add_input('n_imp', units='n20')
+        self.add_input('A_imp', units='u')
+        self.add_input('Z_imp', units='e')
+        self.add_output('ni', units='n20', shape=(n, ))
+        self.add_output('Ai', units='u', shape=(n, ))
+        self.add_output('Zi', units='e', shape=n)
+        self.add_output('Zi2', units='e**2', shape=n)
+
+    def compute(self, inputs, outputs):
+        nD = inputs["n_D"]
+        nT = inputs["n_T"]
+        nZ = inputs["n_imp"]
+        n = np.array([nD, nT, nZ])
+        outputs["ni"] = n
+        A_D = deuteron.mass_number
+        A_T = triton.mass_number
+        A_imp = inputs["A_imp"][0]
+        Ai = np.array([A_D, A_T, A_imp])
+        outputs["Ai"] = Ai
+        Z_imp = inputs["Z_imp"][0]
+        Zi = np.array([1, 1, Z_imp])
+        outputs["Zi"] = Zi
+        outputs["Zi2"] = Zi**2
+
+    def setup_partials(self):
+        self.declare_partials(of="Ai",
+                              wrt="A_imp",
+                              rows=[2],
+                              cols=[0],
+                              val=1.0)
+        self.declare_partials(of="Zi",
+                              wrt="Z_imp",
+                              rows=[2],
+                              cols=[0],
+                              val=1.0)
+        self.declare_partials(of="Zi2",
+                              wrt="Z_imp",
+                              rows=[2],
+                              cols=[0],
+                              val=1.0)
+        self.declare_partials(of="ni", wrt="n_D", rows=[0], cols=[0], val=1.0)
+        self.declare_partials(of="ni", wrt="n_T", rows=[1], cols=[0], val=1.0)
+        self.declare_partials(of="ni",
+                              wrt="n_imp",
+                              rows=[2],
+                              cols=[0],
+                              val=1.0)
+
+    def compute_partials(self, inputs, J):
+        Z_imp = inputs["Z_imp"]
+        J["Zi2", "Z_imp"] = 2 * Z_imp
 
 
 class ZeroDPlasma(om.Group):
@@ -771,6 +884,7 @@ class ZeroDPlasma(om.Group):
                            ZeroDPlasmaDensities(),
                            promotes_inputs=["*", ("n_e", "<n_e>")],
                            promotes_outputs=["*"])
+        self.add_subsystem('ionmix', IonMixMux(), promotes=["*"])
         self.add_subsystem('storedenergy',
                            ZeroDPlasmaStoredEnergy(),
                            promotes_inputs=["*"],
@@ -813,5 +927,5 @@ if __name__ == "__main__":
     prob.set_val("<n_e>", 1.06e20, units="m**-3")
     prob.run_driver()
 
-    all_inputs = prob.model.list_inputs(values=True)
-    all_outputs = prob.model.list_outputs(values=True)
+    all_inputs = prob.model.list_inputs(values=True, print_arrays=True)
+    all_outputs = prob.model.list_outputs(values=True, print_arrays=True)
