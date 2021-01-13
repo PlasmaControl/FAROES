@@ -28,10 +28,12 @@ class SimpleRateCoeff(om.ExplicitComponent):
     """
     def setup(self):
         self.coeff = 1.1e-24
+        sigma_v_ref = self.coeff * 10**2
         self.add_input("T", units="keV", desc="Ion temperature")
         self.add_output("<σv>",
                         lower=0,
                         units="m**3/s",
+                        ref=sigma_v_ref,
                         desc="Rate coefficient")
 
     def compute(self, inputs, outputs):

@@ -158,8 +158,10 @@ class PlasmaGeometry(om.ExplicitComponent):
                         desc="Top to bottom of the ellipse")
         self.add_output("surface area",
                         units='m**2',
+                        lower=0,
+                        ref=100,
                         desc="Surface area of the elliptical plasma")
-        self.add_output("V", units='m**3', desc="Volume")
+        self.add_output("V", units='m**3', desc="Volume", lower=0, ref=100)
         self.add_output("R_min",
                         units='m',
                         desc="Inner radius of plasma at midplane")

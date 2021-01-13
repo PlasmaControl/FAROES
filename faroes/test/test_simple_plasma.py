@@ -64,6 +64,9 @@ class TestZeroDPlasmaDensities(unittest.TestCase):
         prob.setup(force_alloc_complex=True)
         prob.set_val('Z_imp', 6)
         prob.set_val('Z_eff', 2)
+        prob.set_val('n_e', 1.06, units="n20")
+        prob.set_val('A_imp', 12, units="u")
+        prob.set_val('A_main_i', 2.5, units="u")
 
         check = prob.check_partials(out_stream=None, method='cs')
         assert_check_partials(check)

@@ -42,9 +42,10 @@ class SimpleNBISourceProperties(om.ExplicitComponent):
         beam_ion_Z = species.integer_charge
         beam_ion_mass_number = species.mass_number
         beam_ion_mass = species.mass.to(apunits.kg).value
-        self.add_output("m", units='kg', val=beam_ion_mass)
-        self.add_output("A", val=beam_ion_mass_number)
-        self.add_output("Z", val=beam_ion_Z)
+        m_ref = 1e-27
+        self.add_output("m", units='kg', lower=0, ref=m_ref, val=beam_ion_mass)
+        self.add_output("A", units="u", lower=0, val=beam_ion_mass_number)
+        self.add_output("Z", units="e", val=beam_ion_Z)
 
 
 class SimpleNBISource(om.Group):
@@ -62,7 +63,7 @@ class SimpleNBISource(om.Group):
     A : float
         u, mass of beam particles
     Z : int
-        Fundamental charges, Charge of beam particles
+        e, Charge of beam particles
     m : float
         kg, Mass of beam particles
     S : float

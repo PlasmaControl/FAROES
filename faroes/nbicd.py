@@ -168,7 +168,7 @@ class TrappedParticleFractionUpperEst(om.ExplicitComponent):
     """
     def setup(self):
         self.add_input("ε")
-        self.add_output("ftrap_u")
+        self.add_output("ftrap_u", lower=0)
 
     def compute(self, inputs, outputs):
         ε = inputs["ε"]
@@ -249,7 +249,7 @@ class CurrentDriveAlphaCubed(om.ExplicitComponent):
                        shape_by_conn=True,
                        copy_shape='ni',
                        desc="Ion field particle charges")
-        self.add_output('α³')
+        self.add_output('α³', lower=0)
         self.const = 0.75 * pi**(1 / 2) * electron_mass_in_u
 
     def compute(self, inputs, outputs):
@@ -313,7 +313,7 @@ class CurrentDriveG(om.ExplicitComponent):
         self.add_input("A")
         self.add_input("Zb")
         self.add_input("Z_eff")
-        self.add_output("G")
+        self.add_output("G", lower=0)
 
     def compute(self, inputs, outputs):
         ftrap_u = inputs["ftrap_u"]
@@ -515,7 +515,7 @@ class CurrentDriveEfficiencyTerm3(om.ExplicitComponent):
     def setup(self):
         self.add_input("α³")
         self.add_input("β1")
-        self.add_output("line3")
+        self.add_output("line3", lower=0)
 
     def compute(self, inputs, outputs):
         β1 = inputs["β1"]

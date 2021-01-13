@@ -81,7 +81,7 @@ class AverageIonMass(om.ExplicitComponent):
                        shape_by_conn=True,
                        copy_shape="ni",
                        desc="Ion field particle atomic masses")
-        self.add_output("A_bar", units="u")
+        self.add_output("A_bar", units="u", lower=0)
 
     def compute(self, inputs, outputs):
         ni = inputs["ni"]
