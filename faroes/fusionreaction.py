@@ -15,6 +15,16 @@ class SimpleRateCoeff(om.ExplicitComponent):
 
        \sigma v = 1.1 \times 10^{-24} T^2
 
+    Inputs
+    ------
+    T : float
+        keV, Ion temperature
+
+    Outputs
+    -------
+    <σv> : float
+        m**3/s, Fusion reaction rate coefficient
+
     """
     def setup(self):
         self.coeff = 1.1e-24
@@ -39,6 +49,26 @@ class SimpleRateCoeff(om.ExplicitComponent):
 
 
 class VolumetricThermalFusionRate(om.ExplicitComponent):
+    r"""
+
+    Inputs
+    ------
+    n_D : float
+        n20, Deuterium density
+    n_T : float
+        n20, Tritium density
+    <σv> : float
+        um**3/s, Rate coefficient
+
+    Outputs
+    -------
+    P_fus/V : float
+        MW/m**3, Volumetric fusion energy production rate
+    P_n/V : float
+        MW/m**3, Volumetric neutron energy production rate
+    P_α/V : float
+        MW/m**3, Volumetric alpha energy production rate
+    """
     def setup(self):
         REACTION_ENERGY = nuclear_reaction_energy(reactants=['D', 'T'],
                                                   products=['alpha', 'n'])
