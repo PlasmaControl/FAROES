@@ -86,10 +86,11 @@ class ConfinementTimeMultiplication(om.ExplicitComponent):
         self.add_input("H",
                        val=1,
                        desc="H-factor; multiplies confinement time")
-        self.add_output("τe")
+        self.add_output("τe", units="s")
 
     def compute(self, inputs, outputs):
-        outputs["τe"] = inputs["H"] * inputs["τe_law"]
+        τe = inputs["H"] * inputs["τe_law"]
+        outputs["τe"] = τe
 
     def setup_partials(self):
         self.declare_partials("τe", ["H", "τe_law"])
