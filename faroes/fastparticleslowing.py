@@ -3,7 +3,7 @@ import faroes.units  # noqa: F401
 import openmdao.api as om
 from openmdao.utils.units import unit_conversion
 
-from scipy.constants import pi, electron_mass, mega
+from scipy.constants import pi, electron_mass
 from scipy.special import hyp2f1
 import numpy as np
 
@@ -27,7 +27,7 @@ class SlowingThermalizationTime(om.ExplicitComponent):
     def setup(self):
         self.add_input("W/Wc", desc="Initial beam energy / critical energy")
         self.add_input("ts", units="s", desc="Ion-electron slowing time")
-        self.add_output("τth")
+        self.add_output("τth", units="s")
 
     def compute(self, inputs, outputs):
         w_rat = inputs["W/Wc"]
@@ -93,7 +93,7 @@ class SlowingTimeOnElectrons(om.ExplicitComponent):
     At : float
         u, Test particle mass
     Zt : int
-        units of fundamental charge, Test ion charge. Discrete.
+        e, Test ion charge
     ne : float
         m**-3, Electron density
     Te : float
@@ -124,32 +124,33 @@ class SlowingTimeOnElectrons(om.ExplicitComponent):
         self.add_input("Te", units="keV", desc="Electron temperature")
         self.add_input("At", units="u", desc="Test particle mass")
         self.add_input("logΛe", desc="Collision log of test ion on e⁻")
-        self.add_discrete_input("Zt", val=1, desc="Test particle charge")
+        self.add_input("Zt", val=1, desc="Test particle charge")
         self.add_output("ts", units='s', desc="Slowing time of ions on e⁻")
 
-    def compute(self, inputs, outputs, discrete_inputs, discrete_outputs):
+    def compute(self, inputs, outputs):
         ne = inputs["ne"]
         Te = inputs["Te"]
         At = inputs["At"]
-        Zt = discrete_inputs["Zt"]
+        Zt = inputs["Zt"]
         logLe = inputs["logΛe"]
         ts = self.c * At * Te**(3 / 2) / (ne * Zt**2 * logLe)
         outputs["ts"] = ts
 
     def setup_partials(self):
-        self.declare_partials('ts', ['ne', 'Te', 'At', 'logΛe'])
+        self.declare_partials('ts', ['ne', 'Te', 'At', 'logΛe', 'Zt'])
 
-    def compute_partials(self, inputs, J, discrete_inputs):
+    def compute_partials(self, inputs, J):
         ne = inputs["ne"]
         Te = inputs["Te"]
         At = inputs["At"]
-        Zt = discrete_inputs["Zt"]
+        Zt = inputs["Zt"]
         logLe = inputs["logΛe"]
         J["ts", "ne"] = -self.c * At * Te**(3 / 2) / (ne**2 * Zt**2 * logLe)
         J["ts",
           "Te"] = (3 / 2) * self.c * At * Te**(1 / 2) / (ne * Zt**2 * logLe)
         J["ts", "At"] = self.c * Te**(3 / 2) / (ne * Zt**2 * logLe)
         J["ts", "logΛe"] = -self.c * At * Te**(3 / 2) / (ne * Zt**2 * logLe**2)
+        J["ts", "Zt"] = -2 * self.c * At * Te**(3 / 2) / (ne * Zt**3 * logLe)
 
 
 class AverageEnergyWhileSlowing(om.ExplicitComponent):
@@ -408,13 +409,12 @@ class FastParticleSlowing(om.Group):
                            AverageEnergyWhileSlowing(),
                            promotes_outputs=["*"])
         self.add_subsystem("Wfast",
-                           om.ExecComp("Wfast = (Wbar) * tauth * S / mega",
+                           om.ExecComp("Wfast = (Wbar) * tauth * S / 10**6",
                                        Wfast={"units": "MJ"},
                                        Wbar={"units": "J"},
                                        tauth={"units": "s"},
-                                       mega={"value": mega},
                                        S={"units": "1/s"}),
-                           promotes_inputs=["Wbar", "tauth", "S"],
+                           promotes_inputs=["Wbar", ("tauth", "τth"), "S"],
                            promotes_outputs=["Wfast"])
 
         self.connect("Wcrit.W_crit", ["WcRat.W_crit", "averagew.Wc"])
