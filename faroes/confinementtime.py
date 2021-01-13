@@ -33,7 +33,7 @@ class ConfinementTime(om.Group):
         effective elongation, S_c / (π a^2),
         where S_c is the plasma cross-sectional area
     M : float
-        main ion mass number
+        u, main ion mass number
 
     Outputs
     -------
@@ -167,7 +167,7 @@ class ConfinementTimeScaling(om.ExplicitComponent):
         self.add_input("R", units="m", desc="major radius")
         self.add_input("ε", desc="Inverse aspect ratio")
         self.add_input("κa", desc="Effective elongation, S_c / πa²")
-        self.add_input("M", desc="Ion mass number")
+        self.add_input("M", units="u", desc="Ion mass number")
 
         self.add_output("τe", units="s", desc="Energy confinement time")
 

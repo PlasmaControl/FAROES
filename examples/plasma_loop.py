@@ -116,7 +116,6 @@ if __name__ == "__main__":
     # prob.model.add_constraint('magnets.A_m', lower=0)
     # prob.model.add_constraint('magnets.A_t', lower=0)
 
-    prob.model.set_input_defaults("<n_e>", val=1.0e20, units="m**-3")
     prob.setup()
     # prob.check_config(checks=['unconnected_inputs'])
 
@@ -142,16 +141,14 @@ if __name__ == "__main__":
     prob.model.nonlinear_solver.options['maxiter'] = 20
     prob.model.linear_solver = om.DirectSolver()
 
-    prob.run_model()
-    # prob.check_totals(of=['NBIslowing.Wfast'], wrt=['<n_e>'])
+    prob.run_driver()
+    prob.check_totals(of=['NBIslowing.Wfast'], wrt=['confinementtime.Ip'])
 
     #    prob.set_val('magnets.n_coil', 18)
     #    prob.set_val('magnets.windingpack.j_eff_max', 160)
     #    prob.set_val('magnets.windingpack.f_HTS', 0.76)
     #    prob.set_val("magnets.magnetstructure_props.Young's modulus", 220)
 
-    prob.run_driver()
-    prob.check_totals(of=['NBIslowing.Wfast'], wrt=['<n_e>'])
-
-    all_inputs = prob.model.list_inputs(values=True, print_arrays=True)
-    all_outputs = prob.model.list_outputs(values=True)
+    #all_inputs = prob.model.list_inputs(values=True, print_arrays=True)
+    all_outputs = prob.model.list_outputs(values=True, print_arrays=True,
+            units=True)

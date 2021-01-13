@@ -122,9 +122,9 @@ class TestZeroDPlasmaTemperatures(unittest.TestCase):
 
     def test_partials(self):
         prob = self.prob
-        prob.set_val("<n_e>", 1.06e20)
-        prob.set_val("<p_e>", 156.6)
-        prob.set_val("<p_i>", 143.55)
+        prob.set_val("<n_e>", 1.06, units="n20")
+        prob.set_val("<p_e>", 156.6, units="kPa")
+        prob.set_val("<p_i>", 143.55, units="kPa")
         prob.set_val("ni/ne", 0.83)
 
         check = prob.check_partials(out_stream=None, method='cs')
@@ -132,9 +132,9 @@ class TestZeroDPlasmaTemperatures(unittest.TestCase):
 
     def test_values(self):
         prob = self.prob
-        prob.set_val("<n_e>", 1.06e20)
-        prob.set_val("<p_e>", 156.6)
-        prob.set_val("<p_i>", 143.55)
+        prob.set_val("<n_e>", 1.06e20, units="m**-3")
+        prob.set_val("<p_e>", 156.6, units="kPa")
+        prob.set_val("<p_i>", 143.55, units="kPa")
         prob.set_val("ni/ne", 0.83)
         prob.run_driver()
         assert_near_equal(prob["<T_i>"], 10.12, tolerance=1e-2)

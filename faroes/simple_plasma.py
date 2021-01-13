@@ -462,7 +462,7 @@ class ZeroDPlasmaTemperatures(om.ExplicitComponent):
     Inputs
     ------
     <n_e> : float
-        m**-3, Average electron density
+        n20, Average electron density
     ni/ne : float
         Ratio of ion density to electron density
     <p_e> : float
@@ -478,7 +478,7 @@ class ZeroDPlasmaTemperatures(om.ExplicitComponent):
         keV, Averaged ion temperature
     """
     def setup(self):
-        self.add_input("<n_e>", units="m**-3", desc="Average electron density")
+        self.add_input("<n_e>", units="n20", desc="Average electron density")
         self.add_input("ni/ne", desc="Ratio of ions to electrons")
         self.add_input("<p_e>", units="kPa", desc="Averaged electron pressure")
         self.add_input("<p_i>", units="kPa", desc="Averaged ion pressure")
@@ -500,8 +500,9 @@ class ZeroDPlasmaTemperatures(om.ExplicitComponent):
         p_i = inputs["<p_i>"]
         n_e = inputs["<n_e>"]
         n_ion_frac = inputs["ni/ne"]
-        T_e = (p_e * kilo) / (n_e * kilo * eV)
-        T_i = (p_i * kilo) / (n_e * n_ion_frac * kilo * eV)
+        n_scale = 1e20
+        T_e = (p_e * kilo) / (n_scale * n_e * kilo * eV)
+        T_i = (p_i * kilo) / (n_scale * n_e * n_ion_frac * kilo * eV)
         outputs["<T_e>"] = T_e
         outputs["<T_i>"] = T_i
 
@@ -515,12 +516,13 @@ class ZeroDPlasmaTemperatures(om.ExplicitComponent):
         n_e = inputs["<n_e>"]
         n_ion_frac = inputs["ni/ne"]
 
-        J["<T_e>", "<p_e>"] = 1 / (n_e * eV)
-        J["<T_e>", "<n_e>"] = -p_e / (eV * n_e**2)
+        n_scale = 1e20
+        J["<T_e>", "<p_e>"] = 1 / (n_scale * n_e * eV)
+        J["<T_e>", "<n_e>"] = -p_e / (eV * n_scale * n_e**2)
 
-        J["<T_i>", "<p_i>"] = 1 / (eV * n_e * n_ion_frac)
-        J["<T_i>", "<n_e>"] = -p_i / (eV * n_e**2 * n_ion_frac)
-        J["<T_i>", "ni/ne"] = -p_i / (eV * n_e * n_ion_frac**2)
+        J["<T_i>", "<p_i>"] = 1 / (eV * n_scale * n_e * n_ion_frac)
+        J["<T_i>", "<n_e>"] = -p_i / (eV * n_scale * n_e**2 * n_ion_frac)
+        J["<T_i>", "ni/ne"] = -p_i / (eV * n_scale * n_e * n_ion_frac**2)
 
 
 class ThermalVelocity(om.ExplicitComponent):
@@ -835,7 +837,7 @@ class ZeroDPlasma(om.Group):
     Inputs
     ------
     <n_e> : float
-        m**-3, Averaged electron density
+        n20, Averaged electron density
     V : float
         m**3, Plasma volume
     τ_th : float
@@ -870,11 +872,11 @@ class ZeroDPlasma(om.Group):
     <T_i> : float
         keV, Averaged ion temperature
     n_main_i : float
-        m**-3, Main ion density
+        n20, Main ion density
     n_D : float
-        m**-3, deuterium density
+        n20, deuterium density
     n_T : float
-        m**-3, tritium density
+        n20, tritium density
     Z_ave : float
         Average ion charge
     vth_e : float
@@ -942,5 +944,9 @@ if __name__ == "__main__":
     prob.run_driver()
     prob.check_config(checks=['unconnected_inputs'])
 
-    all_inputs = prob.model.list_inputs(values=True, print_arrays=True)
-    all_outputs = prob.model.list_outputs(values=True, print_arrays=True)
+    all_inputs = prob.model.list_inputs(values=True,
+                                        print_arrays=True,
+                                        units=True)
+    all_outputs = prob.model.list_outputs(values=True,
+                                          print_arrays=True,
+                                          units=True)
