@@ -84,8 +84,11 @@ class SimpleEllipticalTFSet(om.ExplicitComponent):
         self.add_output("V_set",
                         units="m**3",
                         desc="Material volume of the set")
+        V_enc_ref = 1e3
         self.add_output("V_enc",
                         units="m**3",
+                        lower=0,
+                        ref=V_enc_ref,
                         desc="magnetized volume enclosed by the set")
 
     def compute(self, inputs, outputs, discrete_inputs, discrete_outputs):

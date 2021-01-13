@@ -60,9 +60,11 @@ class ThinSolenoidInductance(om.ExplicitComponent):
         self.add_input("r", units="m", desc="radius")
         self.add_input("h", units="m", desc="length")
 
+        L_line_ref = 1e-4
         self.add_output(
             "L_line",
             units="H*m**2",
+            ref=L_line_ref,
             desc="Modified inductance, to use with current-per-meter")
 
     def L_infinite(self, r, h):
@@ -154,14 +156,34 @@ class FiniteBuildCentralSolenoid(om.ExplicitComponent):
                         desc="Remaining fraction of maximum B on conductor")
         self.add_output("j_constraint",
                         desc="Remaining fraction of maximum current density")
-        self.add_output("A_eff", units="m**2", desc="Effective solenoid area")
-        self.add_output("r_eff", units="m", desc="Effective solenoid radius")
-        self.add_output("B", units="T", desc="Maximum field")
-        self.add_output("Φ_single", units="Wb", desc="Single-swing flux")
-        self.add_output("Φ_double", units="Wb", desc="Double-swing flux")
+        self.add_output("A_eff",
+                        units="m**2",
+                        lower=0,
+                        desc="Effective solenoid area")
+        self.add_output("r_eff",
+                        units="m",
+                        lower=0,
+                        desc="Effective solenoid radius")
+        self.add_output("B", units="T", lower=0, desc="Maximum field")
+        Φ_ref = 10
+        self.add_output("Φ_single",
+                        units="Wb",
+                        ref=Φ_ref,
+                        lower=0,
+                        desc="Single-swing flux")
+        self.add_output("Φ_double",
+                        units="Wb",
+                        ref=Φ_ref,
+                        lower=0,
+                        desc="Double-swing flux")
 
         self.add_output("V", units="m**3", desc="volume")
-        self.add_output("conductor_quantity", units="kA * m", desc="volume")
+        conductor_ref = 1e6
+        self.add_output("conductor_quantity",
+                        units="kA * m",
+                        lower=0,
+                        ref=conductor_ref,
+                        desc="volume")
 
     def b_bore(self, j, r_inner, r_outer):
         """Central maximum B field.

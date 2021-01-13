@@ -95,7 +95,7 @@ class SlowingTimeOnElectrons(om.ExplicitComponent):
     Zt : int
         e, Test ion charge
     ne : float
-        m**-3, Electron density
+        n20, Electron density
     Te : float
         eV, Electron temperature
     logΛe : float
@@ -224,13 +224,13 @@ class CriticalSlowingEnergy(om.ExplicitComponent):
     At : float
         u, test particle mass
     ni : array
-        m**-3, ion densities
+        n20, ion densities
     Ai : array
         u, ion masses
     Zi : array
         e, ion charges
     ne : float
-        m**-3, electron density
+        n20, electron density
     Te : float
         eV, electron temperature
 
@@ -366,14 +366,14 @@ class FastParticleSlowing(om.Group):
         keV, Test particle initial kinetic energy
 
     ne : float
-        m**-3, electron density
+        n20, electron density
     Te : float
         keV, electron temperature
     logΛe: float
         Coulomb logarithm
 
     ni : Array
-        m**-3, ion densities
+        n20, ion densities
     Ai : Array
         u, ion masses
     Zi : Array
@@ -448,7 +448,7 @@ if __name__ == "__main__":
     prob.set_val("At", 2 * m_p, units='kg')
     prob.set_val("Zt", 1)
     prob.set_val("Wt", 500, units='keV')
-    prob.set_val("ne", 1.06e20, units='m**-3')
+    prob.set_val("ne", 1.06, units="n20")
     prob.set_val("Te", 9.2, units='keV')
     prob.set_val("logΛe", 17.37)
     prob.set_val("ni",

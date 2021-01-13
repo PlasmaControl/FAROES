@@ -57,8 +57,7 @@ class MenardSTBlanketAndShieldMagnetProtection(om.ExplicitComponent):
             'Eff Sh+Bl n thickness',
             units='m',
             lower=0,
-            desc="Effective neutron-stopping length of Ib blanket and shield"
-        )
+            desc="Effective neutron-stopping length of Ib blanket and shield")
         self.add_output(
             "Total Sh+Bl thickness",
             units="m",
@@ -209,6 +208,7 @@ class MenardSTBlanketAndShieldGeometry(om.ExplicitComponent):
                        units="m",
                        desc="Inter-VV WC shield inner radius")
 
+        V_ref = 100  # m³
         self.add_output("Ib h",
                         units="m",
                         desc="Inboard blanket and shield height")
@@ -220,9 +220,11 @@ class MenardSTBlanketAndShieldGeometry(om.ExplicitComponent):
                         desc="Inboard shield estimated volume")
         self.add_output("Ob blanket V",
                         units="m**3",
+                        ref=V_ref,
                         desc="Outboard blanket estimated volume")
         self.add_output("Blanket V",
                         units="m**3",
+                        ref=V_ref,
                         desc="Total blanket estimated volume")
 
     def compute(self, inputs, outputs):
@@ -365,3 +367,5 @@ if __name__ == "__main__":
 
     check = prob.check_partials(out_stream=None, method='cs')
     assert_check_partials(check)
+    prob.run_driver()
+    all_outputs = prob.model.list_outputs(values=True)
