@@ -14,6 +14,8 @@ from faroes.elliptical_plasma import PlasmaGeometry
 from faroes.simple_plasma import ZeroDPlasma
 from faroes.nbisource import SimpleNBISource
 from faroes.fastparticleslowing import FastParticleSlowing
+from faroes.fusionreaction import NBIBeamTargetFusion, TotalDTFusionRate
+from faroes.fusionreaction import SimpleFusionAlphaSource
 
 from faroes.confinementtime import ConfinementTime
 
@@ -52,9 +54,9 @@ class Machine(om.Group):
         self.add_subsystem("NBIslowing",
                            FastParticleSlowing(),
                            promotes_inputs=[("ne", "<n_e>"), ("Te", "<T_e>")])
-        self.connect("ZeroDPlasma.ni", ["NBIslowing.ni"])
-        self.connect("ZeroDPlasma.Ai", ["NBIslowing.Ai"])
-        self.connect("ZeroDPlasma.Zi", ["NBIslowing.Zi"])
+        self.connect("ZeroDPlasma.ni", ["NBIslowing.ni", "alphaslowing.ni"])
+        self.connect("ZeroDPlasma.Ai", ["NBIslowing.Ai", "alphaslowing.Ai"])
+        self.connect("ZeroDPlasma.Zi", ["NBIslowing.Zi", "alphaslowing.Zi"])
 
         # back-connections
         self.connect("NBIslowing.Wfast", ["ZeroDPlasma.W_fast_NBI"])
@@ -64,8 +66,30 @@ class Machine(om.Group):
         self.connect("NBIsource.A", ["NBIslowing.At"])
         self.connect("NBIsource.Z", ["NBIslowing.Zt"])
 
+        self.add_subsystem("NBIfusion", NBIBeamTargetFusion(),
+                promotes_inputs=["<T_e>"])
 
-#        self.add_subsystem(""
+        self.connect("NBIsource.P", ["NBIfusion.P_NBI"])
+
+        self.add_subsystem("DTfusion", TotalDTFusionRate())
+        self.connect("ZeroDPlasma.rate_fus_th", ["DTfusion.rate_th"])
+        self.connect("ZeroDPlasma.P_fus_th", ["DTfusion.P_fus_th"])
+        self.connect("NBIfusion.rate_fus", ["DTfusion.rate_NBI"])
+        self.connect("NBIfusion.P_fus", ["DTfusion.P_fus_NBI"])
+
+        self.add_subsystem("alphasource", SimpleFusionAlphaSource())
+        self.connect("DTfusion.rate_fus", "alphasource.rate")
+
+        self.add_subsystem("alphaslowing", FastParticleSlowing(),
+                           promotes_inputs=[("ne", "<n_e>"), ("Te", "<T_e>")])
+        self.connect("alphasource.S", ["alphaslowing.S"])
+        self.connect("alphasource.E", ["alphaslowing.Wt"])
+        self.connect("alphasource.A", ["alphaslowing.At"])
+        self.connect("alphasource.Z", ["alphaslowing.Zt"])
+
+        # back-connections
+        self.connect("alphaslowing.Wfast", ["ZeroDPlasma.W_fast_α"])
+
 
 #        self.add_subsystem("radial_build",
 #                           MenardSTRadialBuild(config=config),
@@ -134,6 +158,7 @@ if __name__ == "__main__":
     prob.set_val("ZeroDPlasma.W_fast_α", 13.05, units="MJ")
 
     prob.set_val("NBIslowing.logΛe", 17.37)
+    prob.set_val("alphaslowing.logΛe", 17.37)
 
     prob.model.nonlinear_solver = om.NewtonSolver(solve_subsystems=True)
     # prob.model.nonlinear_solver = om.NonlinearBlockGS()
@@ -142,13 +167,14 @@ if __name__ == "__main__":
     prob.model.linear_solver = om.DirectSolver()
 
     prob.run_driver()
-    prob.check_totals(of=['NBIslowing.Wfast'], wrt=['confinementtime.Ip'])
+    #prob.check_totals(of=['NBIslowing.Wfast'], wrt=['confinementtime.Ip'])
 
     #    prob.set_val('magnets.n_coil', 18)
     #    prob.set_val('magnets.windingpack.j_eff_max', 160)
     #    prob.set_val('magnets.windingpack.f_HTS', 0.76)
     #    prob.set_val("magnets.magnetstructure_props.Young's modulus", 220)
 
-    #all_inputs = prob.model.list_inputs(values=True, print_arrays=True)
-    all_outputs = prob.model.list_outputs(values=True, print_arrays=True,
+    all_inputs = prob.model.list_inputs(values=True, print_arrays=True,
             units=True)
+    all_outputs = prob.model.list_outputs(values=True, print_arrays=True,
+             units=True)
