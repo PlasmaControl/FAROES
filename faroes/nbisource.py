@@ -45,7 +45,7 @@ class SimpleNBISourceProperties(om.ExplicitComponent):
         m_ref = 1e-27
         self.add_output("m", units='kg', lower=0, ref=m_ref, val=beam_ion_mass)
         self.add_output("A", units="u", lower=0, val=beam_ion_mass_number)
-        self.add_output("Z", units="e", val=beam_ion_Z)
+        self.add_output("Z", val=beam_ion_Z)
 
 
 class SimpleNBISource(om.Group):

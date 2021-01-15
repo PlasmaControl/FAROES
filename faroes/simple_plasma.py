@@ -84,7 +84,6 @@ class ZeroDPlasmaProperties(om.ExplicitComponent):
         impurity = Particle(imp["species"])
         self.add_output('Z_imp',
                         val=impurity.integer_charge,
-                        units="e",
                         desc='Impurity charge')
         self.add_output('A_imp',
                         val=impurity.mass_number,
@@ -145,7 +144,7 @@ class ZeroDPlasmaDensities(om.ExplicitComponent):
         self.add_input("f_D", val=0.5)
         self.add_input("A_main_i", units="u", desc="Main ion mass")
         self.add_input("Z_eff", val=2.0)
-        self.add_input("Z_imp", units="e", desc="Impurity charge state")
+        self.add_input("Z_imp", desc="Impurity charge state")
         self.add_input("A_imp", units="u", desc="Impurity mass")
         self.add_input("n_e", units="n20", desc="Electron density")
 
@@ -623,6 +622,8 @@ class ZeroDThermalFusionPower(om.ExplicitComponent):
         m**3, Plasma volume
     enhancement : float
         Fusion enhancement from pressure peaking
+    rate/V : float
+        mmol/m**3/s, Thermal fusion rate
     P_fus/V : float
         MW/m**3, Thermal fusion power density
     P_α/V : float
@@ -641,10 +642,13 @@ class ZeroDThermalFusionPower(om.ExplicitComponent):
     """
     def setup(self):
         self.add_input("V", units="m**3", desc="Plasma volume")
+        self.add_input("rate_fus/V", units="mmol/m**3/s")
         self.add_input("P_fus/V", units="MW/m**3")
         self.add_input("P_n/V", units="MW/m**3")
         self.add_input("P_α/V", units="MW/m**3")
         self.add_input("enhancement", desc="Fusion enhancement from p-peaking")
+        rate_fus_ref = 1e-1
+        self.add_output("rate_fus", lower=0, ref=rate_fus_ref, units="mmol/s")
         Pref = 100
         self.add_output("P_fus", lower=0, ref=Pref, units="MW")
         self.add_output("P_n", lower=0, ref=Pref, units="MW")
@@ -653,11 +657,13 @@ class ZeroDThermalFusionPower(om.ExplicitComponent):
     def compute(self, inputs, outputs):
         f_enh = inputs["enhancement"]
         V = inputs["V"]
+        outputs["rate_fus"] = f_enh * V * inputs["rate_fus/V"]
         outputs["P_fus"] = f_enh * V * inputs["P_fus/V"]
         outputs["P_α"] = f_enh * V * inputs["P_α/V"]
         outputs["P_n"] = f_enh * V * inputs["P_n/V"]
 
     def setup_partials(self):
+        self.declare_partials("rate_fus", ["V", "enhancement", "rate_fus/V"])
         self.declare_partials("P_fus", ["V", "enhancement", "P_fus/V"])
         self.declare_partials("P_α", ["V", "enhancement", "P_α/V"])
         self.declare_partials("P_n", ["V", "enhancement", "P_n/V"])
@@ -677,6 +683,11 @@ class ZeroDThermalFusionPower(om.ExplicitComponent):
         J["P_fus", "P_fus/V"] = f_enh * V
         J["P_α", "P_α/V"] = f_enh * V
         J["P_n", "P_n/V"] = f_enh * V
+
+        rate_fus_V = inputs["rate_fus/V"]
+        J["rate_fus", "rate_fus/V"] = f_enh * V
+        J["rate_fus", "enhancement"] = V * rate_fus_V
+        J["rate_fus", "V"] = f_enh * rate_fus_V
 
 
 class ZeroDThermalFusion(om.Group):
@@ -720,6 +731,7 @@ class ZeroDThermalFusion(om.Group):
                            VolumetricThermalFusionRate(),
                            promotes_inputs=["n_D", "n_T", "<σv>"],
                            promotes_outputs=[
+                               "rate_fus/V",
                                "P_fus/V",
                                "P_α/V",
                                "P_n/V",
@@ -759,15 +771,15 @@ class IonMixMux(om.ExplicitComponent):
     """
     def setup(self):
         n = 3
-        self.add_input('n_D', units='n20')
-        self.add_input('n_T', units='n20')
-        self.add_input('n_imp', units='n20')
-        self.add_input('A_imp', units='u')
-        self.add_input('Z_imp', units='e')
-        self.add_output('ni', units='n20', lower=0, shape=(n, ))
-        self.add_output('Ai', units='u', lower=0, shape=(n, ))
-        self.add_output('Zi', units='e', lower=0, shape=n)
-        self.add_output('Zi2', units='e**2', shape=n)
+        self.add_input("n_D", units="n20")
+        self.add_input("n_T", units="n20")
+        self.add_input("n_imp", units="n20")
+        self.add_input("A_imp", units="u")
+        self.add_input("Z_imp")
+        self.add_output("ni", units="n20", lower=0, shape=(n, ))
+        self.add_output("Ai", units="u", lower=0, shape=(n, ))
+        self.add_output("Zi", lower=0, shape=n)
+        self.add_output("Zi2", shape=n)
 
     def compute(self, inputs, outputs):
         nD = inputs["n_D"]
@@ -923,7 +935,8 @@ class ZeroDPlasma(om.Group):
                                 "P_fus enhancement from p-peaking"), "n_D",
                                "n_T", "V", ("T", "<T_i>")
                            ],
-                           promotes_outputs=[("P_fus", "P_fus_th"),
+                           promotes_outputs=[("rate_fus", "rate_fus_th"),
+                                             ("P_fus", "P_fus_th"),
                                              ("P_α", "P_α_th"),
                                              ("P_n", "P_n_th")])
         self.connect("A", ["A_main_i"])

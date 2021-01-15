@@ -124,7 +124,7 @@ class SlowingTimeOnElectrons(om.ExplicitComponent):
         self.add_input("Te", units="keV", desc="Electron temperature")
         self.add_input("At", units="u", desc="Test particle mass")
         self.add_input("logΛe", desc="Collision log of test ion on e⁻")
-        self.add_input("Zt", val=1, units="e", desc="Test particle charge")
+        self.add_input("Zt", val=1, desc="Test particle charge")
         self.add_output("ts", units="s", desc="Slowing time of ions on e⁻")
 
     def compute(self, inputs, outputs):
@@ -255,7 +255,6 @@ class CriticalSlowingEnergy(om.ExplicitComponent):
         self.add_input('Zi',
                        shape_by_conn=True,
                        copy_shape='ni',
-                       units="e",
                        desc="Ion field particle charges")
 
         W_crit_ref = 100
