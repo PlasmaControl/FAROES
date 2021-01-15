@@ -86,7 +86,6 @@ class VolumetricThermalFusionRate(om.ExplicitComponent):
     """
     def setup(self):
         data = _DT_fusion_data
-        REACTION_ENERGY = data["REACTION_ENERGY"]
         self.ENERGY_J = data["ENERGY_J"]
         self.α_fraction = data["α_fraction"]
         self.n_fraction = data["n_fraction"]
@@ -98,7 +97,10 @@ class VolumetricThermalFusionRate(om.ExplicitComponent):
         self.add_input("n_T", units=n_units, desc="Tritium density")
         self.add_input("<σv>", units=σv_units, desc="Rate coefficient")
 
-        self.add_output("rate_fus/V", lower=0, units="mmol/m**3/s", desc="Volumetric fusion rate")
+        self.add_output("rate_fus/V",
+                        lower=0,
+                        units="mmol/m**3/s",
+                        desc="Volumetric fusion rate")
         self.add_output("P_fus/V",
                         lower=0,
                         units="MW/m**3",
@@ -146,7 +148,8 @@ class VolumetricThermalFusionRate(om.ExplicitComponent):
         J["rate_fus/V", "<σv>"] = self.sigma_conv * n_D * n_T / self.mmol
         J["P_fus/V", "n_D"] = self.n_conv * n_T * σv_avg * self.ENERGY_J / mega
         J["P_fus/V", "n_T"] = self.n_conv * n_D * σv_avg * self.ENERGY_J / mega
-        J["P_fus/V", "<σv>"] = self.sigma_conv * n_D * n_T * self.ENERGY_J / mega
+        J["P_fus/V",
+          "<σv>"] = self.sigma_conv * n_D * n_T * self.ENERGY_J / mega
         J["P_α/V", "n_D"] = self.α_fraction * J["P_fus/V", "n_D"]
         J["P_α/V", "n_T"] = self.α_fraction * J["P_fus/V", "n_T"]
         J["P_α/V", "<σv>"] = self.α_fraction * J["P_fus/V", "<σv>"]
@@ -175,8 +178,8 @@ class NBIBeamTargetFusion(om.ExplicitComponent):
     -------
     rate_fus : float
         mmol/s, Fusion reaction rate
-            millimoles/s are used to provide a number of scale 1e-2/s rather than
-            of scale 1e19/s
+            millimoles/s are used to provide a number of scale 1e-2/s
+            rather than of scale 1e19/s
     P_fus : float
         MW, Total fusion power
     #P_α : float
@@ -206,7 +209,6 @@ class NBIBeamTargetFusion(om.ExplicitComponent):
     """
     def setup(self):
         data = _DT_fusion_data
-        REACTION_ENERGY = data["REACTION_ENERGY"]
         self.ENERGY_J = data["ENERGY_J"]
         self.α_fraction = data["α_fraction"]
         self.n_fraction = data["n_fraction"]
@@ -222,8 +224,8 @@ class NBIBeamTargetFusion(om.ExplicitComponent):
         self.add_output("rate_fus", units="mmol/s", ref=R_fus_ref, lower=0)
         P_fus_ref = 10
         self.add_output("P_fus", units="MW", ref=P_fus_ref, lower=0)
-        #self.add_output("P_α", units="MW", ref=P_fus_ref, lower=0)
-        #self.add_output("P_n", units="MW", ref=P_fus_ref, lower=0)
+        # self.add_output("P_α", units="MW", ref=P_fus_ref, lower=0)
+        # self.add_output("P_n", units="MW", ref=P_fus_ref, lower=0)
 
     def compute(self, inputs, outputs):
         c = self.constant * self.DT_mult
@@ -235,18 +237,18 @@ class NBIBeamTargetFusion(om.ExplicitComponent):
 
         energy_MJ = self.ENERGY_J / mega
         P_fus = R * energy_MJ
-        P_α = P_fus * self.α_fraction
-        P_n = P_fus * self.n_fraction
         outputs["P_fus"] = P_fus
-        #outputs["P_α"] = P_α
-        #outputs["P_n"] = P_n
+        # P_α = P_fus * self.α_fraction
+        # P_n = P_fus * self.n_fraction
+        # outputs["P_α"] = P_α
+        # outputs["P_n"] = P_n
 
     def setup_partials(self):
         self.declare_partials(
             [
                 "rate_fus",
                 "P_fus",
-                #"P_α", "P_n",
+                # "P_α", "P_n",
             ],
             ["P_NBI", "<T_e>"])
 
@@ -259,10 +261,10 @@ class NBIBeamTargetFusion(om.ExplicitComponent):
         J["rate_fus", "<T_e>"] = (3 / 2) * c * P_NBI * Te**(1 / 2) / self.mmol
         J["P_fus", "P_NBI"] = c * Te**(3 / 2) * energy_MJ
         J["P_fus", "<T_e>"] = (3 / 2) * c * P_NBI * Te**(1 / 2) * energy_MJ
-        #J["P_α", "P_NBI"] = self.α_fraction * J["P_fus", "P_NBI"]
-        #J["P_α", "<T_e>"] = self.α_fraction * J["P_fus", "<T_e>"]
-        #J["P_n", "P_NBI"] = self.n_fraction * J["P_fus", "P_NBI"]
-        #J["P_n", "<T_e>"] = self.n_fraction * J["P_fus", "<T_e>"]
+        # J["P_α", "P_NBI"] = self.α_fraction * J["P_fus", "P_NBI"]
+        # J["P_α", "<T_e>"] = self.α_fraction * J["P_fus", "<T_e>"]
+        # J["P_n", "P_NBI"] = self.n_fraction * J["P_fus", "P_NBI"]
+        # J["P_n", "<T_e>"] = self.n_fraction * J["P_fus", "<T_e>"]
 
 
 class TotalDTFusionRate(om.ExplicitComponent):
@@ -324,8 +326,11 @@ class TotalDTFusionRate(om.ExplicitComponent):
     def setup_partials(self):
         self.declare_partials("rate_fus", ["rate_th", "rate_NBI"], val=1.0)
         self.declare_partials("P_fus", ["P_fus_th", "P_fus_NBI"], val=1.0)
-        self.declare_partials("P_α", ["P_fus_th", "P_fus_NBI"], val=self.α_fraction)
-        self.declare_partials("P_n", ["P_fus_th", "P_fus_NBI"], val=self.n_fraction)
+        self.declare_partials("P_α", ["P_fus_th", "P_fus_NBI"],
+                              val=self.α_fraction)
+        self.declare_partials("P_n", ["P_fus_th", "P_fus_NBI"],
+                              val=self.n_fraction)
+
 
 class SimpleFusionAlphaSource(om.ExplicitComponent):
     r"""Source for alpha particle properties
@@ -362,7 +367,7 @@ class SimpleFusionAlphaSource(om.ExplicitComponent):
         Z_α = alpha.integer_charge
 
         E_J = data["REACTION_ENERGY"].to(u.J).value * self.α_fraction
-        v_α = (2 * E_J / m_α)**(1/2)
+        v_α = (2 * E_J / m_α)**(1 / 2)
 
         self.add_output("S", val=0, units="1/s", ref=1e20)
         self.add_output("E", val=E_α, units="keV", ref=3.5e3)
@@ -381,14 +386,14 @@ class SimpleFusionAlphaSource(om.ExplicitComponent):
 if __name__ == "__main__":
     prob = om.Problem()
 
-    #prob.model = VolumetricThermalFusionRate()
+    # prob.model = VolumetricThermalFusionRate()
     prob.model = NBIBeamTargetFusion()
 
     prob.setup(force_alloc_complex=True)
 
-    #prob.set_val("<σv>", 1.1e-24, units="m**3/s")
-    #prob.set_val("n_D", 0.5, units="n20")
-    #prob.set_val("n_T", 0.5, units="n20")
+    # prob.set_val("<σv>", 1.1e-24, units="m**3/s")
+    # prob.set_val("n_D", 0.5, units="n20")
+    # prob.set_val("n_T", 0.5, units="n20")
     prob.set_val("P_NBI", 50, units="MW")
     prob.set_val("<T_e>", 9.2, units="keV")
 
