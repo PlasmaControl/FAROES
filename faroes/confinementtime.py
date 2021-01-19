@@ -150,7 +150,7 @@ class ConfinementTimeScaling(om.ExplicitComponent):
         scaling = self.options["scaling"]
         if scaling is None or scaling == "default":
             scaling = config(["default"])
-        terms = config([scaling])
+        terms = config([scaling]).copy()
 
         valid_terms = ["c0", "Ip", "Bt", "n19", "PL", "R", "ε", "κa", "M"]
         for k, v in terms.items():

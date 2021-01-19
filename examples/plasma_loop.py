@@ -1,3 +1,5 @@
+import os
+import pickle
 # This is first example with a cycle of components, necessitating(?)
 # a nonlinear solver. However, it should be noted that here the there's not
 # _actually_ a cycle. The only variables which cycle back are ZeroDPlasma.A to
@@ -18,6 +20,7 @@ from faroes.fusionreaction import NBIBeamTargetFusion, TotalDTFusionRate
 from faroes.fusionreaction import SimpleFusionAlphaSource
 
 from faroes.confinementtime import ConfinementTime
+from faroes.radiation import SimpleRadiation
 
 import openmdao.api as om
 
@@ -66,8 +69,9 @@ class Machine(om.Group):
         self.connect("NBIsource.A", ["NBIslowing.At"])
         self.connect("NBIsource.Z", ["NBIslowing.Zt"])
 
-        self.add_subsystem("NBIfusion", NBIBeamTargetFusion(),
-                promotes_inputs=["<T_e>"])
+        self.add_subsystem("NBIfusion",
+                           NBIBeamTargetFusion(),
+                           promotes_inputs=["<T_e>"])
 
         self.connect("NBIsource.P", ["NBIfusion.P_NBI"])
 
@@ -80,7 +84,8 @@ class Machine(om.Group):
         self.add_subsystem("alphasource", SimpleFusionAlphaSource())
         self.connect("DTfusion.rate_fus", "alphasource.rate")
 
-        self.add_subsystem("alphaslowing", FastParticleSlowing(),
+        self.add_subsystem("alphaslowing",
+                           FastParticleSlowing(),
                            promotes_inputs=[("ne", "<n_e>"), ("Te", "<T_e>")])
         self.connect("alphasource.S", ["alphaslowing.S"])
         self.connect("alphasource.E", ["alphaslowing.Wt"])
@@ -89,6 +94,22 @@ class Machine(om.Group):
 
         # back-connections
         self.connect("alphaslowing.Wfast", ["ZeroDPlasma.W_fast_α"])
+
+        self.add_subsystem(
+            "P_heat",
+            om.ExecComp("P_heat = P_alpha + P_NBI",
+                        P_heat={'units': 'MW'},
+                        P_alpha={'units': 'MW'},
+                        P_NBI={'units': 'MW'}))
+        self.connect("DTfusion.P_α", "P_heat.P_alpha")
+        self.connect("NBIsource.P", "P_heat.P_NBI")
+
+        self.add_subsystem("radiation", SimpleRadiation(config=config))
+        self.connect("P_heat.P_heat", "radiation.P_heat")
+
+        # back-connection
+        self.connect("radiation.P_loss",
+                     ["ZeroDPlasma.P_loss", "confinementtime.PL"])
 
 
 #        self.add_subsystem("radial_build",
@@ -106,6 +127,7 @@ class Machine(om.Group):
 #        self.connect('radial_build.Ib TF R_max', ['magnets.r_ot'])
 #
 #        self.connect('magnets.Ob TF R_out', ['radial_build.Ob TF R_out'])
+
 
 if __name__ == "__main__":
     prob = om.Problem()
@@ -150,12 +172,12 @@ if __name__ == "__main__":
 
     # confinement time inputs
     prob.set_val('confinementtime.Ip', 14.67, units="MA")
-    prob.set_val('confinementtime.PL', 83.34, units="MW")
+    # prob.set_val('confinementtime.PL', 83.34, units="MW")
     prob.set_val('confinementtime.H', 1.77)
 
     # plasma inputs
-    prob.set_val("ZeroDPlasma.P_loss", 83.34, units="MW")
-    prob.set_val("ZeroDPlasma.W_fast_α", 13.05, units="MJ")
+    # prob.set_val("ZeroDPlasma.P_loss", 83.34, units="MW")
+    # prob.set_val("ZeroDPlasma.W_fast_α", 13.05, units="MJ")
 
     prob.set_val("NBIslowing.logΛe", 17.37)
     prob.set_val("alphaslowing.logΛe", 17.37)
@@ -166,7 +188,11 @@ if __name__ == "__main__":
     prob.model.nonlinear_solver.options['maxiter'] = 20
     prob.model.linear_solver = om.DirectSolver()
 
+    # initial values
+    prob.set_val("radiation.rad.P_loss", 91, units="MW")
+
     prob.run_driver()
+
     #prob.check_totals(of=['NBIslowing.Wfast'], wrt=['confinementtime.Ip'])
 
     #    prob.set_val('magnets.n_coil', 18)
@@ -174,7 +200,9 @@ if __name__ == "__main__":
     #    prob.set_val('magnets.windingpack.f_HTS', 0.76)
     #    prob.set_val("magnets.magnetstructure_props.Young's modulus", 220)
 
-    all_inputs = prob.model.list_inputs(values=True, print_arrays=True,
-            units=True)
-    all_outputs = prob.model.list_outputs(values=True, print_arrays=True,
-             units=True)
+    # all_inputs = prob.model.list_inputs(values=True,
+    #                                     print_arrays=True,
+    #                                     units=True)
+    all_outputs = prob.model.list_outputs(values=True,
+                                          print_arrays=True,
+                                          units=True)
