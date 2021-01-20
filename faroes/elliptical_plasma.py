@@ -140,7 +140,7 @@ class KappaScaling(om.ExplicitComponent):
         sp_c12 = constants[1]
         sp_d12 = constants[2]
         A = inputs["A"]
-        J["κ", "A"] = -self.kappa_multiplier * sp_c12 * sp_d12 A**(-sp_d12 -1)
+        J["κ", "A"] = -self.kappa_multiplier * sp_c12 * sp_d12 * A**(-sp_d12 -1)
 
 
 class PlasmaGeometry(om.ExplicitComponent):
@@ -271,7 +271,7 @@ class PlasmaGeometry(om.ExplicitComponent):
 
         outputs["R_min"] = R0 - a
         outputs["R_max"] = R0 + a
-        outputs["L_pol"] = util.ellipse_perimeter(a, b)
+        outputs["L_pol"] = util.ellipse_perimeter(a[0], b[0])
 
     def marginal_kappa_epsilon_scaling(self, t4_aspect_ratio):
         """
@@ -303,9 +303,9 @@ class PlasmaGeometry(om.ExplicitComponent):
         return sp_b12 + sp_c12 / (t4_aspect_ratio**sp_d12)
 
     def setup_partials(self):
-        self.declare_partials('*', '*', method='cs')
-        self.declare_partials('R_min', ['R0', 'A'])
-        self.declare_partials('R_max', ['R0', 'A'])
+        self.declare_partials('*', '*', method='fd')
+        self.declare_partials('R_min', ['R0', 'A'], method="exact")
+        self.declare_partials('R_max', ['R0', 'A'], method="exact")
 
     def compute_partials(self, inputs, J):
         A = inputs['A']

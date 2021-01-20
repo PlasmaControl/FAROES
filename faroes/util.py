@@ -109,6 +109,10 @@ def ellipse_perimeter_derivatives(a, b):
     Mathematica:
     D[\[Pi] Sqrt[2 (a^2 + b^2)]
     Hypergeometric2F1[-(1/4), 1/4, 1, (a^2 - b^2)^2/(a^2 + b^2)^2], a]
+
+    References
+    ----------
+    https://www.mathematica-journal.com/2009/11/23/on-the-perimeter-of-an-ellipse/
     """
     def epd(a, b):
         hyp1 = hyp2f1(-1 / 4, 1 / 4, 1, ((a**2 - b**2) / (a**2 + b**2))**2)
