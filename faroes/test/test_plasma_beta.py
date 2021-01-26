@@ -75,7 +75,8 @@ class TestSpecifiedTotalAveragePressure(unittest.TestCase):
     def test_value(self):
         prob = self.prob
         prob.run_driver()
-        assert_near_equal(prob["<p_tot>"], 3978.87, tolerance=1e-4)
+        val = prob.get_val("<p_tot>", units="Pa")
+        assert_near_equal(val, 3978.87, tolerance=1e-4)
 
 class TestBPoloidal(unittest.TestCase):
     def setUp(self):

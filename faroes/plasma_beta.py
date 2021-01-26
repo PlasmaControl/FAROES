@@ -168,20 +168,20 @@ class SpecifiedTotalAveragePressure(om.ExplicitComponent):
     Outputs
     -------
     <p_tot> : float
-        Pa, Total specified average pressure
+        kPa, Total specified average pressure
     """
     def setup(self):
         self.add_input("Bt", units="T")
         self.add_input("βt")
 
         p_ref = 10**5
-        self.add_output("<p_tot>", units="Pa", ref=p_ref, lower=0)
+        self.add_output("<p_tot>", units="kPa", ref=p_ref, lower=0)
 
     def compute(self, inputs, outputs):
         βt = inputs["βt"]
         Bt = inputs["Bt"]
         p_avg = βt * (Bt**2 / (2 * mu_0))
-        outputs["<p_tot>"] = p_avg
+        outputs["<p_tot>"] = p_avg / kilo
 
     def setup_partials(self):
         self.declare_partials("<p_tot>", ["βt", "Bt"])
@@ -189,8 +189,8 @@ class SpecifiedTotalAveragePressure(om.ExplicitComponent):
     def compute_partials(self, inputs, J):
         βt = inputs["βt"]
         Bt = inputs["Bt"]
-        J["<p_tot>", "βt"] = (Bt**2 / (2 * mu_0))
-        J["<p_tot>", "Bt"] = βt * Bt / (mu_0)
+        J["<p_tot>", "βt"] = (Bt**2 / (2 * mu_0)) / kilo
+        J["<p_tot>", "Bt"] = βt * Bt / (mu_0) / kilo
 
 
 #---------------------------------------------------
