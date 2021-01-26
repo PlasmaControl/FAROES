@@ -1,5 +1,7 @@
-import openmdao.api as om
+from faroes.configurator import UserConfigurator
 import faroes.util as util
+
+import openmdao.api as om
 
 
 class KappaScaling(om.ExplicitComponent):
@@ -82,7 +84,7 @@ class KappaScaling(om.ExplicitComponent):
           "A"] = -self.kappa_multiplier * sp_c12 * sp_d12 * A**(-sp_d12 - 1)
 
 
-class PlasmaGeometry(om.ExplicitComponent):
+class EllipticalGeometry(om.ExplicitComponent):
     r"""Describes an elliptical plasma.
 
     .. image :: images/ellipticalplasmageometry.png
@@ -122,6 +124,8 @@ class PlasmaGeometry(om.ExplicitComponent):
         m, major radius
     A : float
         Aspect ratio
+    κ : float
+        Elongation
 
     Outputs
     -------
@@ -133,8 +137,6 @@ class PlasmaGeometry(om.ExplicitComponent):
         triangularity: is always zero
     ε : float
         inverse aspect ratio
-    κ : float
-        elongation
     κa : float
         effective elongation, S_c / (π a^2),
         where S_c is the plasma cross-sectional area
@@ -152,24 +154,14 @@ class PlasmaGeometry(om.ExplicitComponent):
     R_max : float
         m, outermost plasma radius at midplane
     """
-    def initialize(self):
-        self.options.declare('config', default=None)
-
     def setup(self):
-        if self.options['config'] is not None:
-            self.config = self.options['config']
-            ac = self.config.accessor(['fits'])
-            self.kappa_multiplier = ac(["κ multiplier"])
-            self.κ_ε_scaling_constants = ac(
-                ["marginal κ-ε scaling", "constants"])
-
         self.add_input("R0", units='m', desc="Major radius")
         self.add_input("A", desc="Aspect Ratio")
+        self.add_input("κ", desc="Elongation")
 
         self.add_output("a", units='m', desc="Minor radius")
         self.add_output("b", units='m', desc="Minor radius height")
         self.add_output("ε", desc="Inverse aspect ratio")
-        self.add_output("κ", desc="Elongation")
         self.add_output("κa", desc="Elongation")
         self.add_output("δ", desc="Triangularity")
         self.add_output("full_plasma_height",
@@ -197,13 +189,12 @@ class PlasmaGeometry(om.ExplicitComponent):
         outputs["δ"] = 0  # elliptical plasma approximation
         R0 = inputs["R0"]
         A = inputs["A"]
+        κ = inputs["κ"]
         a = R0 / A
 
-        κ = self.kappa_multiplier * self.marginal_kappa_epsilon_scaling(A)
         b = κ * a
         sa = util.torus_surface_area(R0, a, b)
         V = util.torus_volume(R0, a, b)
-        outputs["κ"] = κ
         outputs["κa"] = κ
         outputs["a"] = a
         outputs["ε"] = 1 / A
@@ -215,35 +206,6 @@ class PlasmaGeometry(om.ExplicitComponent):
         outputs["R_min"] = R0 - a
         outputs["R_max"] = R0 + a
         outputs["L_pol"] = util.ellipse_perimeter(a[0], b[0])
-
-    def marginal_kappa_epsilon_scaling(self, t4_aspect_ratio):
-        """
-        marginal kappa(epsilon) scaling
-
-        Parameters
-        ----------
-        aspect_ratio: float
-
-        References
-        ----------
-        Physics of Plasmas 11, 639 (2004);
-        https://doi.org/10.1063/1.1640623
-        "NSTX, FNSF-ST, DIII-D, EAST"
-        I guess this is how kappa scales with epsilon.
-
-        I'm not sure where it is in the paper, though.
-
-        [T73 from the spreadsheet]
-
-        b12 + c12/(t4^d12)
-
-        Values are from the "Scaling Parameters" sheet
-        """
-        constants = self.κ_ε_scaling_constants
-        sp_b12 = constants[0]
-        sp_c12 = constants[1]
-        sp_d12 = constants[2]
-        return sp_b12 + sp_c12 / (t4_aspect_ratio**sp_d12)
 
     def setup_partials(self):
         self.declare_partials('*', '*', method='fd')
@@ -259,18 +221,33 @@ class PlasmaGeometry(om.ExplicitComponent):
         J["R_max", "A"] = -R0 / A**2
 
 
+class PlasmaGeometry(om.Group):
+    def initialize(self):
+        self.options.declare('config', default=None)
+
+    def setup(self):
+        config = self.options['config']
+        self.add_subsystem("kappa",
+                           KappaScaling(config=config),
+                           promotes_inputs=["A"],
+                           promotes_outputs=["κ"])
+        self.add_subsystem("geom",
+                           EllipticalGeometry(),
+                           promotes_inputs=["R0", "A", "κ"],
+                           promotes_outputs=["*"])
+
+
 if __name__ == "__main__":
+    uc = UserConfigurator()
     prob = om.Problem()
 
-    prob.model = PlasmaGeometry()
-
-    prob.model.kappa_multiplier = 0.95
-    prob.model.κ_ε_scaling_constants = [1.9, 1.9, 1.4]
+    prob.model = PlasmaGeometry(config=uc)
 
     prob.setup()
 
     prob.set_val('R0', 3, 'm')
     prob.set_val('A', 1.6)
+    prob.set_val('κ', 2.7)
 
     prob.run_driver()
     prob.model.list_outputs()
