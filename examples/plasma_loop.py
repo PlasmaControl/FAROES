@@ -22,6 +22,8 @@ from faroes.fusionreaction import SimpleFusionAlphaSource
 from faroes.confinementtime import ConfinementTime
 from faroes.radiation import SimpleRadiation
 
+from faroes.plasma_beta import SpecifiedPressure
+
 import openmdao.api as om
 
 
@@ -110,6 +112,10 @@ class Machine(om.Group):
         # back-connection
         self.connect("radiation.P_loss",
                      ["ZeroDPlasma.P_loss", "confinementtime.PL"])
+        self.add_subsystem("specP", SpecifiedPressure(config=config),
+                promotes_inputs=["Bt", "Ip"])
+        self.connect("plasmageom.a", ["specP.a"])
+        self.connect("plasmageom.L_pol", ["specP.L_pol"])
 
 
 #        self.add_subsystem("radial_build",
@@ -167,12 +173,13 @@ if __name__ == "__main__":
 
     prob.set_val('R0', 3, units='m')
     prob.set_val('plasmageom.A', 1.6)
+    prob.set_val('specP.A', 1.6)
     prob.set_val("<n_e>", 1.06, units="n20")
     prob.set_val('Bt', 2.094, units='T')
 
-    # confinement time inputs
     prob.set_val('confinementtime.Ip', 14.67, units="MA")
-    # prob.set_val('confinementtime.PL', 83.34, units="MW")
+    prob.set_val('specP.Ip', 14.67, units="MA")
+    # confinement time inputs
     prob.set_val('confinementtime.H', 1.77)
 
     # plasma inputs
@@ -200,9 +207,9 @@ if __name__ == "__main__":
     #    prob.set_val('magnets.windingpack.f_HTS', 0.76)
     #    prob.set_val("magnets.magnetstructure_props.Young's modulus", 220)
 
-    # all_inputs = prob.model.list_inputs(values=True,
-    #                                     print_arrays=True,
-    #                                     units=True)
+    all_inputs = prob.model.list_inputs(values=True,
+                                        print_arrays=True,
+                                        units=True)
     all_outputs = prob.model.list_outputs(values=True,
                                           print_arrays=True,
                                           units=True)
