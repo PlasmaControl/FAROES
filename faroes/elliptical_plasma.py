@@ -5,7 +5,7 @@ import openmdao.api as om
 
 
 class KappaScaling(om.ExplicitComponent):
-    """
+    r"""
     Inputs
     ------
     A : float

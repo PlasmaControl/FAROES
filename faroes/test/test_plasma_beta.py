@@ -31,6 +31,7 @@ class TestBetaNComputation(unittest.TestCase):
         assert_near_equal(prob["β_N"], 0.046942, tolerance=1e-4)
         assert_near_equal(prob["β_N total"], 0.0516, tolerance=1e-2)
 
+
 class TestBetaToroidal(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
@@ -55,6 +56,7 @@ class TestBetaToroidal(unittest.TestCase):
         prob.run_driver()
         assert_near_equal(prob["βt"], 0.01, tolerance=1e-4)
 
+
 class TestSpecifiedTotalAveragePressure(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
@@ -78,6 +80,7 @@ class TestSpecifiedTotalAveragePressure(unittest.TestCase):
         val = prob.get_val("<p_tot>", units="Pa")
         assert_near_equal(val, 3978.87, tolerance=1e-4)
 
+
 class TestBPoloidal(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
@@ -98,7 +101,8 @@ class TestBPoloidal(unittest.TestCase):
     def test_value(self):
         prob = self.prob
         prob.run_driver()
-        assert_near_equal(prob["Bp"], 1/5, tolerance=1e-4)
+        assert_near_equal(prob["Bp"], 1 / 5, tolerance=1e-4)
+
 
 class TestBetaPoloidal(unittest.TestCase):
     def setUp(self):
@@ -121,6 +125,7 @@ class TestBetaPoloidal(unittest.TestCase):
         prob = self.prob
         prob.run_driver()
         assert_near_equal(prob["βp"], 0.00251327, tolerance=1e-4)
+
 
 class TestThermalBetaPoloidal(unittest.TestCase):
     def setUp(self):

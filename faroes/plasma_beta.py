@@ -1,7 +1,7 @@
 import openmdao.api as om
 from faroes.configurator import UserConfigurator
 from scipy.constants import mu_0, mega, kilo
-import faroes.util as util
+
 
 class BetaNTotal(om.ExplicitComponent):
     r"""Total β_N from a scaling law and a multiplier
@@ -76,7 +76,6 @@ class BetaNTotal(om.ExplicitComponent):
     def compute_partials(self, inputs, J):
         const = self.β_ε_scaling_constants
         A = inputs["A"]
-        b = const[0]
         c = const[1]
         d = const[2]
         J["β_N", "A"] = -0.01 * A**(-d - 1) * c * d
@@ -190,9 +189,6 @@ class SpecifiedTotalAveragePressure(om.ExplicitComponent):
         Bt = inputs["Bt"]
         J["<p_tot>", "βt"] = (Bt**2 / (2 * mu_0)) / kilo
         J["<p_tot>", "Bt"] = βt * Bt / (mu_0) / kilo
-
-
-#---------------------------------------------------
 
 
 class BPoloidal(om.ExplicitComponent):
@@ -321,9 +317,13 @@ class SpecifiedPressure(om.Group):
                            BPoloidal(),
                            promotes_inputs=["Ip", "L_pol"],
                            promotes_outputs=["Bp"])
-        self.add_subsystem("beta_p", BetaPoloidal(), promotes_inputs=["Bp"], promotes_outputs=["βp"])
+        self.add_subsystem("beta_p",
+                           BetaPoloidal(),
+                           promotes_inputs=["Bp"],
+                           promotes_outputs=["βp"])
         self.connect("betaNtot.β_N total", ["beta_t.β_N total"])
         self.connect("p_avg.<p_tot>", ["beta_p.<p_tot>"])
+
 
 class ThermalBetaPoloidal(om.ExplicitComponent):
     r"""Beta_poloidal due to thermal particles only
@@ -338,7 +338,6 @@ class ThermalBetaPoloidal(om.ExplicitComponent):
     thermal pressure fraction : float
         Fraction of pressure which is from thermal rather than fast particles.
     """
-
     def setup(self):
         self.add_input("βp")
         self.add_input("thermal pressure fraction")

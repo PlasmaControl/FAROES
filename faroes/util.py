@@ -85,7 +85,7 @@ def ellipse_perimeter(a, b):
 
 
 def ellipse_perimeter_derivatives(a, b):
-    """Exact formula using special functions
+    r"""Exact formula using special functions
 
     Parameters
     ----------
@@ -106,9 +106,10 @@ def ellipse_perimeter_derivatives(a, b):
     -----
     We use a different form here to avoid zeros in denominators when a==b
 
-    Mathematica:
-    D[\[Pi] Sqrt[2 (a^2 + b^2)]
-    Hypergeometric2F1[-(1/4), 1/4, 1, (a^2 - b^2)^2/(a^2 + b^2)^2], a]
+    .. code-block:: none
+
+        D[\[Pi] Sqrt[2 (a^2 + b^2)]
+        Hypergeometric2F1[-(1/4), 1/4, 1, (a^2 - b^2)^2/(a^2 + b^2)^2], a]
 
     References
     ----------

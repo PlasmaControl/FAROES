@@ -24,6 +24,8 @@ from faroes.radiation import SimpleRadiation
 
 from faroes.plasma_beta import SpecifiedPressure
 
+from faroes.nbicd import CurrentDriveEfficiency
+
 import openmdao.api as om
 
 
@@ -55,21 +57,22 @@ class Machine(om.Group):
         # back-connections
         self.connect("ZeroDPlasma.A", ["confinementtime.M"])
 
+        # neutral beam heating
         self.add_subsystem("NBIsource", SimpleNBISource(config=config))
         self.add_subsystem("NBIslowing",
                            FastParticleSlowing(),
                            promotes_inputs=[("ne", "<n_e>"), ("Te", "<T_e>")])
-        self.connect("ZeroDPlasma.ni", ["NBIslowing.ni", "alphaslowing.ni"])
-        self.connect("ZeroDPlasma.Ai", ["NBIslowing.Ai", "alphaslowing.Ai"])
-        self.connect("ZeroDPlasma.Zi", ["NBIslowing.Zi", "alphaslowing.Zi"])
+        self.connect("ZeroDPlasma.ni", ["NBIslowing.ni", "alphaslowing.ni", "nbicdEff.ni"])
+        self.connect("ZeroDPlasma.Ai", ["NBIslowing.Ai", "alphaslowing.Ai", "nbicdEff.Ai"])
+        self.connect("ZeroDPlasma.Zi", ["NBIslowing.Zi", "alphaslowing.Zi", "nbicdEff.Zi"])
 
         # back-connections
         self.connect("NBIslowing.Wfast", ["ZeroDPlasma.W_fast_NBI"])
 
         self.connect("NBIsource.S", ["NBIslowing.S"])
-        self.connect("NBIsource.E", ["NBIslowing.Wt"])
-        self.connect("NBIsource.A", ["NBIslowing.At"])
-        self.connect("NBIsource.Z", ["NBIslowing.Zt"])
+        self.connect("NBIsource.E", ["NBIslowing.Wt", "nbicdEff.Eb"])
+        self.connect("NBIsource.A", ["NBIslowing.At", "nbicdEff.Ab"])
+        self.connect("NBIsource.Z", ["NBIslowing.Zt", "nbicdEff.Zb"])
 
         self.add_subsystem("NBIfusion",
                            NBIBeamTargetFusion(),
@@ -112,10 +115,29 @@ class Machine(om.Group):
         # back-connection
         self.connect("radiation.P_loss",
                      ["ZeroDPlasma.P_loss", "confinementtime.PL"])
+
         self.add_subsystem("specP", SpecifiedPressure(config=config),
                 promotes_inputs=["Bt", "Ip"])
+
         self.connect("plasmageom.a", ["specP.a"])
         self.connect("plasmageom.L_pol", ["specP.L_pol"])
+
+        # balance the specified pressure and the actual pressure by changing H
+        Hbal = om.BalanceComp()
+        Hbal.add_balance('H', normalize=True, eq_units="kPa")
+        self.add_subsystem("Hbalance", subsys=Hbal)
+        self.connect("Hbalance.H", "confinementtime.H")
+        self.connect("specP.p_avg.<p_tot>", "Hbalance.lhs:H")
+        self.connect("ZeroDPlasma.<p_tot>", "Hbalance.rhs:H")
+
+        # compute neutral beam current drive
+        self.add_subsystem("nbicdEff", CurrentDriveEfficiency(config=config),
+                promotes_inputs=["R0", ("ne", "<n_e>"), "<T_e>"])
+
+        self.connect("ZeroDPlasma.Z_eff", "nbicdEff.Z_eff")
+        self.connect("ZeroDPlasma.vth_e", "nbicdEff.vth_e")
+
+        self.connect("NBIslowing.slowingt.ts", "nbicdEff.τs")
 
 
 #        self.add_subsystem("radial_build",
@@ -174,13 +196,14 @@ if __name__ == "__main__":
     prob.set_val('R0', 3, units='m')
     prob.set_val('plasmageom.A', 1.6)
     prob.set_val('specP.A', 1.6)
+    prob.set_val('nbicdEff.A', 1.6)
     prob.set_val("<n_e>", 1.06, units="n20")
     prob.set_val('Bt', 2.094, units='T')
 
     prob.set_val('confinementtime.Ip', 14.67, units="MA")
     prob.set_val('specP.Ip', 14.67, units="MA")
     # confinement time inputs
-    prob.set_val('confinementtime.H', 1.77)
+    prob.set_val('Hbalance.H', 1.5)
 
     # plasma inputs
     # prob.set_val("ZeroDPlasma.P_loss", 83.34, units="MW")
