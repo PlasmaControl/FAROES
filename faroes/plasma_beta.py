@@ -3,7 +3,6 @@ from faroes.configurator import UserConfigurator
 from scipy.constants import mu_0, mega, kilo
 import faroes.util as util
 
-
 class BetaNTotal(om.ExplicitComponent):
     r"""Total β_N from a scaling law and a multiplier
 
@@ -325,6 +324,38 @@ class SpecifiedPressure(om.Group):
         self.add_subsystem("beta_p", BetaPoloidal(), promotes_inputs=["Bp"], promotes_outputs=["βp"])
         self.connect("betaNtot.β_N total", ["beta_t.β_N total"])
         self.connect("p_avg.<p_tot>", ["beta_p.<p_tot>"])
+
+class ThermalBetaPoloidal(om.ExplicitComponent):
+    r"""Beta_poloidal due to thermal particles only
+
+    Note: this is not part of the above group, but
+    it does in practice use some of its outputs.
+
+    Inputs
+    ------
+    βp : float
+        Beta poloidal (total)
+    thermal pressure fraction : float
+        Fraction of pressure which is from thermal rather than fast particles.
+    """
+
+    def setup(self):
+        self.add_input("βp")
+        self.add_input("thermal pressure fraction")
+        self.add_output("βp_th", lower=0)
+
+    def compute(self, inputs, outputs):
+        βp = inputs["βp"]
+        f_th = inputs["thermal pressure fraction"]
+        βp_th = βp * f_th
+        outputs["βp_th"] = βp_th
+
+    def setup_partials(self):
+        self.declare_partials("βp_th", ["βp", "thermal pressure fraction"])
+
+    def compute_partials(self, inputs, J):
+        J["βp_th", "βp"] = inputs["thermal pressure fraction"]
+        J["βp_th", "thermal pressure fraction"] = inputs["βp"]
 
 
 if __name__ == "__main__":

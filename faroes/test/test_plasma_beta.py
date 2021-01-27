@@ -122,6 +122,28 @@ class TestBetaPoloidal(unittest.TestCase):
         prob.run_driver()
         assert_near_equal(prob["βp"], 0.00251327, tolerance=1e-4)
 
+class TestThermalBetaPoloidal(unittest.TestCase):
+    def setUp(self):
+        prob = om.Problem()
+
+        prob.model = faroes.plasma_beta.ThermalBetaPoloidal()
+
+        prob.setup(force_alloc_complex=True)
+
+        prob.set_val("βp", 1.0)
+        prob.set_val("thermal pressure fraction", 0.9)
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+    def test_value(self):
+        prob = self.prob
+        prob.run_driver()
+        assert_near_equal(prob["βp_th"], 0.9, tolerance=1e-4)
+
 
 if __name__ == "__main__":
     unittest.main()
