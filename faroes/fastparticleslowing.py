@@ -1,4 +1,5 @@
 import faroes.units  # noqa: F401
+from faroes.plasmaformulary import CoulombLogarithmElectrons
 
 import openmdao.api as om
 from openmdao.utils.units import unit_conversion
@@ -368,8 +369,6 @@ class FastParticleSlowing(om.Group):
         n20, electron density
     Te : float
         keV, electron temperature
-    logΛe: float
-        Coulomb logarithm
 
     ni : Array
         n20, ion densities
@@ -392,12 +391,17 @@ class FastParticleSlowing(om.Group):
         keV, Average energy while thermalizing from Wt
     Wfast : float
         MJ, Fast particle energy in plasma
+    logΛe: float
+        Coulomb logarithm for electrons
     """
     def setup(self):
         self.add_subsystem(
             "Wcrit",
             CriticalSlowingEnergy(),
             promotes_inputs=["At", "ne", "Te", "ni", "Ai", "Zi"])
+        self.add_subsystem("logCoulombEl", CoulombLogarithmElectrons(),
+                promotes_inputs=["ne", "Te"],
+                promotes_outputs=["logΛe"])
         self.add_subsystem("WcRat",
                            CriticalSlowingEnergyRatio(),
                            promotes_inputs=[("W", "Wt")])
@@ -426,6 +430,7 @@ class FastParticleSlowing(om.Group):
         self.connect("WcRat.W/Wc",
                      ["thermalization.W/Wc", "heating.W/Wc", "averagew.W/Wc"])
         self.connect("slowingt.ts", ["thermalization.ts"])
+        self.set_input_defaults("Te", units="keV", val=10)
 
 
 if __name__ == "__main__":
@@ -449,7 +454,6 @@ if __name__ == "__main__":
     prob.set_val("Wt", 500, units='keV')
     prob.set_val("ne", 1.06, units="n20")
     prob.set_val("Te", 9.2, units='keV')
-    prob.set_val("logΛe", 17.37)
     prob.set_val("ni",
                  np.array([0.424e20, 0.424e20, 0.0353e20]),
                  units='m**-3')

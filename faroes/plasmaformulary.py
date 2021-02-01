@@ -123,6 +123,9 @@ class CoulombLogarithmElectrons(om.ExplicitComponent):
 
     Notes
     -----
+    This computation may be somewhat specific for fast-particle slowing.
+    Need to check.
+
     The upper bound for logΛe is generous:
        real tokamak plasmas should never be so rare or hot.
 
@@ -178,6 +181,9 @@ class CoulombLogarithmIons(om.ExplicitComponent):
 
     Notes
     -----
+    This computation may be somewhat specific for fast-particle slowing.
+    Need to check.
+
     The upper bound for logΛi is generous:
        real tokamak plasmas should never be so rare or hot.
 
