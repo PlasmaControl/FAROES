@@ -63,6 +63,7 @@ class TestAverageIonMass(unittest.TestCase):
         check = prob.check_partials(out_stream=None, method='cs')
         assert_check_partials(check)
 
+
 class TestCoulombLogarithmElectrons(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
@@ -85,6 +86,7 @@ class TestCoulombLogarithmElectrons(unittest.TestCase):
         prob.run_driver()
         assert_near_equal(prob["logΛe"], 17.372, tolerance=1e-5)
 
+
 class TestCoulombLogarithmIons(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
@@ -105,6 +107,7 @@ class TestCoulombLogarithmIons(unittest.TestCase):
         prob = self.prob
         prob.run_driver()
         assert_near_equal(prob["logΛi"], 20.34, tolerance=3e-3)
+
 
 if __name__ == '__main__':
     unittest.main()

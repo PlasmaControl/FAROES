@@ -399,9 +399,10 @@ class FastParticleSlowing(om.Group):
             "Wcrit",
             CriticalSlowingEnergy(),
             promotes_inputs=["At", "ne", "Te", "ni", "Ai", "Zi"])
-        self.add_subsystem("logCoulombEl", CoulombLogarithmElectrons(),
-                promotes_inputs=["ne", "Te"],
-                promotes_outputs=["logΛe"])
+        self.add_subsystem("logCoulombEl",
+                           CoulombLogarithmElectrons(),
+                           promotes_inputs=["ne", "Te"],
+                           promotes_outputs=["logΛe"])
         self.add_subsystem("WcRat",
                            CriticalSlowingEnergyRatio(),
                            promotes_inputs=[("W", "Wt")])

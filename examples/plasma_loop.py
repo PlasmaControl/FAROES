@@ -61,15 +61,19 @@ class Machine(om.Group):
         self.add_subsystem("NBIslowing",
                            FastParticleSlowing(),
                            promotes_inputs=[("ne", "<n_e>"), ("Te", "<T_e>")])
-        self.connect("ZeroDPlasma.ni", ["NBIslowing.ni", "alphaslowing.ni", "nbicdEff.ni"])
-        self.connect("ZeroDPlasma.Ai", ["NBIslowing.Ai", "alphaslowing.Ai", "nbicdEff.Ai"])
-        self.connect("ZeroDPlasma.Zi", ["NBIslowing.Zi", "alphaslowing.Zi", "nbicdEff.Zi"])
+        self.connect("ZeroDPlasma.ni",
+                     ["NBIslowing.ni", "alphaslowing.ni", "nbicdEff.ni"])
+        self.connect("ZeroDPlasma.Ai",
+                     ["NBIslowing.Ai", "alphaslowing.Ai", "nbicdEff.Ai"])
+        self.connect("ZeroDPlasma.Zi",
+                     ["NBIslowing.Zi", "alphaslowing.Zi", "nbicdEff.Zi"])
 
         # back-connections
         self.connect("NBIslowing.Wfast", ["ZeroDPlasma.W_fast_NBI"])
 
         self.connect("NBIsource.S", ["NBIslowing.S", "NBIcurr.S"])
-        self.connect("NBIsource.E", ["NBIslowing.Wt", "nbicdEff.Eb", "NBIcurr.Eb"])
+        self.connect("NBIsource.E",
+                     ["NBIslowing.Wt", "nbicdEff.Eb", "NBIcurr.Eb"])
         self.connect("NBIsource.A", ["NBIslowing.At", "nbicdEff.Ab"])
         self.connect("NBIsource.Z", ["NBIslowing.Zt", "nbicdEff.Zb"])
 
@@ -115,8 +119,9 @@ class Machine(om.Group):
         self.connect("radiation.P_loss",
                      ["ZeroDPlasma.P_loss", "confinementtime.PL"])
 
-        self.add_subsystem("specP", SpecifiedPressure(config=config),
-                promotes_inputs=["Bt", "Ip"])
+        self.add_subsystem("specP",
+                           SpecifiedPressure(config=config),
+                           promotes_inputs=["Bt", "Ip"])
 
         self.connect("plasmageom.a", ["specP.a"])
         self.connect("plasmageom.L_pol", ["specP.L_pol"])
@@ -130,8 +135,10 @@ class Machine(om.Group):
         self.connect("ZeroDPlasma.<p_tot>", "Hbalance.rhs:H")
 
         # compute neutral beam current drive
-        self.add_subsystem("nbicdEff", CurrentDriveEfficiency(config=config),
-                promotes_inputs=["R0", ("ne", "<n_e>"), "<T_e>", "ε"])
+        self.add_subsystem(
+            "nbicdEff",
+            CurrentDriveEfficiency(config=config),
+            promotes_inputs=["R0", ("ne", "<n_e>"), "<T_e>", "ε"])
 
         self.connect("ZeroDPlasma.Z_eff", ["nbicdEff.Z_eff"])
         self.connect("ZeroDPlasma.vth_e", ["nbicdEff.vth_e"])
@@ -143,21 +150,24 @@ class Machine(om.Group):
         self.connect("nbicdEff.It/P", "NBIcurr.It/P")
 
         # compute bootstrap current
-        self.add_subsystem("bootstrap", BootstrapCurrent(),
-                promotes_inputs=["ε", "Ip"])
+        self.add_subsystem("bootstrap",
+                           BootstrapCurrent(),
+                           promotes_inputs=["ε", "Ip"])
         self.connect("ZeroDPlasma.thermal pressure fraction",
-                "bootstrap.thermal pressure fraction")
+                     "bootstrap.thermal pressure fraction")
         self.connect("specP.βp", "bootstrap.βp")
 
-        self.add_subsystem('current', CurrentAndSafetyFactor(config=config),
-                promotes_inputs=["R0", "Bt"],
-                promotes_outputs=["Ip", ("n_bar", "<n_e>")])
+        self.add_subsystem('current',
+                           CurrentAndSafetyFactor(config=config),
+                           promotes_inputs=["R0", "Bt"],
+                           promotes_outputs=["Ip", ("n_bar", "<n_e>")])
         self.connect("current.q_star", "bootstrap.q_star")
         self.connect("current.q_min", "bootstrap.q_min")
         self.connect("NBIcurr.I_NBI", "current.I_NBI")
         self.connect("bootstrap.I_BS", "current.I_BS")
         self.connect("plasmageom.L_pol", "current.L_pol")
         self.connect("plasmageom.a", "current.a")
+
 
 #        self.add_subsystem("radial_build",
 #                           MenardSTRadialBuild(config=config),
@@ -174,7 +184,6 @@ class Machine(om.Group):
 #        self.connect('radial_build.Ib TF R_max', ['magnets.r_ot'])
 #
 #        self.connect('magnets.Ob TF R_out', ['radial_build.Ob TF R_out'])
-
 
 if __name__ == "__main__":
     prob = om.Problem()
@@ -217,7 +226,6 @@ if __name__ == "__main__":
     prob.set_val('specP.A', 1.6)
     prob.set_val('nbicdEff.A', 1.6)
     prob.set_val('Bt', 2.094, units='T')
-
 
     # plasma inputs
     # prob.set_val("ZeroDPlasma.P_loss", 83.34, units="MW")
