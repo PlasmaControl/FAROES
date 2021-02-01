@@ -19,6 +19,8 @@ class SimpleNBISourceProperties(om.ExplicitComponent):
         Fundamental charges, Charge of beam particles
     m : float
         kg, Mass of beam particles
+    eff : float
+        Wall-plug efficiency
 
     Notes
     -----
@@ -35,6 +37,7 @@ class SimpleNBISourceProperties(om.ExplicitComponent):
         f = acc.accessor(["h_cd", "NBI"])
         acc.set_output(self, f, "energy", component_name="E", units="keV")
         acc.set_output(self, f, "power", component_name="P", units="MW")
+        acc.set_output(self, f, "wall-plug efficiency", component_name="eff")
 
         config = self.options["config"].accessor(["h_cd", "NBI"])
         species_name = config(['ion'])
@@ -70,6 +73,8 @@ class SimpleNBISource(om.Group):
         s^{-1}, particles per second
     v : float
         m/s, particle velocity
+    eff : float
+        Wall-plug efficiency
 
     Notes
     -----
@@ -83,7 +88,13 @@ class SimpleNBISource(om.Group):
         config = self.options["config"]
         self.add_subsystem("props",
                            SimpleNBISourceProperties(config=config),
-                           promotes_outputs=["P", "E", "A", "Z", "m"])
+                           promotes_outputs=["P", "E", "A", "Z", "m", "eff"])
+        self.add_subsystem("P_aux",
+                           om.ExecComp("P_aux = P / eff",
+                                                P={"units": "MW"},
+                                                P_aux={"units": "MW"}),
+                           promotes_inputs=["P", "eff"],
+                           promotes_outputs=["P_aux"])
         self.add_subsystem("rate",
                            om.ExecComp("S = P/E",
                                        S={'units': '1/s'},
