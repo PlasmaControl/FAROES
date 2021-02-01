@@ -579,7 +579,7 @@ class CurrentDriveEfficiencyEquation(om.ExplicitComponent):
         self.add_input("line1", units="A/W")
         self.add_input("line2")
         self.add_input("line3")
-        self.add_output("It/P")
+        self.add_output("It/P", units="A/W")
 
     def compute(self, inputs, outputs):
         line1 = inputs["line1"]
