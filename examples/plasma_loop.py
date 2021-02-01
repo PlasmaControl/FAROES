@@ -1,11 +1,7 @@
 import os
 import pickle
 # This is first example with a cycle of components, necessitating(?)
-# a nonlinear solver. However, it should be noted that here the there's not
-# _actually_ a cycle. The only variables which cycle back are ZeroDPlasma.A to
-# confinementtime.M (the average main ion mass) and NBIslowing.Wfast, the NBI
-# fast particle energy. The latter does not play a role in computing p_th or
-# the other main plasma properties.
+# a nonlinear solver.
 
 from faroes.configurator import UserConfigurator
 import faroes.units  # noqa: F401
@@ -24,7 +20,10 @@ from faroes.radiation import SimpleRadiation
 
 from faroes.plasma_beta import SpecifiedPressure
 
-from faroes.nbicd import CurrentDriveEfficiency
+from faroes.nbicd import CurrentDriveEfficiency, NBICurrent
+from faroes.bootstrap import BootstrapCurrent
+
+from faroes.current import CurrentAndSafetyFactor
 
 import openmdao.api as om
 
@@ -44,7 +43,7 @@ class Machine(om.Group):
         self.add_subsystem("confinementtime",
                            ConfinementTime(config=config, scaling="default"),
                            promotes_inputs=[("R", "R0"), "ε", "κa", "Bt",
-                                            ("n19", "<n_e>")])
+                                            ("n19", "<n_e>"), "Ip"])
 
         self.add_subsystem("ZeroDPlasma",
                            ZeroDPlasma(config=config),
@@ -69,8 +68,8 @@ class Machine(om.Group):
         # back-connections
         self.connect("NBIslowing.Wfast", ["ZeroDPlasma.W_fast_NBI"])
 
-        self.connect("NBIsource.S", ["NBIslowing.S"])
-        self.connect("NBIsource.E", ["NBIslowing.Wt", "nbicdEff.Eb"])
+        self.connect("NBIsource.S", ["NBIslowing.S", "NBIcurr.S"])
+        self.connect("NBIsource.E", ["NBIslowing.Wt", "nbicdEff.Eb", "NBIcurr.Eb"])
         self.connect("NBIsource.A", ["NBIslowing.At", "nbicdEff.Ab"])
         self.connect("NBIsource.Z", ["NBIslowing.Zt", "nbicdEff.Zb"])
 
@@ -132,13 +131,33 @@ class Machine(om.Group):
 
         # compute neutral beam current drive
         self.add_subsystem("nbicdEff", CurrentDriveEfficiency(config=config),
-                promotes_inputs=["R0", ("ne", "<n_e>"), "<T_e>"])
+                promotes_inputs=["R0", ("ne", "<n_e>"), "<T_e>", "ε"])
 
-        self.connect("ZeroDPlasma.Z_eff", "nbicdEff.Z_eff")
-        self.connect("ZeroDPlasma.vth_e", "nbicdEff.vth_e")
+        self.connect("ZeroDPlasma.Z_eff", ["nbicdEff.Z_eff"])
+        self.connect("ZeroDPlasma.vth_e", ["nbicdEff.vth_e"])
 
-        self.connect("NBIslowing.slowingt.ts", "nbicdEff.τs")
+        self.connect("NBIslowing.slowingt.ts", ["nbicdEff.τs"])
+        self.connect("NBIsource.v", ["nbicdEff.vb"])
 
+        self.add_subsystem('NBIcurr', NBICurrent())
+        self.connect("nbicdEff.It/P", "NBIcurr.It/P")
+
+        # compute bootstrap current
+        self.add_subsystem("bootstrap", BootstrapCurrent(),
+                promotes_inputs=["ε", "Ip"])
+        self.connect("ZeroDPlasma.thermal pressure fraction",
+                "bootstrap.thermal pressure fraction")
+        self.connect("specP.βp", "bootstrap.βp")
+
+        self.add_subsystem('current', CurrentAndSafetyFactor(config=config),
+                promotes_inputs=["R0", "Bt"],
+                promotes_outputs=["Ip", ("n_bar", "<n_e>")])
+        self.connect("current.q_star", "bootstrap.q_star")
+        self.connect("current.q_min", "bootstrap.q_min")
+        self.connect("NBIcurr.I_NBI", "current.I_NBI")
+        self.connect("bootstrap.I_BS", "current.I_BS")
+        self.connect("plasmageom.L_pol", "current.L_pol")
+        self.connect("plasmageom.a", "current.a")
 
 #        self.add_subsystem("radial_build",
 #                           MenardSTRadialBuild(config=config),
@@ -197,20 +216,17 @@ if __name__ == "__main__":
     prob.set_val('plasmageom.A', 1.6)
     prob.set_val('specP.A', 1.6)
     prob.set_val('nbicdEff.A', 1.6)
-    prob.set_val("<n_e>", 1.06, units="n20")
     prob.set_val('Bt', 2.094, units='T')
 
-    prob.set_val('confinementtime.Ip', 14.67, units="MA")
-    prob.set_val('specP.Ip', 14.67, units="MA")
-    # confinement time inputs
-    prob.set_val('Hbalance.H', 1.5)
 
     # plasma inputs
     # prob.set_val("ZeroDPlasma.P_loss", 83.34, units="MW")
     # prob.set_val("ZeroDPlasma.W_fast_α", 13.05, units="MJ")
 
-    prob.set_val("NBIslowing.logΛe", 17.37)
-    prob.set_val("alphaslowing.logΛe", 17.37)
+    # initial inputs
+    prob.set_val('Hbalance.H', 1.5)
+    prob.set_val('Ip', 10.67, units="MA")
+    prob.set_val("<n_e>", 1.00, units="n20")
 
     prob.model.nonlinear_solver = om.NewtonSolver(solve_subsystems=True)
     # prob.model.nonlinear_solver = om.NonlinearBlockGS()
