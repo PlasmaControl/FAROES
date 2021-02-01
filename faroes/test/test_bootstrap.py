@@ -15,8 +15,8 @@ class TestBootstrapMultiplier(unittest.TestCase):
 
         prob.setup(force_alloc_complex=True)
 
-        prob.set_val("qstar", 1.0)
-        prob.set_val("qmin", 1.0)
+        prob.set_val("q_star", 1.0)
+        prob.set_val("q_min", 1.0)
         self.prob = prob
 
     def test_partials(self):
