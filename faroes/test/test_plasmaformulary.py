@@ -63,6 +63,48 @@ class TestAverageIonMass(unittest.TestCase):
         check = prob.check_partials(out_stream=None, method='cs')
         assert_check_partials(check)
 
+class TestCoulombLogarithmElectrons(unittest.TestCase):
+    def setUp(self):
+        prob = om.Problem()
+
+        prob.model = faroes.plasmaformulary.CoulombLogarithmElectrons()
+
+        prob.setup(force_alloc_complex=True)
+
+        prob.set_val('ne', 1.06e20, units="m**-3")
+        prob.set_val('Te', 9.20, units="keV")
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+    def test_value(self):
+        prob = self.prob
+        prob.run_driver()
+        assert_near_equal(prob["logΛe"], 17.372, tolerance=1e-5)
+
+class TestCoulombLogarithmIons(unittest.TestCase):
+    def setUp(self):
+        prob = om.Problem()
+        prob.model = faroes.plasmaformulary.CoulombLogarithmIons()
+        prob.setup(force_alloc_complex=True)
+
+        prob.set_val('ni', 0.80e20, units="m**-3")
+        prob.set_val('Ti', 10.20, units="keV")
+        prob.set_val('Z', 1.2)
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+    def test_value(self):
+        prob = self.prob
+        prob.run_driver()
+        assert_near_equal(prob["logΛi"], 20.34, tolerance=3e-3)
 
 if __name__ == '__main__':
     unittest.main()
