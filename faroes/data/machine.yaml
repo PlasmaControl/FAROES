@@ -1,2 +1,8 @@
 cryostat:
   TF height multiple: 2
+
+plasma control system:
+  power factor: {value: 0.04, reference: Menard T369}
+
+coolant pumping system:
+  power factor: {value: 0.03, reference: Menard T368}
