@@ -3,8 +3,6 @@ from faroes.configurator import UserConfigurator
 import openmdao.api as om
 from openmdao.utils.assert_utils import assert_check_partials
 
-import numpy as np
-
 
 class SimpleCoolantPumpingPower(om.ExplicitComponent):
     r"""

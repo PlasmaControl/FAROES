@@ -91,8 +91,8 @@ class SimpleNBISource(om.Group):
                            promotes_outputs=["P", "E", "A", "Z", "m", "eff"])
         self.add_subsystem("P_aux",
                            om.ExecComp("P_aux = P / eff",
-                                                P={"units": "MW"},
-                                                P_aux={"units": "MW"}),
+                                       P={"units": "MW"},
+                                       P_aux={"units": "MW"}),
                            promotes_inputs=["P", "eff"],
                            promotes_outputs=["P_aux"])
         self.add_subsystem("rate",
