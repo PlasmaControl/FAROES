@@ -6,3 +6,6 @@ plasma control system:
 
 coolant pumping system:
   power factor: {value: 0.03, reference: Menard T368}
+
+electrical generation:
+  efficiency: {value: 0.45, reference: Menard T365}
