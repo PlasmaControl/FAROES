@@ -53,7 +53,7 @@ class TestAuxilliaryPower(unittest.TestCase):
     def test_value(self):
         prob = self.prob
         prob.run_driver()
-        P_aux = prob.get_val("P_aux", units="MW")
+        P_aux = prob.get_val("P_aux,h", units="MW")
         P_auxe = prob.get_val("P_aux,e", units="MW")
         assert_near_equal(P_aux, 150, tolerance=1e-4)
         assert_near_equal(P_auxe, 300, tolerance=1e-4)
