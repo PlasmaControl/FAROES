@@ -1,5 +1,5 @@
-import os
-import pickle
+# import os
+# import pickle
 # This is first example with a cycle of components, necessitating(?)
 # a nonlinear solver.
 
@@ -247,7 +247,7 @@ if __name__ == "__main__":
 
     prob.run_driver()
 
-    #prob.check_totals(of=['NBIslowing.Wfast'], wrt=['confinementtime.Ip'])
+    # prob.check_totals(of=['NBIslowing.Wfast'], wrt=['confinementtime.Ip'])
 
     #    prob.set_val('magnets.n_coil', 18)
     #    prob.set_val('magnets.windingpack.j_eff_max', 160)
