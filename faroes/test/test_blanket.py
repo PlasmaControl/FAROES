@@ -3,6 +3,7 @@ from faroes.configurator import UserConfigurator
 
 import openmdao.api as om
 from openmdao.utils.assert_utils import assert_check_partials
+from openmdao.utils.assert_utils import assert_near_equal
 
 import unittest
 
@@ -47,6 +48,85 @@ class TestMenardSTBlanketAndShieldGeometry(unittest.TestCase):
 
         check = prob.check_partials(out_stream=None, method='cs')
         assert_check_partials(check)
+
+
+class TestInboardMidplaneNeutronFluxFromRing(unittest.TestCase):
+    def setUp(self):
+        prob = om.Problem()
+        prob.model = faroes.blanket.InboardMidplaneNeutronFluxFromRing()
+        prob.setup(force_alloc_complex=True)
+
+        prob.set_val('R0', 3.0)
+        prob.set_val('r_in', 2.0)
+
+        prob.set_val('P_n', 100, units="MW")
+        prob.set_val('S', 10, units="s**-1")
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+    def test_value(self):
+        prob = self.prob
+        prob.run_driver()
+        q_n = prob.get_val("q_n", units="MW/m**2")
+        expected = 0.688
+        assert_near_equal(q_n, expected, tolerance=1e-2)
+
+
+class TestMenardMagnetCooling(unittest.TestCase):
+    def setUp(self):
+        prob = om.Problem()
+        prob.model = faroes.blanket.MenardMagnetCooling()
+        prob.setup(force_alloc_complex=True)
+
+        prob.set_val('P_n', 278)
+        prob.set_val('Δr_sh', 0.6)
+        prob.set_val('f_refrigeration', 20)
+
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+    def test_value(self):
+        prob = self.prob
+        prob.run_driver()
+        P_c = prob.get_val("P_c,el", units="MW")
+        expected = 0.2024
+        assert_near_equal(P_c, expected, tolerance=1e-3)
+        sh = prob.get_val("shielding")
+        expected = 0.0000364
+        assert_near_equal(sh, expected, tolerance=1e-3)
+
+
+class TestRefrigerationPerformance(unittest.TestCase):
+    def setUp(self):
+        prob = om.Problem()
+        prob.model = faroes.blanket.RefrigerationPerformance()
+        prob.setup(force_alloc_complex=True)
+
+        prob.set_val("T_cold", 40, units="K")
+        prob.set_val("T_hot", 300, units="K")
+        prob.set_val("FOM", 0.325)
+
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+    def test_value(self):
+        prob = self.prob
+        prob.run_driver()
+        f = prob.get_val("f")
+        expected = 20
+        assert_near_equal(f, expected, tolerance=1e-3)
 
 
 if __name__ == '__main__':

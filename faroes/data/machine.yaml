@@ -9,3 +9,10 @@ coolant pumping system:
 
 electrical generation:
   efficiency: {value: 0.45, reference: Menard T365}
+
+magnet cryogenics:
+  T_hot: {value: 300, units: K, reference: Menard G364}
+  T_cold: {value: 40, units: K, reference: Menard H364}
+  # figure of merit(?)
+  FOM: {value: 0.325, reference: Menard J364}
+
