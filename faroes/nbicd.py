@@ -726,17 +726,29 @@ class NBICurrent(om.ExplicitComponent):
     I_NBI : float
         MA, total neutral-beam-driven current
     """
+    def initialize(self):
+        self.options.declare("config", default=None)
+
     def setup(self):
+        config = self.options["config"]
         self.add_input("S", units="1/s", shape_by_conn=True)
         self.add_input("Eb", units="keV", shape_by_conn=True, copy_shape="S")
         self.add_input("It/P", units="A/W", shape_by_conn=True, copy_shape="S")
         self.add_output("I_NBI", units="MA")
 
+        if config is not None:
+            self.config = self.options["config"]
+            ac = self.config.accessor(["h_cd", "NBI"])
+            self.c = ac(["current drive estimate", "fudge factor"])
+        else:
+            self.c = 1
+
     def compute(self, inputs, outputs):
         S = inputs["S"]
         Eb = inputs["Eb"]
         eff = inputs["It/P"]
-        outputs["I_NBI"] = kilo * eV * np.sum(S * Eb * eff) / mega
+        c = self.c
+        outputs["I_NBI"] = c * kilo * eV * np.sum(S * Eb * eff) / mega
 
     def setup_partials(self):
         self.declare_partials("I_NBI", ["S", "Eb", "It/P"])
@@ -745,9 +757,10 @@ class NBICurrent(om.ExplicitComponent):
         S = inputs["S"]
         Eb = inputs["Eb"]
         eff = inputs["It/P"]
-        J["I_NBI", "S"] = kilo * eV * Eb * eff / mega
-        J["I_NBI", "Eb"] = kilo * eV * S * eff / mega
-        J["I_NBI", "It/P"] = kilo * eV * Eb * S / mega
+        c = self.c
+        J["I_NBI", "S"] = c * kilo * eV * Eb * eff / mega
+        J["I_NBI", "Eb"] = c * kilo * eV * S * eff / mega
+        J["I_NBI", "It/P"] = c * kilo * eV * Eb * S / mega
 
 
 if __name__ == "__main__":
