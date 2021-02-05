@@ -1,5 +1,3 @@
-# import os
-# import pickle
 # This is first example with a cycle of components, necessitating(?)
 # a nonlinear solver.
 
@@ -146,7 +144,7 @@ class Machine(om.Group):
         self.connect("NBIslowing.slowingt.ts", ["nbicdEff.τs"])
         self.connect("NBIsource.v", ["nbicdEff.vb"])
 
-        self.add_subsystem('NBIcurr', NBICurrent())
+        self.add_subsystem('NBIcurr', NBICurrent(config=config))
         self.connect("nbicdEff.It/P", "NBIcurr.It/P")
 
         # compute bootstrap current
@@ -161,12 +159,13 @@ class Machine(om.Group):
                            CurrentAndSafetyFactor(config=config),
                            promotes_inputs=["R0", "Bt"],
                            promotes_outputs=["Ip", ("n_bar", "<n_e>")])
-        self.connect("current.q_star", "bootstrap.q_star")
-        self.connect("current.q_min", "bootstrap.q_min")
+        self.connect("plasmageom.L_pol_simple", "current.L_pol")
+        self.connect("plasmageom.a", "current.a")
         self.connect("NBIcurr.I_NBI", "current.I_NBI")
         self.connect("bootstrap.I_BS", "current.I_BS")
-        self.connect("plasmageom.L_pol", "current.L_pol")
-        self.connect("plasmageom.a", "current.a")
+        # back-connections
+        self.connect("current.q_star", "bootstrap.q_star")
+        self.connect("current.q_min", "bootstrap.q_min")
 
 
 #        self.add_subsystem("radial_build",
@@ -222,19 +221,18 @@ if __name__ == "__main__":
     # prob.check_config(checks=['unconnected_inputs'])
 
     prob.set_val('R0', 3, units='m')
-    prob.set_val('plasmageom.A', 1.6)
-    prob.set_val('specP.A', 1.6)
-    prob.set_val('nbicdEff.A', 1.6)
+    A = 1.6
+    prob.set_val('plasmageom.A', A)
+    prob.set_val('specP.A', A)
+    prob.set_val('nbicdEff.A', A)
     prob.set_val('Bt', 2.094, units='T')
 
     # plasma inputs
-    # prob.set_val("ZeroDPlasma.P_loss", 83.34, units="MW")
-    # prob.set_val("ZeroDPlasma.W_fast_α", 13.05, units="MJ")
 
     # initial inputs
-    prob.set_val('Hbalance.H', 1.5)
-    prob.set_val('Ip', 10.67, units="MA")
-    prob.set_val("<n_e>", 1.00, units="n20")
+    prob.set_val('Hbalance.H', 1.7)
+    prob.set_val('Ip', 14.67, units="MA")
+    prob.set_val("<n_e>", 1.26, units="n20")
 
     prob.model.nonlinear_solver = om.NewtonSolver(solve_subsystems=True)
     # prob.model.nonlinear_solver = om.NonlinearBlockGS()
