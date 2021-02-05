@@ -66,6 +66,29 @@ def ellipse_perimeter_simple(a, b):
     return P
 
 
+def ellipse_perimeter_simple_derivatives(a, b):
+    """Often seen as √((1 + κ^2)/2)
+
+    Parameters
+    ----------
+    a : float
+       short minor radius of an ellipse
+    b : float
+       long minor radius of an ellipse
+
+    Returns
+    -------
+    Dict of
+    a : float
+       derivative with respect to a
+    b : float
+       derivative with respect to b
+    """
+    dP_da = 2**(1 / 2) * π / (1 + (b / a)**2)**(1 / 2)
+    dP_db = 2**(1 / 2) * (b / a) * π / (1 + (b / a)**2)**(1 / 2)
+    return {"a": dP_da, "b": dP_db}
+
+
 def ellipse_perimeter(a, b):
     """Exact formula using special functions
 

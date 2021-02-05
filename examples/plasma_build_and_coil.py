@@ -2,7 +2,7 @@
 
 import openmdao.api as om
 from faroes.simple_tf_magnet import MagnetRadialBuild
-from faroes.elliptical_plasma import PlasmaGeometry
+from faroes.elliptical_plasma import MenardPlasmaGeometry
 from faroes.radialbuild import MenardSTRadialBuild
 from faroes.configurator import UserConfigurator
 
@@ -15,7 +15,7 @@ class Machine(om.Group):
         config = self.options['config']
 
         self.add_subsystem("plasma",
-                           PlasmaGeometry(config=config),
+                           MenardPlasmaGeometry(config=config),
                            promotes_inputs=["R0"])
 
         self.add_subsystem("radial_build",

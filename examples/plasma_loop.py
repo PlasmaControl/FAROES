@@ -5,7 +5,7 @@ from faroes.configurator import UserConfigurator
 import faroes.units  # noqa: F401
 
 # from faroes.simple_tf_magnet import MagnetRadialBuild
-from faroes.elliptical_plasma import PlasmaGeometry
+from faroes.elliptical_plasma import MenardPlasmaGeometry
 # from faroes.radialbuild import MenardSTRadialBuild
 from faroes.simple_plasma import ZeroDPlasma
 from faroes.nbisource import SimpleNBISource
@@ -34,7 +34,7 @@ class Machine(om.Group):
         config = self.options['config']
 
         self.add_subsystem("plasmageom",
-                           PlasmaGeometry(config=config),
+                           MenardPlasmaGeometry(config=config),
                            promotes_inputs=["R0"],
                            promotes_outputs=["ε", "κa"])
 
