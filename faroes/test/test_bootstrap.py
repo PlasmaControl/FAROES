@@ -61,7 +61,7 @@ class TestBootstrapCurrent(unittest.TestCase):
         prob.model = bootstrap.BootstrapCurrent()
         prob.setup(force_alloc_complex=True)
 
-        prob.set_val('ε', 1/1.6)
+        prob.set_val('ε', 1 / 1.6)
         prob.set_val('βp', 1.3571)
         prob.set_val('βp_th', 1.2098)
         prob.set_val('thermal pressure fraction', 0.89)
@@ -81,7 +81,6 @@ class TestBootstrapCurrent(unittest.TestCase):
         f_BS = prob.get_val("f_BS")
         expected = 0.7545
         assert_near_equal(f_BS, expected, tolerance=1e-2)
-
 
 
 if __name__ == "__main__":
