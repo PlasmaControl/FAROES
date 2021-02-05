@@ -2,7 +2,7 @@ import openmdao.api as om
 from openmdao.utils.assert_utils import assert_check_partials
 
 from faroes.configurator import UserConfigurator
-import faroes.elliptical_plasma
+import faroes.elliptical_plasma as elliptical_plasma
 
 import unittest
 
@@ -12,7 +12,7 @@ class TestPlasmaGeometry(unittest.TestCase):
         uc = UserConfigurator()
         prob = om.Problem()
 
-        prob.model = faroes.elliptical_plasma.PlasmaGeometry(config=uc)
+        prob.model = elliptical_plasma.PlasmaGeometry(config=uc)
         #        prob.model.kappa_multiplier = 0.95
         #        prob.model.κ_ε_scaling_constants = [1.9, 1.9, 1.4]
 
@@ -27,7 +27,7 @@ class TestPlasmaGeometry(unittest.TestCase):
 class TestKappaScaling(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
-        prob.model = faroes.elliptical_plasma.KappaScaling()
+        prob.model = elliptical_plasma.MenardKappaScaling()
         prob.model.kappa_multiplier = 0.95
         prob.model.κ_ε_scaling_constants = [1.9, 1.9, 1.4]
         prob.setup(force_alloc_complex=True)

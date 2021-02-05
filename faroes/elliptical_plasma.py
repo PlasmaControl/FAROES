@@ -4,7 +4,7 @@ import faroes.util as util
 import openmdao.api as om
 
 
-class KappaScaling(om.ExplicitComponent):
+class MenardKappaScaling(om.ExplicitComponent):
     r"""
     Inputs
     ------
@@ -149,6 +149,9 @@ class EllipticalGeometry(om.ExplicitComponent):
         m**3, volume of the elliptical torus
     L_pol : float
         m, Poloidal circumference
+    L_pol_simple : float
+        m, Simplified poloidal circumference for testing.
+            Uses simple ellipse approximation.
     R_min : float
         m, innermost plasma radius at midplane
     R_max : float
@@ -178,6 +181,11 @@ class EllipticalGeometry(om.ExplicitComponent):
                         desc="Poloidal circumference",
                         lower=0,
                         ref=10)
+        self.add_output("L_pol_simple",
+                        units="m",
+                        lower=0,
+                        ref=10,
+                        desc="Simplified poloidal circumference for testing")
         self.add_output("R_min",
                         units='m',
                         desc="Inner radius of plasma at midplane")
@@ -206,6 +214,7 @@ class EllipticalGeometry(om.ExplicitComponent):
         outputs["R_min"] = R0 - a
         outputs["R_max"] = R0 + a
         outputs["L_pol"] = util.ellipse_perimeter(a[0], b[0])
+        outputs["L_pol_simple"] = util.ellipse_perimeter_simple(a[0], b[0])
 
     def setup_partials(self):
         self.declare_partials('*', '*', method='fd')
@@ -228,7 +237,7 @@ class PlasmaGeometry(om.Group):
     def setup(self):
         config = self.options['config']
         self.add_subsystem("kappa",
-                           KappaScaling(config=config),
+                           MenardKappaScaling(config=config),
                            promotes_inputs=["A"],
                            promotes_outputs=["κ"])
         self.add_subsystem("geom",
