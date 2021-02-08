@@ -19,7 +19,7 @@ class TestCurrentDriveBeta1(unittest.TestCase):
         prob.setup(force_alloc_complex=True)
         prob.set_val('Ab', 2)
         prob.set_val('Ai', 2.5)
-        prob.set_val('Z_eff', 1.2)
+        prob.set_val('Z_eff', 2)
         self.prob = prob
 
     def test_partials(self):
@@ -31,7 +31,7 @@ class TestCurrentDriveBeta1(unittest.TestCase):
         prob = self.prob
 
         prob.run_driver()
-        assert_near_equal(prob["β1"], 1.5, tolerance=1e-3)
+        assert_near_equal(prob["β1"], 2.5, tolerance=1e-3)
 
 
 class TestCurrentDriveAlphaCubed(unittest.TestCase):
