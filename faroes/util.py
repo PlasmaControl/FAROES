@@ -233,6 +233,7 @@ def torus_volume(R, a, b=None):
     V = area * circum
     return V
 
+# not used
 def cross_section_area_RZ(R, Z, nx=1000):
     """Cross-sectional area of a poloidal slice
 
@@ -256,13 +257,16 @@ def cross_section_area_RZ(R, Z, nx=1000):
     pos_inds = (Z >= 0)
     neg_inds = (Z <= 0)
 
-    ypos = scipy.interpolate.interp1d(R[pos_inds], Z[pos_inds], bounds_error=False)
-    yneg = scipy.interpolate.interp1d(R[neg_inds], Z[neg_inds], bounds_error=False)
+    ypos = scipy.interpolate.interp1d(R[pos_inds], Z[pos_inds],
+            bounds_error=False, fill_value=0)
+    yneg = scipy.interpolate.interp1d(R[neg_inds], Z[neg_inds],
+            bounds_error=False, fill_value=0)
 
     A = np.trapz(ypos(x)-yneg(x), x=x)
 
     return A
 
+# not used
 def surface_area_RZ(R, Z, nx=1000):
     """Surface area of plasma
 
@@ -286,8 +290,10 @@ def surface_area_RZ(R, Z, nx=1000):
     pos_inds = (Z >= 0)
     neg_inds = (Z <= 0)
 
-    ypos = scipy.interpolate.interp1d(R[pos_inds], Z[pos_inds], bounds_error=False)
-    yneg = scipy.interpolate.interp1d(R[neg_inds], Z[neg_inds], bounds_error=False)
+    ypos = scipy.interpolate.interp1d(R[pos_inds], Z[pos_inds],
+            bounds_error=False, fill_value=0)
+    yneg = scipy.interpolate.interp1d(R[neg_inds], Z[neg_inds],
+            bounds_error=False, fill_value=0)
 
     gradypos = np.gradient(ypos(x)) / np.gradient(x)
     S1 = 2 * np.pi * np.trapz(x * np.sqrt(1 + gradypos**2), x=x)
@@ -297,6 +303,7 @@ def surface_area_RZ(R, Z, nx=1000):
 
     return S1 + S2
 
+# not used
 def volume_RZ(R, Z, nx=1000):
     """Volume of plasma by cylindrical shells
 
@@ -320,8 +327,10 @@ def volume_RZ(R, Z, nx=1000):
     pos_inds = (Z >= 0)
     neg_inds = (Z <= 0)
 
-    ypos = scipy.interpolate.interp1d(R[pos_inds], Z[pos_inds], bounds_error=False)
-    yneg = scipy.interpolate.interp1d(R[neg_inds], Z[neg_inds], bounds_error=False)
+    ypos = scipy.interpolate.interp1d(R[pos_inds], Z[pos_inds],
+            bounds_error=False, fill_value=0)
+    yneg = scipy.interpolate.interp1d(R[neg_inds], Z[neg_inds],
+            bounds_error=False, fill_value=0)
 
     # volume by cylindrical shells
     V = 2 * np.pi * np.trapz(x * (ypos(x)-yneg(x)), x=x)
