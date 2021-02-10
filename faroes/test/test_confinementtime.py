@@ -1,12 +1,38 @@
+import faroes.units  # noqa: F401
+import faroes.confinementtime
+from faroes.configurator import UserConfigurator
+
 import openmdao.api as om
 from openmdao.utils.assert_utils import assert_check_partials
 from openmdao.utils.assert_utils import assert_near_equal
 
-import faroes.confinementtime
-from faroes.configurator import UserConfigurator
-
 import unittest
 from importlib import resources
+
+
+class TestConfinementTime(unittest.TestCase):
+    def setUp(self):
+        prob = om.Problem()
+
+        uc = UserConfigurator()
+
+        prob.model = faroes.confinementtime.ConfinementTime(config=uc)
+        prob.setup()
+        prob.set_val('H', 2.0)
+        prob.set_val('Ip', 14.67, units='MA')
+        prob.set_val('Bt', 2.094, units='T')
+        prob.set_val('n19', 10.63, units="n19")
+        prob.set_val('PL', 83.34, units="MW")
+        prob.set_val('R', 3.0, units='m')
+        prob.set_val('ε', 1 / 1.6)
+        prob.set_val('κa', 2.19)
+        prob.set_val('M', 2.5)
+        self.prob = prob
+
+    def test_value(self):
+        prob = self.prob
+        prob.run_driver()
+        assert_near_equal(prob.get_val('τe'), 2.76, tolerance=1e-2)
 
 
 class TestConfinementTimeScaling(unittest.TestCase):
@@ -80,7 +106,7 @@ class TestHybridConfinementTime(unittest.TestCase):
 
         prob.set_val('Ip', 14.67, units='MA')
         prob.set_val('Bt', 2.094, units='T')
-        prob.set_val('n19', 10.63)
+        prob.set_val('n19', 10.63, units='n19')
         prob.set_val('PL', 83.34)
         prob.set_val('R', 3.0, units='m')
         prob.set_val('ε', 1 / 1.6)

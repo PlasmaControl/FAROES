@@ -7,10 +7,26 @@ from astropy import units as apunits
 class SimpleNBISourceProperties(om.ExplicitComponent):
     r"""Helper for the SimpleNBISource
 
+    Outputs
+    -------
+    P : float
+        MW, Neutral beam power to plasma
+    E : float
+        keV, energy per particle
+    A : float
+        u, mass of beam particles
+    Z : int
+        Fundamental charges, Charge of beam particles
+    m : float
+        kg, Mass of beam particles
+    eff : float
+        Wall-plug efficiency
+
     Notes
     -----
-    A and Z are integers and won't change over the course of the simulation,
-    but for (me as a naive-user) technical reasons, they can't easily be
+    A and Z are (nearly) integers and won't change over
+    the course of the simulation, but for (me as a naive-user)
+    technical reasons, they can't easily be
     converted to being a discrete output.
     """
     def initialize(self):
@@ -21,6 +37,7 @@ class SimpleNBISourceProperties(om.ExplicitComponent):
         f = acc.accessor(["h_cd", "NBI"])
         acc.set_output(self, f, "energy", component_name="E", units="keV")
         acc.set_output(self, f, "power", component_name="P", units="MW")
+        acc.set_output(self, f, "wall-plug efficiency", component_name="eff")
 
         config = self.options["config"].accessor(["h_cd", "NBI"])
         species_name = config(['ion'])
@@ -28,8 +45,9 @@ class SimpleNBISourceProperties(om.ExplicitComponent):
         beam_ion_Z = species.integer_charge
         beam_ion_mass_number = species.mass_number
         beam_ion_mass = species.mass.to(apunits.kg).value
-        self.add_output("m", units='kg', val=beam_ion_mass)
-        self.add_output("A", val=beam_ion_mass_number)
+        m_ref = 1e-27
+        self.add_output("m", units='kg', lower=0, ref=m_ref, val=beam_ion_mass)
+        self.add_output("A", units="u", lower=0, val=beam_ion_mass_number)
         self.add_output("Z", val=beam_ion_Z)
 
 
@@ -39,27 +57,29 @@ class SimpleNBISource(om.Group):
     Does not handle geometry (incidence angles) etc,
     or beams with multiple energy components.
 
-    Notes
-    -----
-    A, Z will typically be fixed during a given set of simulation runs.
-
-    Inputs
-    ------
+    Outputs
+    -------
     P : float
         MW, Neutral beam power to plasma
     E : float
         keV, energy per particle
     A : float
-        mass number of beam particles
+        u, mass of beam particles
     Z : int
-        charge number of beam particles
-
-    Outputs
-    -------
-    rate : float
+        e, Charge of beam particles
+    m : float
+        kg, Mass of beam particles
+    S : float
         s^{-1}, particles per second
     v : float
         m/s, particle velocity
+    eff : float
+        Wall-plug efficiency
+
+    Notes
+    -----
+    A, Z will typically be fixed during a given set of simulation runs.
+
     """
     def initialize(self):
         self.options.declare("config", default=None)
@@ -68,23 +88,29 @@ class SimpleNBISource(om.Group):
         config = self.options["config"]
         self.add_subsystem("props",
                            SimpleNBISourceProperties(config=config),
-                           promotes_outputs=["P", "E", "A", "Z", "m"])
-        self.add_subsystem(
-            "flow",
-            om.ExecComp("f = P/E",
-                        f={'units': '1/s'},
-                        P={'units': 'W'},
-                        E={'units': 'J'}), promotes_outputs=["*"])
-        self.add_subsystem(
-            "v",
-            om.ExecComp(
-                "v = (2 * E/m)**(1/2)",
-                v={'units': 'm/s'},
-                E={'units': 'J'},
-                m={'units': 'kg'},
-            ), promotes_outputs=["*"])
-        self.connect('E', ['flow.E', 'v.E'])
-        self.connect('P', ['flow.P'])
+                           promotes_outputs=["P", "E", "A", "Z", "m", "eff"])
+        self.add_subsystem("P_aux",
+                           om.ExecComp("P_aux = P / eff",
+                                       P={"units": "MW"},
+                                       P_aux={"units": "MW"}),
+                           promotes_inputs=["P", "eff"],
+                           promotes_outputs=["P_aux"])
+        self.add_subsystem("rate",
+                           om.ExecComp("S = P/E",
+                                       S={'units': '1/s'},
+                                       P={'units': 'W'},
+                                       E={'units': 'J'}),
+                           promotes_outputs=["*"])
+        self.add_subsystem("v",
+                           om.ExecComp(
+                               "v = (2 * E/m)**(1/2)",
+                               v={'units': 'm/s'},
+                               E={'units': 'J'},
+                               m={'units': 'kg'},
+                           ),
+                           promotes_outputs=["*"])
+        self.connect('E', ['rate.E', 'v.E'])
+        self.connect('P', ['rate.P'])
         self.connect('m', ['v.m'])
 
 

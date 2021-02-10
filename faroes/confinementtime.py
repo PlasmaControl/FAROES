@@ -1,9 +1,66 @@
-import openmdao.api as om
+import faroes.units  # noqa: F401
 from faroes.configurator import UserConfigurator
 
+import openmdao.api as om
 
-class ConfinementTime(om.ExplicitComponent):
-    r"""
+
+class ConfinementTime(om.Group):
+    r"""Energy confinement time group
+
+    Options
+    -------
+    scaling : str
+        The scaling law to use. The default is specified in fits.yaml.
+
+    Inputs
+    ------
+    H : float
+        H-factor; multiple of the confinement time compared to that
+        expected from the scaling law
+    Ip : float
+        MA, plasma current
+    Bt : float
+        T, toroidal field on axis
+    n19 : float
+        n19, electron density
+    PL : float
+        MW, heating power (or loss power)
+    R : float
+        m, major radius
+    ε : float
+        inverse aspect ratio a / R
+    κa : float
+        effective elongation, S_c / (π a^2),
+        where S_c is the plasma cross-sectional area
+    M : float
+        u, main ion mass number
+
+    Outputs
+    -------
+    τe : float
+        s, confinement time
+
+    """
+    def initialize(self):
+        self.options.declare('config', default=None)
+        self.options.declare("scaling", default=None)
+
+    def setup(self):
+        config = self.options['config']
+        scaling = self.options['scaling']
+        self.add_subsystem("law",
+                           ConfinementTimeScaling(config=config,
+                                                  scaling=scaling),
+                           promotes_inputs=["*"])
+        self.add_subsystem("withH",
+                           ConfinementTimeMultiplication(),
+                           promotes_inputs=["H"],
+                           promotes_outputs=["τe"])
+        self.connect("law.τe", ["withH.τe_law"])
+
+
+class ConfinementTimeMultiplication(om.ExplicitComponent):
+    r"""Energy confinement time
 
     Inputs
     ------
@@ -16,6 +73,11 @@ class ConfinementTime(om.ExplicitComponent):
     -------
     τe : float
         s, confinement time
+
+    Notes
+    -----
+    This is a component in order to allow use of greek variables; otherwise it
+    would be fine as an ExecComp.
     """
     def setup(self):
         self.add_input("τe_law",
@@ -24,10 +86,11 @@ class ConfinementTime(om.ExplicitComponent):
         self.add_input("H",
                        val=1,
                        desc="H-factor; multiplies confinement time")
-        self.add_output("τe")
+        self.add_output("τe", units="s")
 
     def compute(self, inputs, outputs):
-        outputs["τe"] = inputs["H"] * inputs["τe_law"]
+        τe = inputs["H"] * inputs["τe_law"]
+        outputs["τe"] = τe
 
     def setup_partials(self):
         self.declare_partials("τe", ["H", "τe_law"])
@@ -52,7 +115,7 @@ class ConfinementTimeScaling(om.ExplicitComponent):
     Bt : float
         T, toroidal field on axis
     n19 : float
-        electron density in units of 10^19 per cubic meter
+        n19, electron density
     PL : float
         MW, heating power (or loss power)
     R : float
@@ -63,7 +126,7 @@ class ConfinementTimeScaling(om.ExplicitComponent):
         effective elongation, S_c / (π a^2),
         where S_c is the plasma cross-sectional area
     M : float
-        ion mass number
+        main ion mass number
 
     Outputs
     -------
@@ -85,9 +148,9 @@ class ConfinementTimeScaling(om.ExplicitComponent):
     def setup(self):
         config = self.options["config"].accessor(["fits", "τe"])
         scaling = self.options["scaling"]
-        if scaling is None:
+        if scaling is None or scaling == "default":
             scaling = config(["default"])
-        terms = config([scaling])
+        terms = config([scaling]).copy()
 
         valid_terms = ["c0", "Ip", "Bt", "n19", "PL", "R", "ε", "κa", "M"]
         for k, v in terms.items():
@@ -99,12 +162,12 @@ class ConfinementTimeScaling(om.ExplicitComponent):
 
         self.add_input("Ip", units="MA", desc="Plasma current")
         self.add_input("Bt", units="T", desc="Toroidal field on axis")
-        self.add_input("n19", desc="Density in 10^19 m⁻³")
+        self.add_input("n19", units="n19", desc="Density in 10^19 m⁻³")
         self.add_input("PL", units="MW", desc="Heating power (or loss power)")
         self.add_input("R", units="m", desc="major radius")
         self.add_input("ε", desc="Inverse aspect ratio")
         self.add_input("κa", desc="Effective elongation, S_c / πa²")
-        self.add_input("M", desc="Ion mass number")
+        self.add_input("M", units="u", desc="Ion mass number")
 
         self.add_output("τe", units="s", desc="Energy confinement time")
 

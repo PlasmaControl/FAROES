@@ -266,7 +266,11 @@ class InnerTFCoilStrain(om.ExplicitComponent):
         self.add_input('hts_E_young', units='GPa')
         self.add_input('struct_E_young', units='GPa')
 
-        self.add_output('s_HTS', units='MPa', desc='Strain on the HTS cable')
+        ref_strain_MPa = 100
+        self.add_output('s_HTS',
+                        units='MPa',
+                        ref=ref_strain_MPa,
+                        desc='Strain on the HTS cable')
         self.add_output('constraint_max_stress',
                         desc='fraction of maximum stress on the HTS cable')
 
@@ -739,5 +743,5 @@ if __name__ == "__main__":
 
     prob.run_driver()
 
-    prob.model.list_inputs(values=True)
-#    prob.model.list_outputs(values=True)
+    # prob.model.list_inputs(values=True)
+    prob.model.list_outputs(values=True)

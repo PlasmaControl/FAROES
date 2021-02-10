@@ -1,7 +1,20 @@
 NBI:
+  power: {value: 50, units: MW}
   energy: {value: 500, units: keV}
   ion: D+
-  power: {value: 50, units: MW}
+  current drive estimate:
+    # used for estimation of the trapped particle fraction
+    # epsilon fraction of 0.5 means
+    # the neoclassical trapped particle ε is (0.5 a)/R
+    ε fraction: {value: 0.5, reference: Menard T29}
+
+    # This fudge factor may be to better align calculations
+    # with literature values.
+    # Menard's is 0.7; I've adjusted mine so that
+    # the overall current drive efficiency is the same.
+    fudge factor: {value: 0.37, reference: Menard N218}
+
+  wall-plug efficiency : {value: 0.3, reference: Menard T366}
 
 RF:
   power: {value: 0, units: MW}

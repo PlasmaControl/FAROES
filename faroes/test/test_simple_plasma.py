@@ -1,7 +1,10 @@
 import faroes.simple_plasma
+
 import openmdao.api as om
 from openmdao.utils.assert_utils import assert_near_equal
 from openmdao.utils.assert_utils import assert_check_partials
+
+from scipy.constants import electron_mass
 
 import unittest
 
@@ -18,6 +21,40 @@ class TestMainIonMix(unittest.TestCase):
         assert_check_partials(check)
 
 
+class TestIonMixMux(unittest.TestCase):
+    def setUp(self):
+        prob = om.Problem()
+
+        prob.model = faroes.simple_plasma.IonMixMux()
+
+        prob.setup(force_alloc_complex=True)
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+    def test_value(self):
+        prob = self.prob
+        prob.run_driver()
+
+
+class TestThermalVelocity(unittest.TestCase):
+    def setUp(self):
+        prob = om.Problem()
+
+        prob.model = faroes.simple_plasma.ThermalVelocity(mass=electron_mass)
+        prob.setup(force_alloc_complex=True)
+        prob.set_val('T', 10, units='keV')
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+
 class TestZeroDPlasmaDensities(unittest.TestCase):
     def test_partials(self):
         prob = om.Problem()
@@ -27,6 +64,9 @@ class TestZeroDPlasmaDensities(unittest.TestCase):
         prob.setup(force_alloc_complex=True)
         prob.set_val('Z_imp', 6)
         prob.set_val('Z_eff', 2)
+        prob.set_val('n_e', 1.06, units="n20")
+        prob.set_val('A_imp', 12, units="u")
+        prob.set_val('A_main_i', 2.5, units="u")
 
         check = prob.check_partials(out_stream=None, method='cs')
         assert_check_partials(check)
@@ -82,9 +122,9 @@ class TestZeroDPlasmaTemperatures(unittest.TestCase):
 
     def test_partials(self):
         prob = self.prob
-        prob.set_val("<n_e>", 1.06e20)
-        prob.set_val("<p_e>", 156.6)
-        prob.set_val("<p_i>", 143.55)
+        prob.set_val("<n_e>", 1.06, units="n20")
+        prob.set_val("<p_e>", 156.6, units="kPa")
+        prob.set_val("<p_i>", 143.55, units="kPa")
         prob.set_val("ni/ne", 0.83)
 
         check = prob.check_partials(out_stream=None, method='cs')
@@ -92,9 +132,9 @@ class TestZeroDPlasmaTemperatures(unittest.TestCase):
 
     def test_values(self):
         prob = self.prob
-        prob.set_val("<n_e>", 1.06e20)
-        prob.set_val("<p_e>", 156.6)
-        prob.set_val("<p_i>", 143.55)
+        prob.set_val("<n_e>", 1.06e20, units="m**-3")
+        prob.set_val("<p_e>", 156.6, units="kPa")
+        prob.set_val("<p_i>", 143.55, units="kPa")
         prob.set_val("ni/ne", 0.83)
         prob.run_driver()
         assert_near_equal(prob["<T_i>"], 10.12, tolerance=1e-2)

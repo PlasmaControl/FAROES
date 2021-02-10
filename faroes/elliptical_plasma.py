@@ -1,137 +1,37 @@
-import openmdao.api as om
+from faroes.configurator import UserConfigurator
 import faroes.util as util
 
-
-class PlasmaBetaNTotal(om.ExplicitComponent):
-    r"""Total β_N from a scaling law
-
-    Inputs
-    ------
-    A : float
-        Aspect ratio
-
-    Outputs
-    -------
-    beta_N : float
-        β_N, the normalized beta
-
-    beta_N total : float
-        total β_N, the total normalized beta
-
-    Reference
-    ---------
-    Physics of Plasmas 11, 639 (2004);
-    https://doi.org/10.1063/1.1640623
-
-    No-wall limit, with 50% bootstrap fraction
-    """
-    def initialize(self):
-        self.options.declare('config', default=None)
-
-    def setup(self):
-        if self.options['config'] is not None:
-            self.config = self.options['config']
-            ac = self.config.accessor(['fits'])
-            self.β_ε_scaling_constants = ac(
-                ["no-wall β_N scaling with ε", "constants"])
-            self.β_N_multiplier = ac(["β_N multiplier"])
-
-        self.add_input("A", desc="Aspect Ratio")
-        self.add_output("beta_N", desc="Normalized beta")
-        self.add_output("beta_N total", desc="Normalized beta, total")
-
-    def beta_N_scaling(self, A):
-        """Estimated β_N from A
-
-        Parameters
-        ----------
-        A: float
-            aspect ratio of the plasma
-
-        """
-        const = self.β_ε_scaling_constants
-        b = const[0]
-        c = const[1]
-        d = const[2]
-        return b + c / (A**d)
-
-    def compute(self, inputs, outputs):
-        A = inputs["A"]
-        β_N = self.beta_N_scaling(A)
-        outputs["beta_N"] = β_N
-        outputs["beta_N total"] = β_N * self.β_N_multiplier
-
-    def setup_partials(self):
-        self.declare_partials('*', '*', method='cs')
+import openmdao.api as om
+from math import pi as π
 
 
-class PlasmaGeometry(om.ExplicitComponent):
-    r"""Describes an elliptical plasma.
-
-    .. image :: images/ellipticalplasmageometry.png
-
-    .. math::
-
-        a &= R_0 / A \\
-        \delta &= 0
+class MenardKappaScaling(om.ExplicitComponent):
+    r"""
 
     κ is determined by a "marginal kappa scaling"
     from Jon Menard:
 
     .. math:: \kappa = 0.95 (1.9 + 1.9 / (A^{1.4})).
 
-    κa an 'effective elongation' which is the same as κ,
-    since this is an elliptical plasma:
-
-    .. math::
-
-        {\kappa}a \equiv \kappa.
-
-    Other properties are determined using standard geometry formulas:
-
-    .. math::
-
-        b &= \kappa * a \\
-        \epsilon &= 1 / A \\
-        \textrm{full plasma height} &= 2 b \\
-        \textrm{surface area} &= 2 \pi R * \textrm{ellipse_perimeter(a, b)} \\
-        V &= 2 \pi R * \pi a b \\
-        R_\mathrm{min} &= R - a \\
-        R_\mathrm{max} &= R + a.
-
     Inputs
     ------
-    R0 : float
-        m, major radius
     A : float
         Aspect ratio
 
     Outputs
     -------
-    a : float
-        m, minor radius
-    b : float
-        m, minor radius in vertical direction
-    δ : float
-        triangularity: is always zero
-    ε : float
-        inverse aspect ratio
     κ : float
-        elongation
+        Elongation
     κa : float
-        effective elongation, S_c / (π a^2),
-        where S_c is the plasma cross-sectional area
-        same as κ for this elliptical plasma.
-    full plasma height : float
-        m, Twice b
-    surface area : float
-        m**2, surface area
-    V : float
-        m**3, volume of the elliptical torus
-    R_min : float
-        m, innermost plasma radius at midplane
-    R_max : float
-        m, outermost plasma radius at midplane
+        Effective elongation
+
+    κ is determined by a "marginal kappa scaling"
+    from Jon Menard:
+
+    .. math::
+
+       \kappa = 0.95 (1.9 + 1.9 / (A^{1.4})).
+
     """
     def initialize(self):
         self.options.declare('config', default=None)
@@ -141,53 +41,13 @@ class PlasmaGeometry(om.ExplicitComponent):
             self.config = self.options['config']
             ac = self.config.accessor(['fits'])
             self.kappa_multiplier = ac(["κ multiplier"])
+            self.κ_area_frac = ac(["κ area fraction"])
             self.κ_ε_scaling_constants = ac(
                 ["marginal κ-ε scaling", "constants"])
 
-        self.add_input("R0", units='m', desc="Major radius")
         self.add_input("A", desc="Aspect Ratio")
-
-        self.add_output("a", units='m', desc="Minor radius")
-        self.add_output("b", units='m', desc="Minor radius height")
-        self.add_output("ε", desc="Inverse aspect ratio")
-        self.add_output("κ", desc="Elongation")
-        self.add_output("κa", desc="Elongation")
-        self.add_output("δ", desc="Triangularity")
-        self.add_output("full_plasma_height",
-                        units='m',
-                        desc="Top to bottom of the ellipse")
-        self.add_output("surface area",
-                        units='m**2',
-                        desc="Surface area of the elliptical plasma")
-        self.add_output("V", units='m**3', desc="Volume")
-        self.add_output("R_min",
-                        units='m',
-                        desc="Inner radius of plasma at midplane")
-        self.add_output("R_max",
-                        units='m',
-                        desc="outer radius of plasma at midplane")
-
-    def compute(self, inputs, outputs):
-        outputs["δ"] = 0  # elliptical plasma approximation
-        R0 = inputs["R0"]
-        A = inputs["A"]
-        a = R0 / A
-
-        κ = self.kappa_multiplier * self.marginal_kappa_epsilon_scaling(A)
-        b = κ * a
-        sa = util.torus_surface_area(R0, a, b)
-        V = util.torus_volume(R0, a, b)
-        outputs["κ"] = κ
-        outputs["κa"] = κ
-        outputs["a"] = a
-        outputs["ε"] = 1 / A
-        outputs["b"] = b
-        outputs["full_plasma_height"] = 2 * b
-        outputs["surface area"] = sa
-        outputs["V"] = V
-
-        outputs["R_min"] = R0 - a
-        outputs["R_max"] = R0 + a
+        self.add_output("κ", lower=0, ref=2, desc="Elongation")
+        self.add_output("κa", lower=0, ref=2, desc="Effective elongation")
 
     def marginal_kappa_epsilon_scaling(self, t4_aspect_ratio):
         """
@@ -213,36 +73,297 @@ class PlasmaGeometry(om.ExplicitComponent):
         Values are from the "Scaling Parameters" sheet
         """
         constants = self.κ_ε_scaling_constants
-        sp_b12 = constants[0]
-        sp_c12 = constants[1]
-        sp_d12 = constants[2]
-        return sp_b12 + sp_c12 / (t4_aspect_ratio**sp_d12)
+        b = constants[0]
+        c = constants[1]
+        d = constants[2]
+        return b + c / (t4_aspect_ratio**d)
+
+    def compute(self, inputs, outputs):
+        A = inputs["A"]
+        κ = self.kappa_multiplier * self.marginal_kappa_epsilon_scaling(A)
+        outputs["κ"] = κ
+        outputs["κa"] = κ * self.κ_area_frac
 
     def setup_partials(self):
-        self.declare_partials('*', '*', method='cs')
-        self.declare_partials('R_min', ['R0', 'A'])
-        self.declare_partials('R_max', ['R0', 'A'])
+        self.declare_partials(["κ", "κa"], "A")
 
     def compute_partials(self, inputs, J):
-        A = inputs['A']
-        R0 = inputs['R0']
+        constants = self.κ_ε_scaling_constants
+        sp_c12 = constants[1]
+        sp_d12 = constants[2]
+        A = inputs["A"]
+        J["κ",
+          "A"] = -self.kappa_multiplier * sp_c12 * sp_d12 * A**(-sp_d12 - 1)
+        J["κa", "A"] = J["κ", "A"] * self.κ_area_frac
+
+
+class EllipseLikeGeometry(om.ExplicitComponent):
+    r"""Describes an elliptical or ellipse-ish plasma.
+
+
+    .. image :: images/ellipticalplasmageometry.png
+
+    .. math::
+
+        a &= R_0 / A \\
+        \delta &= 0
+
+    κa an 'effective elongation' which is the same as κ for a perfect ellipse
+    plasma, but can be smaller to model a more realistic plasma shape or
+    volume.
+    The "ellipse-ish plasma" has κa not equal to κ.
+
+    Other properties are determined using standard geometry formulas:
+
+    .. math::
+
+        b &= \kappa * a \\
+        \epsilon &= 1 / A \\
+        \textrm{full plasma height} &= 2 b \\
+        \textrm{Poloidal circumference} &= \textrm{ellipse_perimeter(a, b)} \\
+        \textrm{surface area} &= 2 \pi R * \textrm{ellipse_perimeter(a, b)} \\
+        R_\mathrm{min} &= R - a \\
+        R_\mathrm{max} &= R + a \\
+        V &= 2 \pi R * \pi a^2 \kappa_a \\
+        S_c &= \pi a^2 \kappa_a .
+
+    Inputs
+    ------
+    R0 : float
+        m, major radius
+    A : float
+        Aspect ratio
+    κ : float
+        Elongation
+    κa : float
+        effective elongation, S_c / (π a^2),
+        where S_c is the plasma cross-sectional area.
+        same as κ for this elliptical plasma.
+
+    Outputs
+    -------
+    a : float
+        m, minor radius
+    R_min : float
+        m, innermost plasma radius at midplane
+    R_max : float
+        m, outermost plasma radius at midplane
+    b : float
+        m, minor radius in vertical direction
+    δ : float
+        triangularity: is always zero
+    ε : float
+        inverse aspect ratio
+    full plasma height : float
+        m, Twice b
+    surface area : float
+        m**2, surface area
+    L_pol : float
+        m, Poloidal circumference
+    L_pol_simple : float
+        m, Simplified poloidal circumference for testing.
+            Uses simple ellipse approximation.
+    S_c : float
+        m**2, Cross-sectional area
+    V : float
+        m**3, volume of the elliptical torus
+    """
+    def setup(self):
+        self.add_input("R0", units='m', desc="Major radius")
+        self.add_input("A", desc="Aspect Ratio")
+        self.add_input("κ", desc="Elongation")
+        self.add_input("κa", desc="Effective elongation")
+
+        self.add_output("a", units='m', desc="Minor radius")
+        self.add_output("b", units='m', desc="Minor radius height")
+        self.add_output("ε", desc="Inverse aspect ratio")
+        self.add_output("δ", desc="Triangularity")
+        self.add_output("full_plasma_height",
+                        units='m',
+                        desc="Top to bottom of the ellipse")
+        self.add_output("surface area",
+                        units='m**2',
+                        lower=0,
+                        ref=100,
+                        desc="Surface area of the elliptical plasma")
+        self.add_output("V", units='m**3', desc="Volume", lower=0, ref=100)
+        self.add_output("S_c",
+                        units='m**2',
+                        desc="Cross-sectional area",
+                        lower=0,
+                        ref=20)
+        self.add_output("L_pol",
+                        units="m",
+                        desc="Poloidal circumference",
+                        lower=0,
+                        ref=10)
+        self.add_output("L_pol_simple",
+                        units="m",
+                        lower=0,
+                        ref=10,
+                        desc="Simplified poloidal circumference for testing")
+        self.add_output("R_min",
+                        units='m',
+                        desc="Inner radius of plasma at midplane")
+        self.add_output("R_max",
+                        units='m',
+                        desc="outer radius of plasma at midplane")
+
+    def compute(self, inputs, outputs):
+        outputs["δ"] = 0  # ellipse-like plasma approximation
+        R0 = inputs["R0"]
+        A = inputs["A"]
+        κ = inputs["κ"]
+        κa = inputs["κa"]
+        a = R0 / A
+
+        b = κ * a
+        L_pol = util.ellipse_perimeter(a[0], b[0])
+        L_pol_simple = util.ellipse_perimeter_simple(a[0], b[0])
+        sa = 2 * π * R0 * L_pol
+
+        outputs["a"] = a
+        outputs["ε"] = 1 / A
+        outputs["b"] = b
+        outputs["full_plasma_height"] = 2 * b
+        outputs["surface area"] = sa
+
+        outputs["R_min"] = R0 - a
+        outputs["R_max"] = R0 + a
+        outputs["L_pol"] = L_pol
+        outputs["L_pol_simple"] = L_pol_simple
+
+        outputs["S_c"] = π * a**2 * κa
+        V = 2 * π**2 * κa * a**2 * R0
+        outputs["V"] = V
+
+    def setup_partials(self):
+        self.declare_partials("a", ["R0", "A"], method="exact")
+        self.declare_partials('R_min', ['R0', 'A'], method="exact")
+        self.declare_partials('R_max', ['R0', 'A'], method="exact")
+
+        self.declare_partials("b", ["R0", "A", "κ"], method="exact")
+        self.declare_partials("ε", ["A"], method="exact")
+        self.declare_partials("full_plasma_height", ["R0", "A", "κ"],
+                              method="exact")
+        self.declare_partials("L_pol", ["R0", "A", "κ"], method="exact")
+        self.declare_partials("L_pol_simple", ["R0", "A", "κ"], method="exact")
+        self.declare_partials("surface area", ["R0", "A", "κ"], method="exact")
+
+        self.declare_partials("V", ["R0", "A", "κa"], method="exact")
+        self.declare_partials("S_c", ["R0", "A", "κa"], method="exact")
+
+    def compute_partials(self, inputs, J):
+        A = inputs["A"]
+        R0 = inputs["R0"]
+        κ = inputs["κ"]
+        κa = inputs["κa"]
+        a = R0 / A
+        b = κ * a
+        L_pol = util.ellipse_perimeter(a[0], b[0])
+
         J["R_min", "R0"] = 1 - 1 / A
         J["R_min", "A"] = R0 / A**2
         J["R_max", "R0"] = 1 + 1 / A
         J["R_max", "A"] = -R0 / A**2
 
+        J["a", "R0"] = 1 / A
+        J["a", "A"] = -R0 / A**2
+        J["b", "R0"] = κ / A
+        J["b", "A"] = -κ * R0 / A**2
+        J["b", "κ"] = R0 / A
+        J["full_plasma_height", "R0"] = 2 * J["b", "R0"]
+        J["full_plasma_height", "A"] = 2 * J["b", "A"]
+        J["full_plasma_height", "κ"] = 2 * J["b", "κ"]
+        J["ε", "A"] = -1 / A**2
+
+        dL_pol = util.ellipse_perimeter_derivatives(a[0], b[0])
+        dL_pol_da = dL_pol["a"]
+        dL_pol_db = dL_pol["b"]
+        J["L_pol", "A"] = dL_pol_da * J["a", "A"] + dL_pol_db * J["b", "A"]
+        J["L_pol", "R0"] = dL_pol_da * J["a", "R0"] + dL_pol_db * J["b", "R0"]
+        J["L_pol", "κ"] = dL_pol_db * J["b", "κ"]
+
+        dL_pols = util.ellipse_perimeter_simple_derivatives(a[0], b[0])
+        dL_pols_da = dL_pols["a"]
+        dL_pols_db = dL_pols["b"]
+        J["L_pol_simple",
+          "A"] = dL_pols_da * J["a", "A"] + dL_pols_db * J["b", "A"]
+        J["L_pol_simple",
+          "R0"] = dL_pols_da * J["a", "R0"] + dL_pols_db * J["b", "R0"]
+        J["L_pol_simple", "κ"] = dL_pols_db * J["b", "κ"]
+
+        J["surface area", "A"] = 2 * π * R0 * J["L_pol", "A"]
+        J["surface area", "R0"] = 2 * π * R0 * J["L_pol", "R0"] + 2 * π * L_pol
+        J["surface area", "κ"] = 2 * π * R0 * J["L_pol", "κ"]
+
+        J["V", "R0"] = 2 * π**2 * κa * 3 * R0**2 / A**2
+        J["V", "A"] = 2 * π**2 * κa * -2 * R0**3 / A**3
+        J["V", "κa"] = 2 * π**2 * a**2 * R0
+        J["S_c", "R0"] = 2 * π * R0 * κa / A**2
+        J["S_c", "A"] = -2 * π * R0**2 * κa / A**3
+        J["S_c", "κa"] = π * a**2
+
+
+class EllipticalPlasmaGeometry(om.Group):
+    r"""Perfect ellipse plasma.
+
+    Fixes κ = κa.
+    """
+    def initialize(self):
+        self.options.declare('config', default=None)
+
+    def setup(self):
+        config = self.options['config']
+        self.add_subsystem("kappa",
+                           MenardKappaScaling(config=config),
+                           promotes_inputs=["A"],
+                           promotes_outputs=["κ"])
+        # enforce equality
+        self.add_subsystem("passthrough",
+                           om.ExecComp("kappaa = kappa"),
+                           promotes_inputs=[("kappa", "κ")],
+                           promotes_outputs=[("kappaa", "κa")])
+
+        self.add_subsystem("geom",
+                           EllipseLikeGeometry(),
+                           promotes_inputs=["R0", "A", "κ", "κa"],
+                           promotes_outputs=["*"])
+
+
+class MenardPlasmaGeometry(om.Group):
+    r"""Not-quite-ellipse plasma shape.
+
+    Loads "κ area fraction" from a configuration file.
+    """
+    def initialize(self):
+        self.options.declare('config', default=None)
+
+    def setup(self):
+        config = self.options['config']
+        self.add_subsystem("kappa",
+                           MenardKappaScaling(config=config),
+                           promotes_inputs=["A"],
+                           promotes_outputs=["κ", "κa"])
+        self.add_subsystem("geom",
+                           EllipseLikeGeometry(),
+                           promotes_inputs=["R0", "A", "κ", "κa"],
+                           promotes_outputs=["*"])
+
 
 if __name__ == "__main__":
+    uc = UserConfigurator()
     prob = om.Problem()
 
-    prob.model = PlasmaGeometry()
-
-    prob.model.kappa_multiplier = 0.95
-    prob.model.κ_ε_scaling_constants = [1.9, 1.9, 1.4]
+    prob.model = EllipticalPlasmaGeometry(config=uc)
 
     prob.setup()
 
     prob.set_val('R0', 3, 'm')
     prob.set_val('A', 1.6)
+    prob.set_val('κ', 2.7)
+    prob.set_val('κa', 2.7)
 
     prob.run_driver()
+    prob.model.list_inputs()
+    prob.model.list_outputs()

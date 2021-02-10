@@ -1,6 +1,7 @@
 import numpy as np
 from math import pi as π
 import scipy as scipy
+from scipy.special import ellipe, hyp2f1
 
 from plasmapy.particles import Particle, common_isotopes
 from plasmapy.particles import atomic_number, isotopic_abundance
@@ -64,6 +65,96 @@ def ellipse_perimeter_simple(a, b):
     """
     P = 2 * π * a * np.sqrt((1 + (b / a)**2) / 2)
     return P
+
+
+def ellipse_perimeter_simple_derivatives(a, b):
+    """Often seen as √((1 + κ^2)/2)
+
+    Parameters
+    ----------
+    a : float
+       short minor radius of an ellipse
+    b : float
+       long minor radius of an ellipse
+
+    Returns
+    -------
+    Dict of
+    a : float
+       derivative with respect to a
+    b : float
+       derivative with respect to b
+    """
+    dP_da = 2**(1 / 2) * π / (1 + (b / a)**2)**(1 / 2)
+    dP_db = 2**(1 / 2) * (b / a) * π / (1 + (b / a)**2)**(1 / 2)
+    return {"a": dP_da, "b": dP_db}
+
+
+def ellipse_perimeter(a, b):
+    """Exact formula using special functions
+
+    Parameters
+    ----------
+    a : float
+       one minor radius of an ellipse
+    b : float
+       other minor radius of an ellipse
+
+    Returns
+    -------
+    P : float
+       perimeter of the ellipse
+    """
+    return 4 * b * ellipe(1 - a**2 / b**2)
+
+
+def ellipse_perimeter_derivatives(a, b):
+    r"""Exact formula using special functions
+
+    Parameters
+    ----------
+    a : float
+       one minor radius of an ellipse
+    b : float
+       other minor radius of an ellipse
+
+    Returns
+    -------
+    Dict of
+    a : float
+       derivative with respect to a
+    b : float
+       derivative with respect to b
+
+    Notes
+    -----
+    We use a different form here to avoid zeros in denominators when a==b
+
+    .. code-block:: none
+
+        D[\[Pi] Sqrt[2 (a^2 + b^2)]
+        Hypergeometric2F1[-(1/4), 1/4, 1, (a^2 - b^2)^2/(a^2 + b^2)^2], a]
+
+    References
+    ----------
+    https://www.mathematica-journal.com/2009/11/23/on-the-perimeter-of-an-ellipse/
+    """
+    def epd(a, b):
+        hyp1 = hyp2f1(-1 / 4, 1 / 4, 1, ((a**2 - b**2) / (a**2 + b**2))**2)
+        num1 = 2**(1 / 2) * a * π * hyp1
+        den1 = (a**2 + b**2)**(1 / 2)
+        term1 = num1 / den1
+
+        hyp2 = hyp2f1(3 / 4, 5 / 4, 2, ((a**2 - b**2) / (a**2 + b**2))**2)
+        num2 = 8 * a * (a - b) * b**2 * (a + b) / (a**2 + b**2)**3 * π
+        num2 = num2 * hyp2 * (a**2 + b**2)**(1 / 2)
+        den2 = 8 * 2**(1 / 2)
+        term2 = num2 / den2
+        return term1 - term2
+
+    dPda = epd(a, b)
+    dPdb = epd(b, a)  # formula is symmetric
+    return {'a': dPda, 'b': dPdb}
 
 
 def ellipse_perimeter_ramanujan(a, b):

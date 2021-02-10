@@ -1,9 +1,12 @@
+import faroes.units  # noqa: F401
+from faroes.plasmaformulary import CoulombLogarithmElectrons
+
+import openmdao.api as om
+from openmdao.utils.units import unit_conversion
+
 from scipy.constants import pi, electron_mass
 from scipy.special import hyp2f1
 import numpy as np
-import openmdao.api as om
-from openmdao.utils.units import unit_conversion
-import faroes.units  # noqa: F401
 
 
 class SlowingThermalizationTime(om.ExplicitComponent):
@@ -25,7 +28,7 @@ class SlowingThermalizationTime(om.ExplicitComponent):
     def setup(self):
         self.add_input("W/Wc", desc="Initial beam energy / critical energy")
         self.add_input("ts", units="s", desc="Ion-electron slowing time")
-        self.add_output("τth")
+        self.add_output("τth", lower=0, units="s")
 
     def compute(self, inputs, outputs):
         w_rat = inputs["W/Wc"]
@@ -91,9 +94,9 @@ class SlowingTimeOnElectrons(om.ExplicitComponent):
     At : float
         u, Test particle mass
     Zt : int
-        units of fundamental charge, Test ion charge. Discrete.
+        e, Test ion charge
     ne : float
-        m**-3, Electron density
+        n20, Electron density
     Te : float
         eV, Electron temperature
     logΛe : float
@@ -108,7 +111,7 @@ class SlowingTimeOnElectrons(om.ExplicitComponent):
     """
     def setup(self):
         # the constant is equal to
-        # 4 π ε0² u² / (10^20 m³ e⁴ 4 / (3 √π) (u / me) (me / (2 keV))^(3/2))
+        # 4 π ε0² u² / (10^20 m⁻³ e⁴ 4 / (3 √π) (u / me) (me / (2 keV))^(3/2))
         # where
         # u is the atomic mass unit,
         # m is meters
@@ -122,32 +125,33 @@ class SlowingTimeOnElectrons(om.ExplicitComponent):
         self.add_input("Te", units="keV", desc="Electron temperature")
         self.add_input("At", units="u", desc="Test particle mass")
         self.add_input("logΛe", desc="Collision log of test ion on e⁻")
-        self.add_discrete_input("Zt", val=1, desc="Test particle charge")
-        self.add_output("ts", units='s', desc="Slowing time of ions on e⁻")
+        self.add_input("Zt", val=1, desc="Test particle charge")
+        self.add_output("ts", units="s", desc="Slowing time of ions on e⁻")
 
-    def compute(self, inputs, outputs, discrete_inputs, discrete_outputs):
+    def compute(self, inputs, outputs):
         ne = inputs["ne"]
         Te = inputs["Te"]
         At = inputs["At"]
-        Zt = discrete_inputs["Zt"]
+        Zt = inputs["Zt"]
         logLe = inputs["logΛe"]
         ts = self.c * At * Te**(3 / 2) / (ne * Zt**2 * logLe)
         outputs["ts"] = ts
 
     def setup_partials(self):
-        self.declare_partials('ts', ['ne', 'Te', 'At', 'logΛe'])
+        self.declare_partials('ts', ['ne', 'Te', 'At', 'logΛe', 'Zt'])
 
-    def compute_partials(self, inputs, J, discrete_inputs):
+    def compute_partials(self, inputs, J):
         ne = inputs["ne"]
         Te = inputs["Te"]
         At = inputs["At"]
-        Zt = discrete_inputs["Zt"]
+        Zt = inputs["Zt"]
         logLe = inputs["logΛe"]
         J["ts", "ne"] = -self.c * At * Te**(3 / 2) / (ne**2 * Zt**2 * logLe)
         J["ts",
           "Te"] = (3 / 2) * self.c * At * Te**(1 / 2) / (ne * Zt**2 * logLe)
         J["ts", "At"] = self.c * Te**(3 / 2) / (ne * Zt**2 * logLe)
         J["ts", "logΛe"] = -self.c * At * Te**(3 / 2) / (ne * Zt**2 * logLe**2)
+        J["ts", "Zt"] = -2 * self.c * At * Te**(3 / 2) / (ne * Zt**3 * logLe)
 
 
 class AverageEnergyWhileSlowing(om.ExplicitComponent):
@@ -171,8 +175,10 @@ class AverageEnergyWhileSlowing(om.ExplicitComponent):
         self.add_input(
             "W/Wc", desc="Ratio of initial energy to critical slowing energy")
         self.add_input("Wc", units='keV', desc="Critical slowing energy")
+        Wbar_ref = 100
         self.add_output("Wbar",
                         units='keV',
+                        ref=Wbar_ref,
                         desc="Average energy while slowing")
 
     def compute(self, inputs, outputs):
@@ -219,13 +225,13 @@ class CriticalSlowingEnergy(om.ExplicitComponent):
     At : float
         u, test particle mass
     ni : array
-        m**-3, ion densities
+        n20, ion densities
     Ai : array
         u, ion masses
     Zi : array
-        units of fundamental charge
+        e, ion charges
     ne : float
-        m**-3, electron density
+        n20, electron density
     Te : float
         eV, electron temperature
 
@@ -252,8 +258,11 @@ class CriticalSlowingEnergy(om.ExplicitComponent):
                        copy_shape='ni',
                        desc="Ion field particle charges")
 
+        W_crit_ref = 100
         self.add_output('W_crit',
                         units='keV',
+                        lower=0,
+                        ref=W_crit_ref,
                         desc='Critical energy for slowing ions')
 
     def compute(self, inputs, outputs):
@@ -330,7 +339,7 @@ class CriticalSlowingEnergyRatio(om.ExplicitComponent):
     def setup(self):
         self.add_input("W", units="keV", desc="Test particle energy")
         self.add_input("W_crit", units="keV", desc="Critical slowing energy")
-        self.add_output("W/Wc", desc="Ratio of energies")
+        self.add_output("W/Wc", lower=0, desc="Ratio of energies")
 
     def compute(self, inputs, outputs):
         outputs["W/Wc"] = inputs["W"] / inputs["W_crit"]
@@ -347,28 +356,31 @@ class FastParticleSlowing(om.Group):
     r"""
     Inputs
     ------
+    S : float
+        1/s, Fast particle source rate
     At : float
         u, Test particle mass
     Zt : int
-        Fundamental charge, Test particle charge
+        e, Test particle charge
     Wt : float
         keV, Test particle initial kinetic energy
 
     ne : float
-        m**-3, electron density
+        n20, electron density
     Te : float
         keV, electron temperature
-    logΛe:
 
     ni : Array
-        m**-3, ion densities
+        n20, ion densities
     Ai : Array
         u, ion masses
     Zi : Array
-        Fundamental charges, ion charges
+        e, ion charges
 
     Outputs
     -------
+    τs : float
+        s, Slowing time on electrons
     τth : float
         s, Fast particle thermalization time
     f_i : float
@@ -377,12 +389,20 @@ class FastParticleSlowing(om.Group):
         Fraction of energy which heats electrons
     Wbar : float
         keV, Average energy while thermalizing from Wt
+    Wfast : float
+        MJ, Fast particle energy in plasma
+    logΛe: float
+        Coulomb logarithm for electrons
     """
     def setup(self):
         self.add_subsystem(
             "Wcrit",
             CriticalSlowingEnergy(),
             promotes_inputs=["At", "ne", "Te", "ni", "Ai", "Zi"])
+        self.add_subsystem("logCoulombEl",
+                           CoulombLogarithmElectrons(),
+                           promotes_inputs=["ne", "Te"],
+                           promotes_outputs=["logΛe"])
         self.add_subsystem("WcRat",
                            CriticalSlowingEnergyRatio(),
                            promotes_inputs=[("W", "Wt")])
@@ -398,11 +418,20 @@ class FastParticleSlowing(om.Group):
         self.add_subsystem("averagew",
                            AverageEnergyWhileSlowing(),
                            promotes_outputs=["*"])
+        self.add_subsystem("Wfast",
+                           om.ExecComp("Wfast = (Wbar) * tauth * S / 10**6",
+                                       Wfast={"units": "MJ"},
+                                       Wbar={"units": "J"},
+                                       tauth={"units": "s"},
+                                       S={"units": "1/s"}),
+                           promotes_inputs=["Wbar", ("tauth", "τth"), "S"],
+                           promotes_outputs=["Wfast"])
 
         self.connect("Wcrit.W_crit", ["WcRat.W_crit", "averagew.Wc"])
         self.connect("WcRat.W/Wc",
                      ["thermalization.W/Wc", "heating.W/Wc", "averagew.W/Wc"])
         self.connect("slowingt.ts", ["thermalization.ts"])
+        self.set_input_defaults("Te", units="keV", val=10)
 
 
 if __name__ == "__main__":
@@ -411,21 +440,26 @@ if __name__ == "__main__":
     prob = om.Problem()
 
     prob.model.add_subsystem('ivc',
-                             om.IndepVarComp('ni', val=np.ones(2),
+                             om.IndepVarComp('ni', val=np.ones(3),
                                              units='n20'),
                              promotes_outputs=["*"])
-    prob.model.add_subsystem('cse',
-                             CriticalSlowingEnergy(),
+    prob.model.add_subsystem('fps',
+                             FastParticleSlowing(),
                              promotes_inputs=["*"])
 
     prob.setup(force_alloc_complex=True)
 
+    prob.set_val("S", 6.24e20, units='1/s')
     prob.set_val("At", 2 * m_p, units='kg')
-    prob.set_val("ne", 1.0e20, units='m**-3')
-    prob.set_val("Te", 1.0, units='keV')
-    prob.set_val("ni", np.array([0.5e20, 0.5e20]), units='m**-3')
-    prob.set_val("Ai", [2, 3], units='u')
-    prob.set_val("Zi", [1, 1])
+    prob.set_val("Zt", 1)
+    prob.set_val("Wt", 500, units='keV')
+    prob.set_val("ne", 1.06, units="n20")
+    prob.set_val("Te", 9.2, units='keV')
+    prob.set_val("ni",
+                 np.array([0.424e20, 0.424e20, 0.0353e20]),
+                 units='m**-3')
+    prob.set_val("Ai", [2, 3, 12], units='u')
+    prob.set_val("Zi", [1, 1, 6])
 
     check = prob.check_partials(out_stream=None, method='cs')
     assert_check_partials(check)
