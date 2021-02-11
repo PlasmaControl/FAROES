@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.constants import pi
 import scipy.sparse
+from numpy import sin, cos
 
 
 class SauterGeometry(om.ExplicitComponent):
@@ -44,35 +45,38 @@ class SauterGeometry(om.ExplicitComponent):
     Outputs
     -------
     R : array
-        m, radial locations of plasma boundary
+        m, Radial locations on plasma boundary
     Z : array
-        m, vertical locations of plasma boundary
+        m, Vertical locations on plasma boundary
     Z0 : float
-        m, vertical location of magnetic axis (always 0)
+        m, Vertical location of magnetic axis (always 0)
     b : float
-        m, minor radius in vertical direction
+        m, Minor radius in vertical direction
     ε : float
-        inverse aspect ratio
-    κa : float
-        effective elongation, S_c / (π a^2),
+        Inverse aspect ratio
+    w07 : float
+        Sauter 70% width parameter
     full plasma height : float
-        m, twice b
+        m, Twice b
     S_c : float
-        m**2, poloidal cross-section area
+        m**2, Poloidal cross-section area
+    κa : float
+        Effective elongation, S_c / (π a^2),
     S : float
-        m**2, surface area
+        m**2, Swept-LCFS surface area
     V : float
-        m**3, volume of the elliptical torus
+        m**3, Plasma volume
     R_min : float
         m, innermost plasma radius at midplane
     R_max : float
         m, outermost plasma radius at midplane
     L_pol : float
         m, Poloidal circumference
-    w07 : float
-        Sauter 70% width parameter
 
-
+    dR_dθ : array
+        m, Derivative of R points w.r.t. θ
+    dZ_dθ : array
+        m, Derivative of Z points w.r.t. θ
 
     Reference
     ---------
@@ -97,7 +101,8 @@ class SauterGeometry(om.ExplicitComponent):
                        desc="Poloidal locations to evaluate (R, Z)")
 
         self.add_output("R",
-                        units="m", lower=0,
+                        units="m",
+                        lower=0,
                         copy_shape="θ",
                         desc="Radial locations of plasma boundary")
         self.add_output("Z",
@@ -113,10 +118,12 @@ class SauterGeometry(om.ExplicitComponent):
         self.add_output("ε", desc="Inverse aspect ratio")
         # self.add_output("κa", desc="Effective elongation")
         self.add_output("full_plasma_height",
-                        units="m", ref=10,
+                        units="m",
+                        ref=10,
                         desc="Full plasma height")
         self.add_output("S_c",
-                        units="m**2", ref=10,
+                        units="m**2",
+                        ref=10,
                         desc="Poloidal cross-section area")
         self.add_output("S", units="m**2", ref=100, desc="Surface area")
         self.add_output("V", units="m**3", ref=100, desc="Volume")
@@ -126,13 +133,17 @@ class SauterGeometry(om.ExplicitComponent):
                         lower=0,
                         ref=10)
         self.add_output("R_min",
-                        units="m", lower=0,
+                        units="m",
+                        lower=0,
                         desc="Inner radius of plasma at midplane")
         self.add_output("R_max",
-                        units="m", lower=0,
+                        units="m",
+                        lower=0,
                         desc="outer radius of plasma at midplane")
         self.add_output("w07", desc="Sauter 70% width parameter")
         self.add_output("κa", lower=0, desc="effective elongation")
+        self.add_output("dR_dθ", units="m", copy_shape="θ")
+        self.add_output("dZ_dθ", units="m", copy_shape="θ")
 
     def compute(self, inputs, outputs):
         outputs["Z0"] = 0
@@ -153,7 +164,7 @@ class SauterGeometry(om.ExplicitComponent):
         θ07 = np.arcsin(0.7) - (2 * ξ) / (1 + (1 + 8 * ξ**2)**(1 / 2))
 
         # Sauter equation (C.5)
-        wanal_07 = np.cos(θ07 - ξ * np.sin(2 * θ07)/ (0.51)**(1/2))  \
+        wanal_07 = cos(θ07 - ξ * sin(2 * θ07)/ (0.51)**(1/2))  \
                 * (1 - 0.49 * δ**2 / 2)
         w07 = wanal_07
 
@@ -163,9 +174,9 @@ class SauterGeometry(om.ExplicitComponent):
         outputs["L_pol"] = L_p
 
         # Equation (1)
-        R = R0 + a * np.cos(θ + δ * np.sin(θ) - ξ * np.sin(2 * θ))
+        R = R0 + a * cos(θ + δ * sin(θ) - ξ * sin(2 * θ))
         # Equation (2)
-        Z = κ * a * np.sin(θ + ξ * np.sin(2 * θ))
+        Z = κ * a * sin(θ + ξ * sin(2 * θ))
 
         b = κ * a
         outputs["b"] = b
@@ -194,6 +205,12 @@ class SauterGeometry(om.ExplicitComponent):
         outputs["R_max"] = R0 + a
         outputs["w07"] = w07
 
+        dR_dθ = -a * (1 + δ * cos(θ) - 2 * ξ *
+                      cos(2 * θ)) * sin(θ + δ * sin(θ) - ξ * sin(2 * θ))
+        dZ_dθ = a * κ * (1 + 2 * ξ * cos(2 * θ)) * cos(θ + ξ * sin(2 * θ))
+        outputs["dR_dθ"] = dR_dθ
+        outputs["dZ_dθ"] = dZ_dθ
+
     def setup_partials(self):
         size = self._get_var_meta("θ", "size")
         self.declare_partials("ε", ["A"])
@@ -216,8 +233,14 @@ class SauterGeometry(om.ExplicitComponent):
         self.declare_partials("R", ["θ"],
                               val=scipy.sparse.eye(size, format="csc"))
 
-        self.declare_partials("Z", ["R0", "A", "κ", "ξ"], method="cs")
+        self.declare_partials("Z", ["R0", "A", "κ", "ξ"])
         self.declare_partials("Z", ["θ"],
+                              val=scipy.sparse.eye(size, format="csc"))
+        self.declare_partials("dR_dθ", ["R0", "A", "ξ", "δ"])
+        self.declare_partials("dZ_dθ", ["R0", "A", "ξ", "κ"])
+        self.declare_partials("dR_dθ", ["θ"],
+                              val=scipy.sparse.eye(size, format="csc"))
+        self.declare_partials("dZ_dθ", ["θ"],
                               val=scipy.sparse.eye(size, format="csc"))
 
     def compute_partials(self, inputs, J):
@@ -258,20 +281,20 @@ class SauterGeometry(om.ExplicitComponent):
         # 2c / (-b + √(b² - 4 a c))
         θ07 = np.arcsin(0.7) - (2 * ξ) / (1 + (1 + 8 * ξ**2)**(1 / 2))
         # Sauter equation (C.5)
-        wanal_07 = np.cos(θ07 - ξ * np.sin(2 * θ07)/ (0.51)**(1/2))  \
+        wanal_07 = cos(θ07 - ξ * sin(2 * θ07)/ (0.51)**(1/2))  \
                 * (1 - 0.49 * δ**2 / 2)
         w07 = wanal_07
 
         dθ_dξ = -2 / (1 + 8 * ξ**2 + (1 + 8 * ξ**2)**(1 / 2))
 
-        dw07_dξ = (np.sin(2 * θ07) * np.sin(θ07 - ξ * np.sin(2 * θ07) /
-                                            (0.51)**(1 / 2))
-                   ) * (1 - 0.49 * δ**2 / 2) / 0.51**(1 / 2)
-        dw07_dθ07 = -((1 - 2 * ξ * np.cos(2 * θ07) / 0.51**
-                       (1 / 2)) * np.sin(θ07 - ξ * np.sin(2 * θ07) / 0.51**
-                                         (1 / 2))) * (1 - 0.49 * δ**2 / 2)
+        dw07_dξ = (sin(2 * θ07) * sin(θ07 - ξ * sin(2 * θ07) /
+                                      (0.51)**(1 / 2))) * (
+                                          1 - 0.49 * δ**2 / 2) / 0.51**(1 / 2)
+        dw07_dθ07 = -((1 - 2 * ξ * cos(2 * θ07) / 0.51**
+                       (1 / 2)) * sin(θ07 - ξ * sin(2 * θ07) / 0.51**
+                                      (1 / 2))) * (1 - 0.49 * δ**2 / 2)
 
-        dw07_dδ = -0.49 * δ * np.cos(θ07 - ξ * np.sin(2 * θ07) / 0.51**(1 / 2))
+        dw07_dδ = -0.49 * δ * cos(θ07 - ξ * sin(2 * θ07) / 0.51**(1 / 2))
         J["w07", "δ"] = dw07_dδ
         J["w07", "ξ"] = dw07_dξ + dw07_dθ07 * dθ_dξ
 
@@ -336,29 +359,60 @@ class SauterGeometry(om.ExplicitComponent):
         J["V", "δ"] = dV_dδ + dV_dSc * J["S_c", "δ"]
         J["V", "ξ"] = dV_dSc * J["S_c", "ξ"]
 
+        J["R", "A"] = -(R0 * cos(θ + δ * sin(θ) - ξ * sin(2 * θ)) / A**2)
+        J["R", "R0"] = 1 + cos(θ + δ * sin(θ) - ξ * sin(2 * θ)) / A
+        J["R", "δ"] = -(R0 * sin(θ) * sin(θ + δ * sin(θ) - ξ * sin(2 * θ))) / A
         J["R",
-          "A"] = -(R0 * np.cos(θ + δ * np.sin(θ) - ξ * np.sin(2 * θ)) / A**2)
-        J["R", "R0"] = 1 + np.cos(θ + δ * np.sin(θ) - ξ * np.sin(2 * θ)) / A
-        J["R", "δ"] = -(R0 * np.sin(θ) *
-                        np.sin(θ + δ * np.sin(θ) - ξ * np.sin(2 * θ))) / A
-        J["R", "ξ"] = R0 * np.sin(
-            2 * θ) * np.sin(θ + δ * np.sin(θ) - ξ * np.sin(2 * θ)) / A
+          "ξ"] = R0 * sin(2 * θ) * sin(θ + δ * sin(θ) - ξ * sin(2 * θ)) / A
 
-        dR_dθ = -a * (1 + δ * np.cos(θ) - 2 * ξ * np.cos(2 * θ)
-                      ) * np.sin(θ + δ * np.sin(θ) - ξ * np.sin(2 * θ))
+        dR_dθ = -a * (1 + δ * cos(θ) - 2 * ξ *
+                      cos(2 * θ)) * sin(θ + δ * sin(θ) - ξ * sin(2 * θ))
 
         size = self._get_var_meta("θ", "size")
         dm = scipy.sparse.dia_matrix((dR_dθ, [0]), shape=(size, size))
         J["R", "θ"] = dm
 
-        J["Z", "A"] = -R0 * κ * np.sin(θ + ξ * np.sin(2 * θ)) / A**2
-        J["Z", "R0"] = κ * np.sin(θ + ξ * np.sin(2 * θ)) / A
-        J["Z", "κ"] = a * np.sin(θ + ξ * np.sin(2 * θ))
-        J["Z", "ξ"] = a * κ * np.cos(θ + ξ * np.sin(2 * θ)) * np.sin(2 * θ)
-        dZ_dθ = a * κ * (1 + 2 * ξ * np.cos(2 * θ)) * np.cos(θ +
-                                                             ξ * np.sin(2 * θ))
+        J["Z", "A"] = -R0 * κ * sin(θ + ξ * sin(2 * θ)) / A**2
+        J["Z", "R0"] = κ * sin(θ + ξ * sin(2 * θ)) / A
+        J["Z", "κ"] = a * sin(θ + ξ * sin(2 * θ))
+        J["Z", "ξ"] = a * κ * cos(θ + ξ * sin(2 * θ)) * sin(2 * θ)
+        dZ_dθ = a * κ * (1 + 2 * ξ * cos(2 * θ)) * cos(θ + ξ * sin(2 * θ))
         dm = scipy.sparse.dia_matrix((dZ_dθ, [0]), shape=(size, size))
         J["Z", "θ"] = dm
+
+        J["dR_dθ",
+          "A"] = -da_dA * (1 + δ * cos(θ) - 2 * ξ *
+                           cos(2 * θ)) * sin(θ + δ * sin(θ) - ξ * sin(2 * θ))
+        J["dR_dθ",
+          "R0"] = -da_dR0 * (1 + δ * cos(θ) - 2 * ξ *
+                             cos(2 * θ)) * sin(θ + δ * sin(θ) - ξ * sin(2 * θ))
+        J["dR_dθ", "δ"] = -a * (1 + δ * cos(θ) - 2 * ξ * cos(2 * θ)) * cos(
+            θ + δ * sin(θ) - ξ * sin(2 * θ)) * sin(θ) - a * cos(θ) * sin(
+                θ + δ * sin(θ) - ξ * sin(2 * θ))
+        J["dR_dθ", "ξ"] = a * (1 + δ * cos(θ) - 2 * ξ * cos(2 * θ)) * cos(
+            θ + δ * sin(θ) - ξ * sin(2 * θ)) * sin(2 * θ) + 2 * a * cos(
+                2 * θ) * sin(θ + δ * sin(θ) - ξ * sin(2 * θ))
+        d2R_dθ2 = -a * (1 + δ * cos(θ) - 2 * ξ * cos(2 * θ))**2 * cos(
+            θ + (δ - 2 * ξ * cos(θ)) * sin(θ)) + a * (δ * sin(θ) - 4 * ξ * sin(
+                2 * θ)) * sin(θ + (δ - 2 * ξ * cos(θ)) * sin(θ))
+        dm = scipy.sparse.dia_matrix((d2R_dθ2, [0]), shape=(size, size))
+        J["dR_dθ", "θ"] = dm
+
+        J["dZ_dθ",
+          "A"] = da_dA * κ * (1 + 2 * ξ * cos(2 * θ)) * cos(θ + ξ * sin(2 * θ))
+        J["dZ_dθ",
+          "R0"] = da_dR0 * κ * (1 + 2 * ξ * cos(2 * θ)) * cos(θ +
+                                                              ξ * sin(2 * θ))
+        J["dZ_dθ",
+          "κ"] = a * (1 + 2 * ξ * cos(2 * θ)) * cos(θ + ξ * sin(2 * θ))
+        J["dZ_dθ", "ξ"] = a * κ * (
+            2 * cos(2 * θ) * cos(θ + ξ * sin(2 * θ)) -
+            (1 + 2 * ξ * cos(2 * θ)) * sin(2 * θ) * sin(θ + ξ * sin(2 * θ)))
+        d2Z_dθ2 = a * κ * (
+            -4 * ξ * cos(θ + ξ * sin(2 * θ)) * sin(2 * θ) -
+            (1 + 2 * ξ * cos(2 * θ))**2 * sin(θ + ξ * sin(2 * θ)))
+        dm = scipy.sparse.dia_matrix((d2Z_dθ2, [0]), shape=(size, size))
+        J["dZ_dθ", "θ"] = dm
 
     def plot(self, ax=plt.subplot(111), **kwargs):
         label = 'R0={}, a={}, κ={}, δ={}, ξ={}'.format(
