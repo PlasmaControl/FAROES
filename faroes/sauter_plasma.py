@@ -1,4 +1,5 @@
 from faroes.configurator import UserConfigurator
+from faroes.elliptical_plasma import MenardKappaScaling
 import openmdao.api as om
 import faroes.util as util
 import numpy as np
@@ -230,18 +231,14 @@ class SauterGeometry(om.ExplicitComponent):
         self.declare_partials("κa", ["R0", "A", "κ", "δ", "ξ"])
 
         self.declare_partials("R", ["R0", "A", "δ", "ξ"])
-        self.declare_partials("R", ["θ"],
-                              val=scipy.sparse.eye(size, format="csc"))
+        self.declare_partials("R", ["θ"], rows=range(size), cols=range(size))
 
         self.declare_partials("Z", ["R0", "A", "κ", "ξ"])
-        self.declare_partials("Z", ["θ"],
-                              val=scipy.sparse.eye(size, format="csc"))
+        self.declare_partials("Z", ["θ"], rows=range(size), cols=range(size))
         self.declare_partials("dR_dθ", ["R0", "A", "ξ", "δ"])
         self.declare_partials("dZ_dθ", ["R0", "A", "ξ", "κ"])
-        self.declare_partials("dR_dθ", ["θ"],
-                              val=scipy.sparse.eye(size, format="csc"))
-        self.declare_partials("dZ_dθ", ["θ"],
-                              val=scipy.sparse.eye(size, format="csc"))
+        self.declare_partials("dR_dθ", ["θ"], rows=range(size), cols=range(size))
+        self.declare_partials("dZ_dθ", ["θ"], rows=range(size), cols=range(size))
 
     def compute_partials(self, inputs, J):
         A = inputs["A"]
@@ -369,16 +366,14 @@ class SauterGeometry(om.ExplicitComponent):
                       cos(2 * θ)) * sin(θ + δ * sin(θ) - ξ * sin(2 * θ))
 
         size = self._get_var_meta("θ", "size")
-        dm = scipy.sparse.dia_matrix((dR_dθ, [0]), shape=(size, size))
-        J["R", "θ"] = dm
+        J["R", "θ"] = dR_dθ
 
         J["Z", "A"] = -R0 * κ * sin(θ + ξ * sin(2 * θ)) / A**2
         J["Z", "R0"] = κ * sin(θ + ξ * sin(2 * θ)) / A
         J["Z", "κ"] = a * sin(θ + ξ * sin(2 * θ))
         J["Z", "ξ"] = a * κ * cos(θ + ξ * sin(2 * θ)) * sin(2 * θ)
         dZ_dθ = a * κ * (1 + 2 * ξ * cos(2 * θ)) * cos(θ + ξ * sin(2 * θ))
-        dm = scipy.sparse.dia_matrix((dZ_dθ, [0]), shape=(size, size))
-        J["Z", "θ"] = dm
+        J["Z", "θ"] = dZ_dθ
 
         J["dR_dθ",
           "A"] = -da_dA * (1 + δ * cos(θ) - 2 * ξ *
@@ -395,8 +390,7 @@ class SauterGeometry(om.ExplicitComponent):
         d2R_dθ2 = -a * (1 + δ * cos(θ) - 2 * ξ * cos(2 * θ))**2 * cos(
             θ + (δ - 2 * ξ * cos(θ)) * sin(θ)) + a * (δ * sin(θ) - 4 * ξ * sin(
                 2 * θ)) * sin(θ + (δ - 2 * ξ * cos(θ)) * sin(θ))
-        dm = scipy.sparse.dia_matrix((d2R_dθ2, [0]), shape=(size, size))
-        J["dR_dθ", "θ"] = dm
+        J["dR_dθ", "θ"] = d2R_dθ2
 
         J["dZ_dθ",
           "A"] = da_dA * κ * (1 + 2 * ξ * cos(2 * θ)) * cos(θ + ξ * sin(2 * θ))
@@ -411,10 +405,9 @@ class SauterGeometry(om.ExplicitComponent):
         d2Z_dθ2 = a * κ * (
             -4 * ξ * cos(θ + ξ * sin(2 * θ)) * sin(2 * θ) -
             (1 + 2 * ξ * cos(2 * θ))**2 * sin(θ + ξ * sin(2 * θ)))
-        dm = scipy.sparse.dia_matrix((d2Z_dθ2, [0]), shape=(size, size))
-        J["dZ_dθ", "θ"] = dm
+        J["dZ_dθ", "θ"] = d2Z_dθ2
 
-    def plot(self, ax=plt.subplot(111), **kwargs):
+    def plot(self, ax=None, **kwargs):
         label = 'R0={}, a={}, κ={}, δ={}, ξ={}'.format(
             self.get_val('R0')[0],
             self.get_val('a')[0],
@@ -430,19 +423,116 @@ class SauterGeometry(om.ExplicitComponent):
         ax.set_ylabel('Z (m)')
         ax.set_title(label)
 
+class OffsetParametricCurvePoints(om.ExplicitComponent):
+
+    def setup(self):
+        self.add_input("x", units="m", shape_by_conn=True)
+        self.add_input("y", units="m", copy_shape="x", shape_by_conn=True)
+        self.add_input("dx_dt", units="m", copy_shape="x", shape_by_conn=True)
+        self.add_input("dy_dt", units="m", copy_shape="x", shape_by_conn=True)
+        self.add_input("s", units="m", desc="offset")
+
+        self.add_output("x_o", units="m", copy_shape="x")
+        self.add_output("y_o", units="m", copy_shape="x")
+
+    def compute(self, inputs, outputs):
+        x = inputs["x"]
+        y = inputs["y"]
+        dx_dt = inputs["dx_dt"]
+        dy_dt = inputs["dy_dt"]
+        s = inputs["s"]
+        x_o = x + s * dy_dt / (dx_dt**2 + dy_dt**2)**(1/2)
+        y_o = y - s * dx_dt / (dx_dt**2 + dy_dt**2)**(1/2)
+        outputs["x_o"] = x_o
+        outputs["y_o"] = y_o
+
+    def setup_partials(self):
+        size = self._get_var_meta("x", "size")
+        self.declare_partials("x_o", ["x"], rows=range(size), cols=range(size))
+        self.declare_partials("x_o", ["dx_dt"], rows=range(size), cols=range(size))
+        self.declare_partials("x_o", ["dy_dt"], rows=range(size), cols=range(size))
+        self.declare_partials("x_o", ["s"], val=np.zeros(size))
+        self.declare_partials("y_o", ["y"], rows=range(size), cols=range(size))
+        self.declare_partials("y_o", ["dx_dt"], rows=range(size), cols=range(size))
+        self.declare_partials("y_o", ["dy_dt"], rows=range(size), cols=range(size))
+        self.declare_partials("y_o", ["s"], val=np.zeros(size))
+
+    def compute_partials(self, inputs, J):
+        size = self._get_var_meta("x", "size")
+        J["x_o", "x"] = np.ones(size)
+        J["y_o", "y"] = np.ones(size)
+
+        x = inputs["x"]
+        y = inputs["y"]
+        s = inputs["s"]
+        dx_dt = inputs["dx_dt"]
+        dy_dt = inputs["dy_dt"]
+        dxo_ds = dy_dt / (dx_dt**2 + dy_dt**2)**(1/2)
+        J["x_o", "s"] = dxo_ds
+        dyo_ds = -dx_dt / (dx_dt**2 + dy_dt**2)**(1/2)
+        J["y_o", "s"] = dyo_ds
+
+        denom32 = (dx_dt**2 + dy_dt**2)**(3/2)
+        dxo_dxdt = -s * dx_dt * dy_dt / denom32
+        J["x_o", "dx_dt"]= dxo_dxdt
+
+        dxo_dydt = s * dx_dt**2 / denom32
+        J["x_o", "dy_dt"]= dxo_dydt
+
+
+
+        dyo_dydt = s * dx_dt * dy_dt / denom32
+        J["y_o", "dy_dt"]= dyo_dydt
+
+        dyo_dxdt = -s * dy_dt**2 / denom32
+        J["y_o", "dx_dt"]= dyo_dxdt
+
+class SauterPlasmaGeometry(om.Group):
+    r"""Sauter's general plasma shape.
+
+    """
+    def initialize(self):
+        self.options.declare('config', default=None)
+
+    def setup(self):
+        config = self.options['config']
+        self.add_subsystem("geom",
+                           SauterGeometry(),
+                           promotes_inputs=["R0", "A", "κ", "δ", "ξ", "θ"],
+                           )
+        self.add_subsystem("bl_pts", OffsetParametricCurvePoints())
+        self.connect("geom.R", "bl_pts.x")
+        self.connect("geom.Z", "bl_pts.y")
+        self.connect("geom.dR_dθ", "bl_pts.dx_dt")
+        self.connect("geom.dZ_dθ", "bl_pts.dy_dt")
+
+        self.add_subsystem("bl_dtheta", om.ExecComp(["d_sq = (x - R0)**2 + y**2",
+            "theta = arctan2(y, (x - R0))"],
+                has_diag_partials=True,
+                x={"units":"m", "shape_by_conn":True},
+                R0={"units":"m"},
+                y={"units":"m", "copy_shape":"x"},
+                theta={"copy_shape":"x"},
+                d_sq={"units":"m**2", "copy_shape":"x"}), promotes_inputs=["R0"]
+                )
+        self.connect("bl_pts.x_o", "bl_dtheta.x")
+        self.connect("bl_pts.y_o", "bl_dtheta.y")
+
 
 if __name__ == "__main__":
     prob = om.Problem()
     uc = UserConfigurator()
 
-    θ = np.linspace(0, 2 * pi, 180, endpoint=False)
+    θ = np.linspace(0, 2 * pi, 20, endpoint=False)
 
-    sg = SauterGeometry(config=uc)
 
     prob.model.add_subsystem("ivc",
                              om.IndepVarComp("θ", val=θ),
                              promotes_outputs=["*"])
-    prob.model.add_subsystem("geom", sg, promotes_inputs=["*"])
+
+    sg = SauterPlasmaGeometry(config=uc)
+    prob.model.add_subsystem("spg", sg, promotes_inputs=["*"])
+
 
     prob.setup()
 
@@ -450,12 +540,22 @@ if __name__ == "__main__":
     prob.set_val('A', 1.6)
     prob.set_val('κ', 2.7)
     prob.set_val('δ', 0.5)
-    prob.set_val('ξ', 0.3)
+    prob.set_val('ξ', 0.1)
+
+    # prob.set_val("bl_pts.s", 2.0)
 
     prob.run_driver()
-    prob.model.list_inputs()
-    prob.model.list_outputs()
+    prob.model.list_outputs(print_arrays=True)
 
-    # test by plotting
-    # sg.plot(c='k', ls='-')
-    # plt.show()
+    x = prob.get_val("spg.geom.R", units="m")
+    y = prob.get_val("spg.geom.Z", units="m")
+
+    x_o = prob.get_val("spg.bl_pts.x_o", units="m")
+    y_o = prob.get_val("spg.bl_pts.y_o", units="m")
+
+    fig, ax = plt.subplots()
+    ax.plot(x, y)
+    ax.plot(x_o, y_o)
+    ax.set_xlim([-1,8])
+    ax.axis('equal')
+    plt.show()
