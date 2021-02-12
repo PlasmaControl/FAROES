@@ -3,6 +3,8 @@ from math import pi as π
 import scipy as scipy
 from scipy.special import ellipe, hyp2f1
 
+from openmdao.utils.cs_safe import abs as cs_safe_abs
+
 from plasmapy.particles import Particle, common_isotopes
 from plasmapy.particles import atomic_number, isotopic_abundance
 
@@ -233,6 +235,58 @@ def torus_volume(R, a, b=None):
     V = area * circum
     return V
 
+
+def half_ellipse_torus_volume(R, a, b):
+    """Volume of a torus with a cross section
+    shaped like half of an ellipse (vertical slice)
+
+    Parameters
+    ----------
+    R : float
+        major radius of the torus (radius to flat side of the half-ellipse)
+    a : horizontal semi-axis of the ellipse.
+        positive values: shape like | ◗
+        negative values: shape like | ◖
+        where | is the centerline
+    b : vertical semi-axis of the ellipse.
+    """
+    return cs_safe_abs(a) * b * π * (4 * a + 3 * π * R) / 3
+
+def half_ellipse_torus_volume_derivatives(R, a, b):
+    """Derivatives of volume of a torus with a cross section
+    shaped like half of an ellipse (vertical slice)
+
+    Parameters
+    ----------
+    R : float
+        major radius of the torus (radius to flat side of the half-ellipse)
+    a : horizontal semi-axis of the ellipse.
+        positive values: shape like | ◗
+        negative values: shape like | ◖
+        where | is the centerline
+    b : vertical semi-axis of the ellipse.
+
+    Returns
+    -------
+    Dict of
+    R : float
+       derivative with respect to R
+    a : float
+       derivative with respect to a
+    b : float
+       derivative with respect to b
+
+    Notes
+    -----
+    May not be well-defined at a=0. This is the degenerate case.
+    """
+    dVda = (4 / 3) * b * π * cs_safe_abs(a) + (b * π * (4 * a + 3 * π * R) *
+                                               np.sign(a) / 3)
+    dVdb = π * (4 * a + 3 * π * R) * cs_safe_abs(a)/3
+    dVdR = b * π**2 * cs_safe_abs(a)
+    return {"a": dVda, "b": dVdb, "R": dVdR}
+
+
 # not used
 def cross_section_area_RZ(R, Z, nx=1000):
     """Cross-sectional area of a poloidal slice
@@ -257,14 +311,19 @@ def cross_section_area_RZ(R, Z, nx=1000):
     pos_inds = (Z >= 0)
     neg_inds = (Z <= 0)
 
-    ypos = scipy.interpolate.interp1d(R[pos_inds], Z[pos_inds],
-            bounds_error=False, fill_value=0)
-    yneg = scipy.interpolate.interp1d(R[neg_inds], Z[neg_inds],
-            bounds_error=False, fill_value=0)
+    ypos = scipy.interpolate.interp1d(R[pos_inds],
+                                      Z[pos_inds],
+                                      bounds_error=False,
+                                      fill_value=0)
+    yneg = scipy.interpolate.interp1d(R[neg_inds],
+                                      Z[neg_inds],
+                                      bounds_error=False,
+                                      fill_value=0)
 
-    A = np.trapz(ypos(x)-yneg(x), x=x)
+    A = np.trapz(ypos(x) - yneg(x), x=x)
 
     return A
+
 
 # not used
 def surface_area_RZ(R, Z, nx=1000):
@@ -290,10 +349,14 @@ def surface_area_RZ(R, Z, nx=1000):
     pos_inds = (Z >= 0)
     neg_inds = (Z <= 0)
 
-    ypos = scipy.interpolate.interp1d(R[pos_inds], Z[pos_inds],
-            bounds_error=False, fill_value=0)
-    yneg = scipy.interpolate.interp1d(R[neg_inds], Z[neg_inds],
-            bounds_error=False, fill_value=0)
+    ypos = scipy.interpolate.interp1d(R[pos_inds],
+                                      Z[pos_inds],
+                                      bounds_error=False,
+                                      fill_value=0)
+    yneg = scipy.interpolate.interp1d(R[neg_inds],
+                                      Z[neg_inds],
+                                      bounds_error=False,
+                                      fill_value=0)
 
     gradypos = np.gradient(ypos(x)) / np.gradient(x)
     S1 = 2 * np.pi * np.trapz(x * np.sqrt(1 + gradypos**2), x=x)
@@ -302,6 +365,7 @@ def surface_area_RZ(R, Z, nx=1000):
     S2 = 2 * np.pi * np.trapz(x * np.sqrt(1 + gradyneg**2), x=x)
 
     return S1 + S2
+
 
 # not used
 def volume_RZ(R, Z, nx=1000):
@@ -327,12 +391,16 @@ def volume_RZ(R, Z, nx=1000):
     pos_inds = (Z >= 0)
     neg_inds = (Z <= 0)
 
-    ypos = scipy.interpolate.interp1d(R[pos_inds], Z[pos_inds],
-            bounds_error=False, fill_value=0)
-    yneg = scipy.interpolate.interp1d(R[neg_inds], Z[neg_inds],
-            bounds_error=False, fill_value=0)
+    ypos = scipy.interpolate.interp1d(R[pos_inds],
+                                      Z[pos_inds],
+                                      bounds_error=False,
+                                      fill_value=0)
+    yneg = scipy.interpolate.interp1d(R[neg_inds],
+                                      Z[neg_inds],
+                                      bounds_error=False,
+                                      fill_value=0)
 
     # volume by cylindrical shells
-    V = 2 * np.pi * np.trapz(x * (ypos(x)-yneg(x)), x=x)
+    V = 2 * np.pi * np.trapz(x * (ypos(x) - yneg(x)), x=x)
 
     return V
