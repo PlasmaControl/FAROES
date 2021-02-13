@@ -423,69 +423,6 @@ class SauterGeometry(om.ExplicitComponent):
         ax.set_ylabel('Z (m)')
         ax.set_title(label)
 
-class OffsetParametricCurvePoints(om.ExplicitComponent):
-
-    def setup(self):
-        self.add_input("x", units="m", shape_by_conn=True)
-        self.add_input("y", units="m", copy_shape="x", shape_by_conn=True)
-        self.add_input("dx_dt", units="m", copy_shape="x", shape_by_conn=True)
-        self.add_input("dy_dt", units="m", copy_shape="x", shape_by_conn=True)
-        self.add_input("s", units="m", desc="offset")
-
-        self.add_output("x_o", units="m", copy_shape="x")
-        self.add_output("y_o", units="m", copy_shape="x")
-
-    def compute(self, inputs, outputs):
-        x = inputs["x"]
-        y = inputs["y"]
-        dx_dt = inputs["dx_dt"]
-        dy_dt = inputs["dy_dt"]
-        s = inputs["s"]
-        x_o = x + s * dy_dt / (dx_dt**2 + dy_dt**2)**(1/2)
-        y_o = y - s * dx_dt / (dx_dt**2 + dy_dt**2)**(1/2)
-        outputs["x_o"] = x_o
-        outputs["y_o"] = y_o
-
-    def setup_partials(self):
-        size = self._get_var_meta("x", "size")
-        self.declare_partials("x_o", ["x"], rows=range(size), cols=range(size))
-        self.declare_partials("x_o", ["dx_dt"], rows=range(size), cols=range(size))
-        self.declare_partials("x_o", ["dy_dt"], rows=range(size), cols=range(size))
-        self.declare_partials("x_o", ["s"], val=np.zeros(size))
-        self.declare_partials("y_o", ["y"], rows=range(size), cols=range(size))
-        self.declare_partials("y_o", ["dx_dt"], rows=range(size), cols=range(size))
-        self.declare_partials("y_o", ["dy_dt"], rows=range(size), cols=range(size))
-        self.declare_partials("y_o", ["s"], val=np.zeros(size))
-
-    def compute_partials(self, inputs, J):
-        size = self._get_var_meta("x", "size")
-        J["x_o", "x"] = np.ones(size)
-        J["y_o", "y"] = np.ones(size)
-
-        x = inputs["x"]
-        y = inputs["y"]
-        s = inputs["s"]
-        dx_dt = inputs["dx_dt"]
-        dy_dt = inputs["dy_dt"]
-        dxo_ds = dy_dt / (dx_dt**2 + dy_dt**2)**(1/2)
-        J["x_o", "s"] = dxo_ds
-        dyo_ds = -dx_dt / (dx_dt**2 + dy_dt**2)**(1/2)
-        J["y_o", "s"] = dyo_ds
-
-        denom32 = (dx_dt**2 + dy_dt**2)**(3/2)
-        dxo_dxdt = -s * dx_dt * dy_dt / denom32
-        J["x_o", "dx_dt"]= dxo_dxdt
-
-        dxo_dydt = s * dx_dt**2 / denom32
-        J["x_o", "dy_dt"]= dxo_dydt
-
-
-
-        dyo_dydt = s * dx_dt * dy_dt / denom32
-        J["y_o", "dy_dt"]= dyo_dydt
-
-        dyo_dxdt = -s * dy_dt**2 / denom32
-        J["y_o", "dx_dt"]= dyo_dxdt
 
 class SauterPlasmaGeometry(om.Group):
     r"""Sauter's general plasma shape.
@@ -499,8 +436,10 @@ class SauterPlasmaGeometry(om.Group):
         self.add_subsystem("geom",
                            SauterGeometry(),
                            promotes_inputs=["R0", "A", "κ", "δ", "ξ", "θ"],
+                           promotes_outputs=["R_max", "R_min"]
                            )
-        self.add_subsystem("bl_pts", OffsetParametricCurvePoints())
+        self.add_subsystem("bl_pts", util.OffsetParametricCurvePoints(),
+                promotes_inputs=[("s", "offset")])
         self.connect("geom.R", "bl_pts.x")
         self.connect("geom.Z", "bl_pts.y")
         self.connect("geom.dR_dθ", "bl_pts.dx_dt")

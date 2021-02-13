@@ -3,11 +3,99 @@ from math import pi as π
 import scipy as scipy
 from scipy.special import ellipe, hyp2f1
 
+import openmdao.api as om
 from openmdao.utils.cs_safe import abs as cs_safe_abs
 
 from plasmapy.particles import Particle, common_isotopes
 from plasmapy.particles import atomic_number, isotopic_abundance
 
+class OffsetParametricCurvePoints(om.ExplicitComponent):
+    r"""
+    Inputs
+    ------
+    x : array
+        m, x-locations of points on a parametric curve
+    y : array
+        m, y-locations of points on a parametric curve
+    dx_dt : array
+        m, Derivative of x location of each point w.r.t. the curve parameter t
+    dy_dt : array
+        m, Derivative of y location of each point w.r.t. the curve parameter t
+    s : float
+        m, Perpendicular offset of the resulting curve from the original.
+
+    Outputs
+    -------
+    x_o : array
+        m, x-locations of points on offset curve
+    y_o : array
+        m, y-locations of points on offset curve
+
+    References
+    ----------
+    [1] https://mathworld.wolfram.com/ParallelCurves.html
+    [2] https://en.wikipedia.org/wiki/Parallel_curve
+    """
+
+    def setup(self):
+        self.add_input("x", units="m", shape_by_conn=True)
+        self.add_input("y", units="m", copy_shape="x", shape_by_conn=True)
+        self.add_input("dx_dt", units="m", copy_shape="x", shape_by_conn=True)
+        self.add_input("dy_dt", units="m", copy_shape="x", shape_by_conn=True)
+        self.add_input("s", units="m", desc="offset")
+
+        self.add_output("x_o", units="m", copy_shape="x")
+        self.add_output("y_o", units="m", copy_shape="x")
+
+    def compute(self, inputs, outputs):
+        x = inputs["x"]
+        y = inputs["y"]
+        dx_dt = inputs["dx_dt"]
+        dy_dt = inputs["dy_dt"]
+        s = inputs["s"]
+        x_o = x + s * dy_dt / (dx_dt**2 + dy_dt**2)**(1/2)
+        y_o = y - s * dx_dt / (dx_dt**2 + dy_dt**2)**(1/2)
+        outputs["x_o"] = x_o
+        outputs["y_o"] = y_o
+
+    def setup_partials(self):
+        size = self._get_var_meta("x", "size")
+        self.declare_partials("x_o", ["x"], rows=range(size), cols=range(size))
+        self.declare_partials("x_o", ["dx_dt"], rows=range(size), cols=range(size))
+        self.declare_partials("x_o", ["dy_dt"], rows=range(size), cols=range(size))
+        self.declare_partials("x_o", ["s"], val=np.zeros(size))
+        self.declare_partials("y_o", ["y"], rows=range(size), cols=range(size))
+        self.declare_partials("y_o", ["dx_dt"], rows=range(size), cols=range(size))
+        self.declare_partials("y_o", ["dy_dt"], rows=range(size), cols=range(size))
+        self.declare_partials("y_o", ["s"], val=np.zeros(size))
+
+    def compute_partials(self, inputs, J):
+        size = self._get_var_meta("x", "size")
+        J["x_o", "x"] = np.ones(size)
+        J["y_o", "y"] = np.ones(size)
+
+        x = inputs["x"]
+        y = inputs["y"]
+        s = inputs["s"]
+        dx_dt = inputs["dx_dt"]
+        dy_dt = inputs["dy_dt"]
+        dxo_ds = dy_dt / (dx_dt**2 + dy_dt**2)**(1/2)
+        J["x_o", "s"] = dxo_ds
+        dyo_ds = -dx_dt / (dx_dt**2 + dy_dt**2)**(1/2)
+        J["y_o", "s"] = dyo_ds
+
+        denom32 = (dx_dt**2 + dy_dt**2)**(3/2)
+        dxo_dxdt = -s * dx_dt * dy_dt / denom32
+        J["x_o", "dx_dt"]= dxo_dxdt
+
+        dxo_dydt = s * dx_dt**2 / denom32
+        J["x_o", "dy_dt"]= dxo_dydt
+
+        dyo_dydt = s * dx_dt * dy_dt / denom32
+        J["y_o", "dy_dt"]= dyo_dydt
+
+        dyo_dxdt = -s * dy_dt**2 / denom32
+        J["y_o", "dx_dt"]= dyo_dxdt
 
 def most_common_isotope(sp):
     """A Particle of the most common isotope and
