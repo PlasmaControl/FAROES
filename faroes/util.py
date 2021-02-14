@@ -5,9 +5,123 @@ from scipy.special import ellipe, hyp2f1
 
 import openmdao.api as om
 from openmdao.utils.cs_safe import abs as cs_safe_abs
+from openmdao.utils.cs_safe import arctan2 as cs_safe_arctan2
 
 from plasmapy.particles import Particle, common_isotopes
 from plasmapy.particles import atomic_number, isotopic_abundance
+
+
+class SquaredLengthSubtraction(om.ExplicitComponent):
+    r"""
+
+    Subtracts two arrays that have dimensions of length squared.
+
+    Inputs
+    ------
+    a : array
+        m**2
+    b : array
+        m**2
+
+    Outputs
+    -------
+    c : array
+        m**2
+    """
+    def setup(self):
+        self.add_input("a", units="m**2", shape_by_conn=True)
+        self.add_input("b", units="m**2", shape_by_conn=True, copy_shape="a")
+        self.add_output("c", units="m**2", shape_by_conn=True, copy_shape="a")
+
+    def compute(self, inputs, outputs):
+        outputs["c"] = inputs["a"] - inputs["b"]
+
+    def setup_partials(self):
+        size = self._get_var_meta("a", "size")
+        self.declare_partials("c", ["a", "b"],
+                              rows=range(size),
+                              cols=range(size))
+
+    def compute_partials(self, inputs, J):
+        size = self._get_var_meta("a", "size")
+        J["c", "a"] = np.ones(size)
+        J["c", "b"] = -np.ones(size)
+
+
+class PolarAngleAndDistanceFromPoint(om.ExplicitComponent):
+    r"""
+    Inputs
+    ------
+    x : array
+        m, x-locations of points
+    y : array
+        m, y-locations of points
+
+    X0 : float
+        m, Polar origin x
+    Y0 : float
+        m, Polar origin y
+
+    Outputs
+    -------
+    d2 : array
+        m**2, Squared distances from origin to points (x,y)
+    θ : array
+        Angle from origin to points (x,y).
+           In the range (-pi, pi].
+    """
+    def setup(self):
+        self.add_input("x", units="m", shape_by_conn=True)
+        self.add_input("y", units="m", shape_by_conn=True, copy_shape="x")
+        self.add_input("X0", units="m", val=0)
+        self.add_input("Y0", units="m", val=0)
+
+        self.add_output("d2",
+                        units="m**2",
+                        lower=0,
+                        ref=10,
+                        shape_by_conn=True,
+                        copy_shape="x")
+        self.add_output("θ",
+                        lower=-π,
+                        upper=π,
+                        shape_by_conn=True,
+                        copy_shape="x")
+
+    def compute(self, inputs, outputs):
+        x = inputs["x"]
+        y = inputs["y"]
+        X0 = inputs["X0"]
+        Y0 = inputs["Y0"]
+
+        d2 = (x - X0)**2 + (y - Y0)**2
+        θ = cs_safe_arctan2(y - Y0, x - X0)
+
+        outputs["d2"] = d2
+        outputs["θ"] = θ
+
+    def setup_partials(self):
+        size = self._get_var_meta("x", "size")
+        self.declare_partials(["d2", "θ"], ["x", "y"],
+                              rows=range(size),
+                              cols=range(size))
+        self.declare_partials(["d2", "θ"], ["X0", "Y0"])
+
+    def compute_partials(self, inputs, J):
+        x = inputs["x"]
+        y = inputs["y"]
+        X0 = inputs["X0"]
+        Y0 = inputs["Y0"]
+        d2 = (x - X0)**2 + (y - Y0)**2
+        J["d2", "x"] = 2 * (x - X0)
+        J["d2", "X0"] = -2 * (x - X0)
+        J["d2", "y"] = 2 * (y - Y0)
+        J["d2", "Y0"] = -2 * (y - Y0)
+        J["θ", "x"] = -(y - Y0) / d2
+        J["θ", "y"] = (x - X0) / d2
+        J["θ", "X0"] = -J["θ", "x"]
+        J["θ", "Y0"] = -J["θ", "y"]
+
 
 class OffsetParametricCurvePoints(om.ExplicitComponent):
     r"""
@@ -36,7 +150,6 @@ class OffsetParametricCurvePoints(om.ExplicitComponent):
     [1] https://mathworld.wolfram.com/ParallelCurves.html
     [2] https://en.wikipedia.org/wiki/Parallel_curve
     """
-
     def setup(self):
         self.add_input("x", units="m", shape_by_conn=True)
         self.add_input("y", units="m", copy_shape="x", shape_by_conn=True)
@@ -53,20 +166,28 @@ class OffsetParametricCurvePoints(om.ExplicitComponent):
         dx_dt = inputs["dx_dt"]
         dy_dt = inputs["dy_dt"]
         s = inputs["s"]
-        x_o = x + s * dy_dt / (dx_dt**2 + dy_dt**2)**(1/2)
-        y_o = y - s * dx_dt / (dx_dt**2 + dy_dt**2)**(1/2)
+        x_o = x + s * dy_dt / (dx_dt**2 + dy_dt**2)**(1 / 2)
+        y_o = y - s * dx_dt / (dx_dt**2 + dy_dt**2)**(1 / 2)
         outputs["x_o"] = x_o
         outputs["y_o"] = y_o
 
     def setup_partials(self):
         size = self._get_var_meta("x", "size")
         self.declare_partials("x_o", ["x"], rows=range(size), cols=range(size))
-        self.declare_partials("x_o", ["dx_dt"], rows=range(size), cols=range(size))
-        self.declare_partials("x_o", ["dy_dt"], rows=range(size), cols=range(size))
+        self.declare_partials("x_o", ["dx_dt"],
+                              rows=range(size),
+                              cols=range(size))
+        self.declare_partials("x_o", ["dy_dt"],
+                              rows=range(size),
+                              cols=range(size))
         self.declare_partials("x_o", ["s"], val=np.zeros(size))
         self.declare_partials("y_o", ["y"], rows=range(size), cols=range(size))
-        self.declare_partials("y_o", ["dx_dt"], rows=range(size), cols=range(size))
-        self.declare_partials("y_o", ["dy_dt"], rows=range(size), cols=range(size))
+        self.declare_partials("y_o", ["dx_dt"],
+                              rows=range(size),
+                              cols=range(size))
+        self.declare_partials("y_o", ["dy_dt"],
+                              rows=range(size),
+                              cols=range(size))
         self.declare_partials("y_o", ["s"], val=np.zeros(size))
 
     def compute_partials(self, inputs, J):
@@ -79,23 +200,24 @@ class OffsetParametricCurvePoints(om.ExplicitComponent):
         s = inputs["s"]
         dx_dt = inputs["dx_dt"]
         dy_dt = inputs["dy_dt"]
-        dxo_ds = dy_dt / (dx_dt**2 + dy_dt**2)**(1/2)
+        dxo_ds = dy_dt / (dx_dt**2 + dy_dt**2)**(1 / 2)
         J["x_o", "s"] = dxo_ds
-        dyo_ds = -dx_dt / (dx_dt**2 + dy_dt**2)**(1/2)
+        dyo_ds = -dx_dt / (dx_dt**2 + dy_dt**2)**(1 / 2)
         J["y_o", "s"] = dyo_ds
 
-        denom32 = (dx_dt**2 + dy_dt**2)**(3/2)
+        denom32 = (dx_dt**2 + dy_dt**2)**(3 / 2)
         dxo_dxdt = -s * dx_dt * dy_dt / denom32
-        J["x_o", "dx_dt"]= dxo_dxdt
+        J["x_o", "dx_dt"] = dxo_dxdt
 
         dxo_dydt = s * dx_dt**2 / denom32
-        J["x_o", "dy_dt"]= dxo_dydt
+        J["x_o", "dy_dt"] = dxo_dydt
 
         dyo_dydt = s * dx_dt * dy_dt / denom32
-        J["y_o", "dy_dt"]= dyo_dydt
+        J["y_o", "dy_dt"] = dyo_dydt
 
         dyo_dxdt = -s * dy_dt**2 / denom32
-        J["y_o", "dx_dt"]= dyo_dxdt
+        J["y_o", "dx_dt"] = dyo_dxdt
+
 
 def most_common_isotope(sp):
     """A Particle of the most common isotope and
@@ -340,6 +462,7 @@ def half_ellipse_torus_volume(R, a, b):
     """
     return cs_safe_abs(a) * b * π * (4 * a + 3 * π * R) / 3
 
+
 def half_ellipse_torus_volume_derivatives(R, a, b):
     """Derivatives of volume of a torus with a cross section
     shaped like half of an ellipse (vertical slice)
@@ -370,7 +493,7 @@ def half_ellipse_torus_volume_derivatives(R, a, b):
     """
     dVda = (4 / 3) * b * π * cs_safe_abs(a) + (b * π * (4 * a + 3 * π * R) *
                                                np.sign(a) / 3)
-    dVdb = π * (4 * a + 3 * π * R) * cs_safe_abs(a)/3
+    dVdb = π * (4 * a + 3 * π * R) * cs_safe_abs(a) / 3
     dVdR = b * π**2 * cs_safe_abs(a)
     return {"a": dVda, "b": dVdb, "R": dVdR}
 

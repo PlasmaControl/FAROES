@@ -9,8 +9,69 @@ import numpy as np
 
 import unittest
 
+class TestSquaredLengthSubtraction(unittest.TestCase):
+    def setUp(self):
+        x = [1, 2, 3, 4]
+        y = [0, 1, 2, 0]
 
-class OffsetParametricCurvePoints(unittest.TestCase):
+        sas = util.SquaredLengthSubtraction()
+        prob = om.Problem()
+        ivc = om.IndepVarComp()
+        ivc.add_output("a", val=x, units="m**2")
+        ivc.add_output("b", val=y, units="m**2")
+        prob.model.add_subsystem("ivc", ivc, promotes_outputs=["*"])
+        prob.model.add_subsystem("sas", sas, promotes_inputs=["*"])
+
+        prob.setup(force_alloc_complex=True)
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+    def test_values(self):
+        prob = self.prob
+        prob.run_driver()
+        c = prob.get_val("sas.c", units="m**2")
+        expected = [1, 1, 1, 4]
+        assert_near_equal(c, expected)
+
+
+class TestPolarAngleAndDistanceFromPoint(unittest.TestCase):
+    def setUp(self):
+        x = [1, 1, 0, 0]
+        y = [0, 1, 1, 0]
+
+        opc = util.PolarAngleAndDistanceFromPoint()
+        prob = om.Problem()
+        ivc = om.IndepVarComp()
+        ivc.add_output("x", val=x, units="m")
+        ivc.add_output("y", val=y, units="m")
+        prob.model.add_subsystem("ivc", ivc, promotes_outputs=["*"])
+        prob.model.add_subsystem("opc", opc, promotes_inputs=["*"])
+
+        prob.setup(force_alloc_complex=True)
+        prob.set_val("X0", 0.5)
+        prob.set_val("Y0", 0.5)
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+    def test_values(self):
+        prob = self.prob
+        prob.run_driver()
+        d2 = prob.get_val("opc.d2", units="m**2")
+        expected = [0.5, 0.5, 0.5, 0.5]
+        θ = prob.get_val("opc.θ")
+        expected = [-np.pi/4, np.pi/4, 3 * np.pi/4, -3 * np.pi/4]
+        assert_near_equal(θ, expected)
+
+
+class TestOffsetParametricCurvePoints(unittest.TestCase):
     def setUp(self):
         x = [1, 1, 0, 0]
         y = [0, 1, 1, 0]

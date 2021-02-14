@@ -237,8 +237,12 @@ class SauterGeometry(om.ExplicitComponent):
         self.declare_partials("Z", ["θ"], rows=range(size), cols=range(size))
         self.declare_partials("dR_dθ", ["R0", "A", "ξ", "δ"])
         self.declare_partials("dZ_dθ", ["R0", "A", "ξ", "κ"])
-        self.declare_partials("dR_dθ", ["θ"], rows=range(size), cols=range(size))
-        self.declare_partials("dZ_dθ", ["θ"], rows=range(size), cols=range(size))
+        self.declare_partials("dR_dθ", ["θ"],
+                              rows=range(size),
+                              cols=range(size))
+        self.declare_partials("dZ_dθ", ["θ"],
+                              rows=range(size),
+                              cols=range(size))
 
     def compute_partials(self, inputs, J):
         A = inputs["A"]
@@ -436,34 +440,30 @@ class SauterPlasmaGeometry(om.Group):
         self.add_subsystem("geom",
                            SauterGeometry(),
                            promotes_inputs=["R0", "A", "κ", "δ", "ξ", "θ"],
-                           promotes_outputs=["R_max", "R_min"]
-                           )
-        self.add_subsystem("bl_pts", util.OffsetParametricCurvePoints(),
-                promotes_inputs=[("s", "offset")])
+                           promotes_outputs=["R_max", "R_min"])
+        self.add_subsystem("bl_pts",
+                           util.OffsetParametricCurvePoints(),
+                           promotes_inputs=[("s", "offset")])
         self.connect("geom.R", "bl_pts.x")
         self.connect("geom.Z", "bl_pts.y")
         self.connect("geom.dR_dθ", "bl_pts.dx_dt")
         self.connect("geom.dZ_dθ", "bl_pts.dy_dt")
 
-        self.add_subsystem("bl_dtheta", om.ExecComp(["d_sq = (x - R0)**2 + y**2",
-            "theta = arctan2(y, (x - R0))"],
-                has_diag_partials=True,
-                x={"units":"m", "shape_by_conn":True},
-                R0={"units":"m"},
-                y={"units":"m", "copy_shape":"x"},
-                theta={"copy_shape":"x"},
-                d_sq={"units":"m**2", "copy_shape":"x"}), promotes_inputs=["R0"]
-                )
-        self.connect("bl_pts.x_o", "bl_dtheta.x")
-        self.connect("bl_pts.y_o", "bl_dtheta.y")
+        self.add_subsystem("dtheta",
+                           util.PolarAngleAndDistanceFromPoint(),
+                           promotes_inputs=[("X0", "R0"), ("Y0", "Z0")],
+                           promotes_outputs=[("d2", "blanket envelope d2"),
+                               ("θ", "blanket envelope θ")])
+        self.connect("bl_pts.x_o", "dtheta.x")
+        self.connect("bl_pts.y_o", "dtheta.y")
+        self.set_input_defaults("R0", val=3, units="m")
 
 
 if __name__ == "__main__":
     prob = om.Problem()
     uc = UserConfigurator()
 
-    θ = np.linspace(0, 2 * pi, 20, endpoint=False)
-
+    θ = np.linspace(0, 2 * pi, 10, endpoint=False)
 
     prob.model.add_subsystem("ivc",
                              om.IndepVarComp("θ", val=θ),
@@ -471,7 +471,6 @@ if __name__ == "__main__":
 
     sg = SauterPlasmaGeometry(config=uc)
     prob.model.add_subsystem("spg", sg, promotes_inputs=["*"])
-
 
     prob.setup()
 
@@ -481,20 +480,14 @@ if __name__ == "__main__":
     prob.set_val('δ', 0.5)
     prob.set_val('ξ', 0.1)
 
-    # prob.set_val("bl_pts.s", 2.0)
+    prob.set_val("spg.offset", 1.0)
 
     prob.run_driver()
     prob.model.list_outputs(print_arrays=True)
 
-    x = prob.get_val("spg.geom.R", units="m")
-    y = prob.get_val("spg.geom.Z", units="m")
-
-    x_o = prob.get_val("spg.bl_pts.x_o", units="m")
-    y_o = prob.get_val("spg.bl_pts.y_o", units="m")
-
-    fig, ax = plt.subplots()
-    ax.plot(x, y)
-    ax.plot(x_o, y_o)
-    ax.set_xlim([-1,8])
-    ax.axis('equal')
-    plt.show()
+    #fig, ax = plt.subplots()
+    #ax.plot(x, y)
+    #ax.plot(x_o, y_o)
+    #ax.set_xlim([-1,8])
+    #ax.axis('equal')
+    #plt.show()
