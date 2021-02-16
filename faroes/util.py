@@ -31,7 +31,7 @@ class SquaredLengthSubtraction(om.ExplicitComponent):
     def setup(self):
         self.add_input("a", units="m**2", shape_by_conn=True)
         self.add_input("b", units="m**2", shape_by_conn=True, copy_shape="a")
-        self.add_output("c", units="m**2", shape=(1, 4))
+        self.add_output("c", units="m**2", shape=(1, 40))
 
     def compute(self, inputs, outputs):
         outputs["c"] = inputs["a"] - inputs["b"]
