@@ -108,6 +108,39 @@ class SlowingTimeOnElectrons(om.ExplicitComponent):
        s, Slowing time of subthermal ions on eletrons
           Subthermal means that the ions are moving slower
           than electron thermal velocities.
+
+    Notes
+    -----
+
+    .. math::
+
+       \tau_s = c \frac{A_b (T_e / \mathrm{keV})^{3/2}}
+           {Z^2 (n_e / (10^{20} \mathrm{m}^{-3}) \log{\Lambda_e}}
+
+    Menard uses Equation (2) of Medley [1]_. That version includes a numerical
+    constant, 6.27e14. Medley cites Spitzer [2]_.
+
+    See Equation (13.72) of Bellan [2]_ for comparison.
+    The Bellan equation has a term :math:`(1 + m_T / m_e)` but here
+    the test particles are ions, so their masses are much larger
+    than the electron masses; that term is not present in Medley.
+
+    References
+    ----------
+    .. [1] Medley, S. S.; Gorelenkov, N. N.; Andre, R.; Bell, R. E.;
+       Darrow, D. S.; Fredrickson, E. D.; Kaye, S. M.; LeBlanc, B. P.;
+       Roquemore, A. L.;
+       MHD-Induced Energetic Ion Loss during H-Mode Discharges in
+       the National Spherical Torus Experiment.
+       Nuclear Fusion 2004, 44 (11), 1158–1175.
+       https://doi.org/10.1088/0029-5515/44/11/002.
+
+    .. [2] Spitzer, L. Physics of Fully Ionized Gases.
+       Interscience, New York, 2nd Revised edition.
+       Equations 5-29.
+
+    .. [3] Bellan, P. Fundamentals of Plasma Physics;
+       Cambridge University Press, 2006.
     """
     def setup(self):
         # the constant is equal to
@@ -119,8 +152,10 @@ class SlowingTimeOnElectrons(om.ExplicitComponent):
         # me is the electron mass
         # eV is electron volts
         self.c = 0.19834312  # seconds
-        # note that for n in m**-3 and Te in eV,
         # this constant c is 6.28e14 s as in Medley, 2004
+        # where it equals
+        # 4 π ε0² u² / (m⁻³ e⁴ 4 / (3 √π) (u / me) (me / (2 eV))^(3/2)).
+        # to highlight the differences: 10^20 m⁻³ → m⁻³ and keV → eV.
         self.add_input("ne", units="n20", desc="Electron density")
         self.add_input("Te", units="keV", desc="Electron temperature")
         self.add_input("At", units="u", desc="Test particle mass")
