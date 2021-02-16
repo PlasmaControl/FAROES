@@ -1,4 +1,3 @@
-from faroes.configurator import UserConfigurator
 import faroes.util as util
 
 import openmdao.api as om
@@ -8,6 +7,7 @@ from openmdao.utils.assert_utils import assert_near_equal
 import numpy as np
 
 import unittest
+
 
 @unittest.skip
 class TestSquaredLengthSubtraction(unittest.TestCase):
@@ -67,8 +67,9 @@ class TestPolarAngleAndDistanceFromPoint(unittest.TestCase):
         prob.run_driver()
         d_sq = prob.get_val("opc.d_sq", units="m**2")
         expected = [0.5, 0.5, 0.5, 0.5]
+        assert_near_equal(d_sq, expected)
         θ = prob.get_val("opc.θ")
-        expected = [-np.pi/4, np.pi/4, 3 * np.pi/4, -3 * np.pi/4]
+        expected = [-np.pi / 4, np.pi / 4, 3 * np.pi / 4, -3 * np.pi / 4]
         assert_near_equal(θ, expected)
 
 

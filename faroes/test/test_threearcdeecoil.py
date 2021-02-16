@@ -22,7 +22,6 @@ class TestThreeArcDeeTFSet(unittest.TestCase):
                                  coil.ThreeArcDeeTFSet(),
                                  promotes_inputs=["*"])
 
-
         prob.setup(force_alloc_complex=True)
 
         prob.set_val("R0", 3)
@@ -35,13 +34,12 @@ class TestThreeArcDeeTFSet(unittest.TestCase):
         check = prob.check_partials(out_stream=None, method="cs")
         assert_check_partials(check)
 
-        self.prob=prob
+        self.prob = prob
 
     def test_partials(self):
         prob = self.prob
         check = prob.check_partials(out_stream=None, method="cs")
         assert_check_partials(check)
-
 
 
 if __name__ == "__main__":

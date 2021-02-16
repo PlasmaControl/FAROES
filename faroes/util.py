@@ -31,7 +31,7 @@ class SquaredLengthSubtraction(om.ExplicitComponent):
     def setup(self):
         self.add_input("a", units="m**2", shape_by_conn=True)
         self.add_input("b", units="m**2", shape_by_conn=True, copy_shape="a")
-        self.add_output("c", units="m**2", shape=(1,4))
+        self.add_output("c", units="m**2", shape=(1, 4))
 
     def compute(self, inputs, outputs):
         outputs["c"] = inputs["a"] - inputs["b"]
@@ -195,14 +195,13 @@ class OffsetParametricCurvePoints(om.ExplicitComponent):
         J["x_o", "x"] = np.ones(size)
         J["y_o", "y"] = np.ones(size)
 
-        x = inputs["x"]
-        y = inputs["y"]
         s = inputs["s"]
         dx_dt = inputs["dx_dt"]
         dy_dt = inputs["dy_dt"]
-        dxo_ds = dy_dt / (dx_dt**2 + dy_dt**2)**(1 / 2)
+        denom12 = (dx_dt**2 + dy_dt**2)**(1 / 2)
+        dxo_ds = dy_dt / denom12
         J["x_o", "s"] = dxo_ds
-        dyo_ds = -dx_dt / (dx_dt**2 + dy_dt**2)**(1 / 2)
+        dyo_ds = -dx_dt / denom12
         J["y_o", "s"] = dyo_ds
 
         denom32 = (dx_dt**2 + dy_dt**2)**(3 / 2)

@@ -3,9 +3,7 @@ from faroes.elliptical_plasma import MenardKappaScaling
 import openmdao.api as om
 import faroes.util as util
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.constants import pi
-import scipy.sparse
 from numpy import sin, cos
 
 
@@ -165,8 +163,8 @@ class SauterGeometry(om.ExplicitComponent):
         θ07 = np.arcsin(0.7) - (2 * ξ) / (1 + (1 + 8 * ξ**2)**(1 / 2))
 
         # Sauter equation (C.5)
-        wanal_07 = cos(θ07 - ξ * sin(2 * θ07)/ (0.51)**(1/2))  \
-                * (1 - 0.49 * δ**2 / 2)
+        wanal_07 = cos(θ07 - ξ * sin(2 * θ07) / (0.51)**(1/2))  \
+            * (1 - 0.49 * δ**2 / 2)
         w07 = wanal_07
 
         L_p = (2 * pi * a * (1 + 0.55 * (κ - 1)) * (1 + 0.08 * δ**2) *
@@ -258,7 +256,6 @@ class SauterGeometry(om.ExplicitComponent):
         θ = inputs["θ"]
 
         a = R0 / A
-        b = κ * a
         da_dA = -R0 / A**2
         da_dR0 = 1 / A
         ε = 1 / A
@@ -282,8 +279,8 @@ class SauterGeometry(om.ExplicitComponent):
         # 2c / (-b + √(b² - 4 a c))
         θ07 = np.arcsin(0.7) - (2 * ξ) / (1 + (1 + 8 * ξ**2)**(1 / 2))
         # Sauter equation (C.5)
-        wanal_07 = cos(θ07 - ξ * sin(2 * θ07)/ (0.51)**(1/2))  \
-                * (1 - 0.49 * δ**2 / 2)
+        wanal_07 = cos(θ07 - ξ * sin(2 * θ07) / (0.51)**(1/2))  \
+            * (1 - 0.49 * δ**2 / 2)
         w07 = wanal_07
 
         dθ_dξ = -2 / (1 + 8 * ξ**2 + (1 + 8 * ξ**2)**(1 / 2))
@@ -291,9 +288,9 @@ class SauterGeometry(om.ExplicitComponent):
         dw07_dξ = (sin(2 * θ07) * sin(θ07 - ξ * sin(2 * θ07) /
                                       (0.51)**(1 / 2))) * (
                                           1 - 0.49 * δ**2 / 2) / 0.51**(1 / 2)
-        dw07_dθ07 = -((1 - 2 * ξ * cos(2 * θ07) / 0.51**
-                       (1 / 2)) * sin(θ07 - ξ * sin(2 * θ07) / 0.51**
-                                      (1 / 2))) * (1 - 0.49 * δ**2 / 2)
+        dw07_dθ07 = -(
+            (1 - 2 * ξ * cos(2 * θ07) / 0.51**(1 / 2)) *
+            sin(θ07 - ξ * sin(2 * θ07) / 0.51**0.5)) * (1 - 0.49 * δ**2 / 2)
 
         dw07_dδ = -0.49 * δ * cos(θ07 - ξ * sin(2 * θ07) / 0.51**(1 / 2))
         J["w07", "δ"] = dw07_dδ
@@ -349,7 +346,6 @@ class SauterGeometry(om.ExplicitComponent):
         J["κa", "δ"] = dκa_dSc * J["S_c", "δ"]
         J["κa", "ξ"] = dκa_dSc * J["S_c", "ξ"]
 
-        V = (2 * pi * R0) * (1 - 0.25 * δ * 1 / A) * S_c
         dV_dR0 = (2 * pi) * (1 - 0.25 * δ * 1 / A) * S_c
         dV_dA = (2 * pi * R0) * (-0.25 * δ * -1 / A**2) * S_c
         dV_dδ = (2 * pi * R0) * (-0.25 * 1 / A) * S_c
@@ -369,7 +365,6 @@ class SauterGeometry(om.ExplicitComponent):
         dR_dθ = -a * (1 + δ * cos(θ) - 2 * ξ *
                       cos(2 * θ)) * sin(θ + δ * sin(θ) - ξ * sin(2 * θ))
 
-        size = self._get_var_meta("θ", "size")
         J["R", "θ"] = dR_dθ
 
         J["Z", "A"] = -R0 * κ * sin(θ + ξ * sin(2 * θ)) / A**2
@@ -424,11 +419,10 @@ class SauterPlasmaGeometry(om.Group):
         self.options.declare('config', default=None)
 
     def setup(self):
-        config = self.options['config']
         self.add_subsystem("geom",
                            SauterGeometry(),
                            promotes_inputs=["R0", "A", "κ", "δ", "ξ", "θ"],
-                           promotes_outputs=["R_max", "R_min"])
+                           promotes_outputs=["R_max", "R_min", "κa"])
         self.add_subsystem("bl_pts",
                            util.OffsetParametricCurvePoints(),
                            promotes_inputs=[("s", "offset")])
@@ -441,7 +435,42 @@ class SauterPlasmaGeometry(om.Group):
                            util.PolarAngleAndDistanceFromPoint(),
                            promotes_inputs=[("X0", "R0"), ("Y0", "Z0")],
                            promotes_outputs=[("d_sq", "blanket envelope d_sq"),
-                               ("θ", "blanket envelope θ")])
+                                             ("θ", "blanket envelope θ")])
+        self.connect("bl_pts.x_o", "dtheta.x")
+        self.connect("bl_pts.y_o", "dtheta.y")
+        self.set_input_defaults("R0", val=3, units="m")
+
+
+class SauterPlasmaGeometryMarginalKappa(om.Group):
+    r"""Sauter's general plasma shape, with automatic elongation.
+
+    """
+    def initialize(self):
+        self.options.declare('config', default=None)
+
+    def setup(self):
+        config = self.options['config']
+        self.add_subsystem("maxkappa",
+                           MenardKappaScaling(config=config),
+                           promotes_inputs=["A"],
+                           promotes_outputs=["κ"])
+        self.add_subsystem("geom",
+                           SauterGeometry(),
+                           promotes_inputs=["R0", "A", "κ", "δ", "ξ", "θ"],
+                           promotes_outputs=["R_max", "R_min", "κa"])
+        self.add_subsystem("bl_pts",
+                           util.OffsetParametricCurvePoints(),
+                           promotes_inputs=[("s", "offset")])
+        self.connect("geom.R", "bl_pts.x")
+        self.connect("geom.Z", "bl_pts.y")
+        self.connect("geom.dR_dθ", "bl_pts.dx_dt")
+        self.connect("geom.dZ_dθ", "bl_pts.dy_dt")
+
+        self.add_subsystem("dtheta",
+                           util.PolarAngleAndDistanceFromPoint(),
+                           promotes_inputs=[("X0", "R0"), ("Y0", "Z0")],
+                           promotes_outputs=[("d_sq", "blanket envelope d_sq"),
+                                             ("θ", "blanket envelope θ")])
         self.connect("bl_pts.x_o", "dtheta.x")
         self.connect("bl_pts.y_o", "dtheta.y")
         self.set_input_defaults("R0", val=3, units="m")
@@ -457,7 +486,7 @@ if __name__ == "__main__":
                              om.IndepVarComp("θ", val=θ),
                              promotes_outputs=["*"])
 
-    sg = SauterPlasmaGeometry(config=uc)
+    sg = SauterPlasmaGeometryMarginalKappa(config=uc)
     prob.model.add_subsystem("spg", sg, promotes_inputs=["*"])
 
     prob.setup()
@@ -472,10 +501,3 @@ if __name__ == "__main__":
 
     prob.run_driver()
     prob.model.list_outputs(print_arrays=True)
-
-    #fig, ax = plt.subplots()
-    #ax.plot(x, y)
-    #ax.plot(x_o, y_o)
-    #ax.set_xlim([-1,8])
-    #ax.axis('equal')
-    #plt.show()

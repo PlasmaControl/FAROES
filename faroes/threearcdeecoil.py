@@ -1,5 +1,4 @@
 import faroes.util as util
-from faroes.configurator import Accessor
 
 import openmdao.api as om
 from openmdao.utils.cs_safe import arctan2 as cs_safe_arctan2
@@ -127,7 +126,6 @@ class ThreeArcDeeTFSet(om.ExplicitComponent):
         d_lower_circ = c * cos(θ) - hhs * sin(θ) + (1 / 2) * lower_circ_root
         d2[on_lower_circ] = d_lower_circ**2
 
-
         θ = θ_all[on_ellipse]
         t = tan(θ)
 
@@ -136,7 +134,7 @@ class ThreeArcDeeTFSet(om.ExplicitComponent):
         root = (
             b**2 * (a**2 + c**2) + a**2 * (a**2 - c**2) * t**2 +
             np.sign(cos(θ)) * 2 * a * b * c * np.sqrt(b**2 +
-                                                       (a**2 - c**2) * t**2))
+                                                      (a**2 - c**2) * t**2))
         denom = (b**2 + a**2 * t**2) * cs_safe_abs(cos(θ))
         d = b * np.sqrt(root) / denom
 
@@ -152,21 +150,21 @@ class ThreeArcDeeTFSet(om.ExplicitComponent):
         outputs["d_sq"] = d2
 
     def setup_partials(self):
-        size = self._get_var_meta("θ", "size")
         self.declare_partials("e_b", ["hhs", "r_c"], val=1)
         self.declare_partials("arc length", ["e_a", "hhs", "r_c"])
         self.declare_partials("V_enc", ["Ib TF R_out", "e_a", "hhs", "r_c"])
-        self.declare_partials("d_sq", ["Ib TF R_out", "e_a", "hhs", "r_c"], method="cs")
+        self.declare_partials("d_sq", ["Ib TF R_out", "e_a", "hhs", "r_c"],
+                              method="cs")
         self.declare_partials("d_sq", ["R0"], method="cs")
-        #self.declare_partials("d_sq", ["θ"], rows=range(size), cols=range(size))
         self.declare_partials("d_sq", ["θ"], method="cs")
-        self.declare_partials("Ob TF R_in", ["e_a", "r_c", "Ib TF R_out"], val=1)
-        self.declare_partials("constraint_axis_within_coils", ["e_a", "r_c", "Ib TF R_out"], val=1)
+        self.declare_partials("Ob TF R_in", ["e_a", "r_c", "Ib TF R_out"],
+                              val=1)
+        self.declare_partials("constraint_axis_within_coils",
+                              ["e_a", "r_c", "Ib TF R_out"],
+                              val=1)
         self.declare_partials("constraint_axis_within_coils", ["R0"], val=-1)
 
     def compute_partials(self, inputs, J):
-        size = self._get_var_meta("θ", "size")
-        R0 = inputs["R0"]
         r_ot = inputs["Ib TF R_out"]
 
         e_a = inputs["e_a"]
@@ -204,58 +202,33 @@ class ThreeArcDeeTFSet(om.ExplicitComponent):
         J["V_enc", "Ib TF R_out"] = (dv1_dR * dR_drot + dv2_dR * dR_drot +
                                      dv3_dR * dR_drot)
 
-        #θ_all = inputs["θ"]
-        #θ1 = cs_safe_arctan2(e_b, R - R0)
-        #θ2 = cs_safe_arctan2(hhs, r_ot - R0)
-        #θ3 = cs_safe_arctan2(-hhs, r_ot - R0)
-        #θ4 = cs_safe_arctan2(-e_b, R - R0)
-
-        ## abbreviation for easier writing
-        #θ = θ_all
-        #on_ellipse = (θ4 < θ) * (θ < θ1)
-        #on_upper_circ = (θ1 <= θ) * (θ < θ2)
-        #on_lower_circ = (θ3 < θ) * (θ <= θ4)
-        #on_upper_straight = θ2 <= θ
-        #on_lower_straight = θ <= θ3
-
-        #θ = θ_all[on_lower_straight]
-        #d2_lower_straight = (R0 - r_ot)**2 / cos(θ)**2
-
-        #dd2_dR0 = np.zeros(size)
-        #dd2_dR0[on_lower_straight] = 2 * (R0 - r_ot) / cos(θ)**2
-        #J["d_sq", "R0"] = dd2_dR0
-        #print(dd2_dR0)
-
     def plot(self, ax=None, **kwargs):
         size = 100
+        color = "black"
+
         if "color" in kwargs.keys():
-            color=kwargs[color]
-        else:
-            color="black"
+            color = kwargs[color]
+
         t = np.linspace(0, 1, 100)
         r_ot = self.get_val("Ib TF R_out")
         straight_R = r_ot * np.ones(size)
         hhs = self.get_val("hhs")
         straight_Z = t * (2 * hhs) - hhs
-        ax.plot(straight_R, straight_Z, color=color,**kwargs)
+        ax.plot(straight_R, straight_Z, color=color, **kwargs)
 
         # quarter circles
         r_c = self.get_val("r_c")
-        c_R = r_ot + r_c * (1 - np.cos(t*np.pi/2))
-        c_Z = hhs + r_c * (np.sin(t*np.pi/2))
-        ax.plot(c_R, c_Z, color=color,**kwargs)
-        ax.plot(c_R, -c_Z, color=color,**kwargs)
+        c_R = r_ot + r_c * (1 - np.cos(t * np.pi / 2))
+        c_Z = hhs + r_c * (np.sin(t * np.pi / 2))
+        ax.plot(c_R, c_Z, color=color, **kwargs)
+        ax.plot(c_R, -c_Z, color=color, **kwargs)
 
         # half-ellipse
         e_a = self.get_val("e_a")
         e_b = self.get_val("e_b")
-        el_R = r_ot + r_c + e_a * np.cos(t * np.pi - np.pi/2)
-        el_Z = e_b * np.sin(t * np.pi - np.pi/2)
-        ax.plot(el_R, el_Z, color=color,**kwargs)
-
-
-
-
+        el_R = r_ot + r_c + e_a * np.cos(t * np.pi - np.pi / 2)
+        el_Z = e_b * np.sin(t * np.pi - np.pi / 2)
+        ax.plot(el_R, el_Z, color=color, **kwargs)
 
 
 if __name__ == "__main__":
@@ -283,5 +256,5 @@ if __name__ == "__main__":
     # prob.set_val("n_coil", 18)
 
     prob.run_driver()
-    #all_inputs = prob.model.list_inputs(print_arrays=True)
+    # all_inputs = prob.model.list_inputs(print_arrays=True)
     all_outputs = prob.model.list_outputs(print_arrays=True)
