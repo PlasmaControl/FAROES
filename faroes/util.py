@@ -31,7 +31,7 @@ class SquaredLengthSubtraction(om.ExplicitComponent):
     def setup(self):
         self.add_input("a", units="m**2", shape_by_conn=True)
         self.add_input("b", units="m**2", shape_by_conn=True, copy_shape="a")
-        self.add_output("c", units="m**2", shape_by_conn=True, copy_shape="a")
+        self.add_output("c", units="m**2", shape=(1,4))
 
     def compute(self, inputs, outputs):
         outputs["c"] = inputs["a"] - inputs["b"]
@@ -64,7 +64,7 @@ class PolarAngleAndDistanceFromPoint(om.ExplicitComponent):
 
     Outputs
     -------
-    d2 : array
+    d_sq : array
         m**2, Squared distances from origin to points (x,y)
     θ : array
         Angle from origin to points (x,y).
@@ -76,7 +76,7 @@ class PolarAngleAndDistanceFromPoint(om.ExplicitComponent):
         self.add_input("X0", units="m", val=0)
         self.add_input("Y0", units="m", val=0)
 
-        self.add_output("d2",
+        self.add_output("d_sq",
                         units="m**2",
                         lower=0,
                         ref=10,
@@ -94,31 +94,31 @@ class PolarAngleAndDistanceFromPoint(om.ExplicitComponent):
         X0 = inputs["X0"]
         Y0 = inputs["Y0"]
 
-        d2 = (x - X0)**2 + (y - Y0)**2
+        d_sq = (x - X0)**2 + (y - Y0)**2
         θ = cs_safe_arctan2(y - Y0, x - X0)
 
-        outputs["d2"] = d2
+        outputs["d_sq"] = d_sq
         outputs["θ"] = θ
 
     def setup_partials(self):
         size = self._get_var_meta("x", "size")
-        self.declare_partials(["d2", "θ"], ["x", "y"],
+        self.declare_partials(["d_sq", "θ"], ["x", "y"],
                               rows=range(size),
                               cols=range(size))
-        self.declare_partials(["d2", "θ"], ["X0", "Y0"])
+        self.declare_partials(["d_sq", "θ"], ["X0", "Y0"])
 
     def compute_partials(self, inputs, J):
         x = inputs["x"]
         y = inputs["y"]
         X0 = inputs["X0"]
         Y0 = inputs["Y0"]
-        d2 = (x - X0)**2 + (y - Y0)**2
-        J["d2", "x"] = 2 * (x - X0)
-        J["d2", "X0"] = -2 * (x - X0)
-        J["d2", "y"] = 2 * (y - Y0)
-        J["d2", "Y0"] = -2 * (y - Y0)
-        J["θ", "x"] = -(y - Y0) / d2
-        J["θ", "y"] = (x - X0) / d2
+        d_sq = (x - X0)**2 + (y - Y0)**2
+        J["d_sq", "x"] = 2 * (x - X0)
+        J["d_sq", "X0"] = -2 * (x - X0)
+        J["d_sq", "y"] = 2 * (y - Y0)
+        J["d_sq", "Y0"] = -2 * (y - Y0)
+        J["θ", "x"] = -(y - Y0) / d_sq
+        J["θ", "y"] = (x - X0) / d_sq
         J["θ", "X0"] = -J["θ", "x"]
         J["θ", "Y0"] = -J["θ", "y"]
 
@@ -217,6 +217,9 @@ class OffsetParametricCurvePoints(om.ExplicitComponent):
 
         dyo_dxdt = -s * dy_dt**2 / denom32
         J["y_o", "dx_dt"] = dyo_dxdt
+
+    def plot(self, ax=None, **kwargs):
+        ax.plot(self.get_val('x_o'), self.get_val('y_o'), **kwargs)
 
 
 def most_common_isotope(sp):

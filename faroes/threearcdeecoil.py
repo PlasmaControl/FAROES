@@ -3,6 +3,7 @@ from faroes.configurator import Accessor
 
 import openmdao.api as om
 from openmdao.utils.cs_safe import arctan2 as cs_safe_arctan2
+from openmdao.utils.cs_safe import abs as cs_safe_abs
 from scipy.constants import pi
 import numpy as np
 from numpy import sin, cos, tan
@@ -57,7 +58,6 @@ class ThreeArcDeeTFSet(om.ExplicitComponent):
         self.add_input("r_c", units="m", desc="Circular arc radius")
         self.add_input("θ", shape_by_conn=True)
 
-        self.add_output("d_sq", units="m**2", copy_shape="θ")
         self.add_output("e_b",
                         units="m",
                         desc="Elliptical arc vertical semi-major axis")
@@ -65,13 +65,17 @@ class ThreeArcDeeTFSet(om.ExplicitComponent):
                         units="m",
                         desc="Inner perimeter of the magnet")
         V_enc_ref = 1e3
+        self.add_output("Ob TF R_in", units="m", ref=10, lower=0)
+        self.add_output("constraint_axis_within_coils", units="m", ref=1)
         self.add_output("V_enc",
                         units="m**3",
                         lower=0,
                         ref=V_enc_ref,
                         desc="magnetized volume enclosed by the set")
+        self.add_output("d_sq", units="m**2", copy_shape="θ")
 
     def compute(self, inputs, outputs):
+        size = self._get_var_meta("θ", "size")
         R0 = inputs["R0"]
         r_ot = inputs["Ib TF R_out"]
 
@@ -81,6 +85,8 @@ class ThreeArcDeeTFSet(om.ExplicitComponent):
         θ_all = inputs["θ"]
         e_b = hhs + r_c
         outputs["e_b"] = e_b
+        outputs["Ob TF R_in"] = r_ot + r_c + e_a
+        outputs["constraint_axis_within_coils"] = r_ot + r_c + e_a - R0
 
         arc_length = (util.ellipse_perimeter_ramanujan(e_a, e_b) / 2 +
                       pi * r_c + 2 * hhs)
@@ -102,12 +108,13 @@ class ThreeArcDeeTFSet(om.ExplicitComponent):
         on_ellipse = (θ4 < θ) * (θ < θ1)
         on_upper_circ = (θ1 <= θ) * (θ < θ2)
         on_lower_circ = (θ3 < θ) * (θ <= θ4)
-        on_upper_straight = θ2 <= θ
-        on_lower_straight = θ <= θ3
+        on_straight = np.logical_or(θ2 <= θ, θ <= θ3)
         # abbreviations for easier writing
 
-        θ = θ_all[on_lower_straight]
-        d2_lower_straight = (R0 - r_ot)**2 / cos(θ)**2
+        d2 = np.zeros(size, dtype=np.cdouble)
+
+        θ = θ_all[on_straight]
+        d2[on_straight] = (R0 - r_ot)**2 / cos(θ)**2
 
         θ = θ_all[on_lower_circ]
 
@@ -117,34 +124,30 @@ class ThreeArcDeeTFSet(om.ExplicitComponent):
         lower_circ_root = np.sqrt(-2 * (c**2 + hhs**2 - 2 * r_c**2) + 2 *
                                   (c**2 + hhs**2) *
                                   cos(2 * θ - 2 * cs_safe_arctan2(-hhs, c)))
-        d_lower_circ = c * cos(θ) + hhs * sin(θ) - (1 / 2) * lower_circ_root
-        d2_lower_circ = d_lower_circ**2
+        d_lower_circ = c * cos(θ) - hhs * sin(θ) + (1 / 2) * lower_circ_root
+        d2[on_lower_circ] = d_lower_circ**2
 
 
         θ = θ_all[on_ellipse]
         t = tan(θ)
-        n1 = b**2 * (b * c + a * (b**2 + (a**2 - c**2) * t**2)**(1 / 2))**2
-        n2 = b**2 * ((b**2 + a**2 * t**2)**2 -
-                     (a * c * t**2 - b * (b**2 +
-                                          (a**2 - c**2) * t**2)**(1 / 2))**2)
-        numerator = n1 + n2
-        denominator = (b**2 + a**2 * t**2)**2
-        d2_ell = numerator / denominator
+
+        # distance to ellipse
+        # uses np.sign and np.abs...
+        root = (
+            b**2 * (a**2 + c**2) + a**2 * (a**2 - c**2) * t**2 +
+            np.sign(cos(θ)) * 2 * a * b * c * np.sqrt(b**2 +
+                                                       (a**2 - c**2) * t**2))
+        denom = (b**2 + a**2 * t**2) * cs_safe_abs(cos(θ))
+        d = b * np.sqrt(root) / denom
+
+        d2[on_ellipse] = d**2
 
         θ = θ_all[on_upper_circ]
         upper_circ_root = np.sqrt(-2 * (c**2 + hhs**2 - 2 * r_c**2) + 2 *
                                   (c**2 + hhs**2) *
                                   cos(2 * θ - 2 * cs_safe_arctan2(hhs, c)))
         d_upper_circ = c * cos(θ) + hhs * sin(θ) + (1 / 2) * upper_circ_root
-        d2_upper_circ = d_upper_circ**2
-
-        θ = θ_all[on_upper_straight]
-        d2_upper_straight = (R0 - r_ot)**2 / cos(θ)**2
-
-        d2 = np.hstack([
-            d2_lower_straight, d2_lower_circ, d2_ell, d2_upper_circ,
-            d2_upper_straight
-        ])
+        d2[on_upper_circ] = d_upper_circ**2
 
         outputs["d_sq"] = d2
 
@@ -157,6 +160,9 @@ class ThreeArcDeeTFSet(om.ExplicitComponent):
         self.declare_partials("d_sq", ["R0"], method="cs")
         #self.declare_partials("d_sq", ["θ"], rows=range(size), cols=range(size))
         self.declare_partials("d_sq", ["θ"], method="cs")
+        self.declare_partials("Ob TF R_in", ["e_a", "r_c", "Ib TF R_out"], val=1)
+        self.declare_partials("constraint_axis_within_coils", ["e_a", "r_c", "Ib TF R_out"], val=1)
+        self.declare_partials("constraint_axis_within_coils", ["R0"], val=-1)
 
     def compute_partials(self, inputs, J):
         size = self._get_var_meta("θ", "size")
@@ -219,6 +225,35 @@ class ThreeArcDeeTFSet(om.ExplicitComponent):
         #dd2_dR0[on_lower_straight] = 2 * (R0 - r_ot) / cos(θ)**2
         #J["d_sq", "R0"] = dd2_dR0
         #print(dd2_dR0)
+
+    def plot(self, ax=None, **kwargs):
+        size = 100
+        if "color" in kwargs.keys():
+            color=kwargs[color]
+        else:
+            color="black"
+        t = np.linspace(0, 1, 100)
+        r_ot = self.get_val("Ib TF R_out")
+        straight_R = r_ot * np.ones(size)
+        hhs = self.get_val("hhs")
+        straight_Z = t * (2 * hhs) - hhs
+        ax.plot(straight_R, straight_Z, color=color,**kwargs)
+
+        # quarter circles
+        r_c = self.get_val("r_c")
+        c_R = r_ot + r_c * (1 - np.cos(t*np.pi/2))
+        c_Z = hhs + r_c * (np.sin(t*np.pi/2))
+        ax.plot(c_R, c_Z, color=color,**kwargs)
+        ax.plot(c_R, -c_Z, color=color,**kwargs)
+
+        # half-ellipse
+        e_a = self.get_val("e_a")
+        e_b = self.get_val("e_b")
+        el_R = r_ot + r_c + e_a * np.cos(t * np.pi - np.pi/2)
+        el_Z = e_b * np.sin(t * np.pi - np.pi/2)
+        ax.plot(el_R, el_Z, color=color,**kwargs)
+
+
 
 
 

@@ -412,20 +412,8 @@ class SauterGeometry(om.ExplicitComponent):
         J["dZ_dθ", "θ"] = d2Z_dθ2
 
     def plot(self, ax=None, **kwargs):
-        label = 'R0={}, a={}, κ={}, δ={}, ξ={}'.format(
-            self.get_val('R0')[0],
-            self.get_val('a')[0],
-            self.get_val('κ')[0],
-            self.get_val('δ')[0],
-            self.get_val('ξ')[0])
-
         ax.plot(self.get_val('R0'), self.get_val('Z0'), marker='x', **kwargs)
-        ax.plot(self.get_val('R'), self.get_val('Z'), label=label, **kwargs)
-
-        ax.axis('equal')
-        ax.set_xlabel('R (m)')
-        ax.set_ylabel('Z (m)')
-        ax.set_title(label)
+        ax.plot(self.get_val('R'), self.get_val('Z'), **kwargs)
 
 
 class SauterPlasmaGeometry(om.Group):
@@ -452,7 +440,7 @@ class SauterPlasmaGeometry(om.Group):
         self.add_subsystem("dtheta",
                            util.PolarAngleAndDistanceFromPoint(),
                            promotes_inputs=[("X0", "R0"), ("Y0", "Z0")],
-                           promotes_outputs=[("d2", "blanket envelope d2"),
+                           promotes_outputs=[("d_sq", "blanket envelope d_sq"),
                                ("θ", "blanket envelope θ")])
         self.connect("bl_pts.x_o", "dtheta.x")
         self.connect("bl_pts.y_o", "dtheta.y")
