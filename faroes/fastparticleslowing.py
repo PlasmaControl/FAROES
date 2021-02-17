@@ -1,5 +1,6 @@
 import faroes.units  # noqa: F401
 from faroes.plasmaformulary import CoulombLogarithmElectrons
+from faroes.configurator import UserConfigurator
 
 import openmdao.api as om
 from openmdao.utils.units import unit_conversion
@@ -24,6 +25,24 @@ class SlowingThermalizationTime(om.ExplicitComponent):
     τth : float
         s, Thermalization time
            (time to slow to zero average velocity, in this model)
+
+    Notes
+    -----
+
+    .. math::
+
+       \tau_\mathrm{th} = \frac{t_s}{3} \log(1 + (\frac{W}{W_\mathrm{crit}})^{3/2})
+
+    Where :math:`t_s` is the ion-electron slowing down time given
+    by Spitzer [1]_.
+
+    References
+    ----------
+    .. [1] Stix, T. H. Heating of Toroidal Plasmas by Neutral Injection.
+       Plasma Physics 1972, 14 (4), 367–384.
+       https://doi.org/10.1088/0032-1028/14/4/002.
+
+
     """
     def setup(self):
         self.add_input("W/Wc", desc="Initial beam energy / critical energy")
@@ -120,7 +139,7 @@ class SlowingTimeOnElectrons(om.ExplicitComponent):
     Menard uses Equation (2) of Medley [1]_. That version includes a numerical
     constant, 6.27e14. Medley cites Spitzer [2]_.
 
-    See Equation (13.72) of Bellan [2]_ for comparison.
+    See Equation (13.72) of Bellan [3]_ for comparison.
     The Bellan equation has a term :math:`(1 + m_T / m_e)` but here
     the test particles are ions, so their masses are much larger
     than the electron masses; that term is not present in Medley.
@@ -192,7 +211,9 @@ class SlowingTimeOnElectrons(om.ExplicitComponent):
 class AverageEnergyWhileSlowing(om.ExplicitComponent):
     r"""Average energy while slowing down
 
-    1/τth \int_0^τth W(t) dt
+    .. math::
+
+        \frac{1}{\tau_\mathrm{th}} \int_0^{\tau_{th}} W(t) \; dt
 
     Inputs
     ------
@@ -250,7 +271,8 @@ class AverageEnergyWhileSlowing(om.ExplicitComponent):
         J["Wbar", "W/Wc"] = inputs["Wc"] * numer / denom
 
 
-class CriticalSlowingEnergy(om.ExplicitComponent):
+
+class StixCriticalSlowingEnergy(om.ExplicitComponent):
     r"""Critical energy for fast particles slowing down
 
     where energy is transferred equally to ions and electrons
@@ -274,6 +296,160 @@ class CriticalSlowingEnergy(om.ExplicitComponent):
     -------
     W_crit : float
         keV, Critical energy
+
+    Notes
+    -----
+
+    .. math::
+
+        \alpha' = A_t \sum_i n_i Z_i^2 / A_i
+
+        \beta' = \frac{4}{3 \pi^{1/2}} n_e
+
+        W_\mathrm{crit} = T_e \left(\frac{m_T}{m_e}\right)^(1/3} \left(\frac{\alpha'}{\beta'}\right)^{2/3}
+
+    References
+    ----------
+    .. [1] Stix, T. H. Heating of Toroidal Plasmas by Neutral Injection.
+       Plasma Physics 1972, 14 (4), 367–384.
+       https://doi.org/10.1088/0032-1028/14/4/002.
+
+    """
+    def setup(self):
+        self.add_input('At', units="u", desc="Test particle atomic mass")
+        self.add_input('ne', units='n20', desc="Electron density")
+        self.add_input('Te', units='keV', desc="Electron temperature")
+        self.add_input('ni',
+                       units='n20',
+                       shape_by_conn=True,
+                       desc="Ion field particles densities")
+        self.add_input('Ai',
+                       units='u',
+                       shape_by_conn=True,
+                       copy_shape='ni',
+                       desc="Ion field particle atomic masses")
+        self.add_input('Zi',
+                       shape_by_conn=True,
+                       copy_shape='ni',
+                       desc="Ion field particle charges")
+
+        W_crit_ref = 100
+        self.add_output('W_crit',
+                        units='keV',
+                        lower=0,
+                        ref=W_crit_ref,
+                        desc='Critical energy for slowing ions')
+
+    def compute(self, inputs, outputs):
+        u = unit_conversion('u', 'kg')[0]
+
+        ni = inputs['ni']
+        Ai = inputs['Ai']
+        me = electron_mass
+        zi = inputs['Zi']
+        At = inputs['At']
+        ne = inputs['ne']
+        Te = inputs['Te']
+        α = np.sum(ni * zi**2 * (At / Ai))
+        β = 4 / (3 * pi**(1 / 2)) * ne
+        w_crit = Te * ((At * u / me)**(1 / 3)) * (α / β)**(2 / 3)
+        outputs["W_crit"] = w_crit
+
+    def setup_partials(self):
+        self.declare_partials("W_crit", ["At", "ne", "Te", "ni", "Ai", "Zi"])
+
+    def compute_partials(self, inputs, J):
+        u = unit_conversion('u', 'kg')[0]
+
+        ni = inputs['ni']
+        Ai = inputs['Ai']
+        me = electron_mass
+        zi = inputs['Zi']
+        At = inputs['At']
+        ne = inputs['ne']
+        Te = inputs['Te']
+        α = np.sum(ni * zi**2 * (At / Ai))
+        β = 4 / (3 * pi**(1 / 2)) * ne
+        mass_scale = (At * u / me)**(1 / 3)
+        J["W_crit", "Te"] = mass_scale * (α / β)**(2 / 3)
+
+        dαdAt = np.sum(ni * zi**2 / Ai)
+        numer = Te * u * (α + 2 * At * dαdAt)
+        denom = (3 * me * (At * u * β / me)**(2 / 3) * α**(1 / 3))
+        J["W_crit", "At"] = numer / denom
+
+        dβdne = (4 / (3 * pi**(1 / 2)))
+        numer = -2 * mass_scale * Te * α**(2 / 3) * dβdne
+        J["W_crit", "ne"] = numer / (3 * β**(5 / 3))
+
+        dαdni = (At / Ai) * zi**2
+        numer = (2 / 3) * mass_scale * Te * dαdni
+        denom = (β**(2 / 3) * α**(1 / 3))
+        J["W_crit", "ni"] = numer / denom
+
+        dαdzi = 2 * (At / Ai) * ni * zi
+        numer = (2 / 3) * mass_scale * Te * dαdzi
+        J["W_crit", "Zi"] = numer / denom
+
+        dαdAi = -(At / Ai**2) * ni * zi**2
+        numer = (2 / 3) * mass_scale * Te * dαdAi
+        J["W_crit", "Ai"] = numer / denom
+
+class BellanCriticalSlowingEnergy(om.ExplicitComponent):
+    r"""Critical energy for fast particles slowing down
+
+    where energy is transferred equally to ions and electrons
+
+    Inputs
+    ------
+    At : float
+        u, test particle mass
+    ni : array
+        n20, ion densities
+    Ai : array
+        u, ion masses
+    Zi : array
+        e, ion charges
+    ne : float
+        n20, electron density
+    Te : float
+        eV, electron temperature
+
+    Outputs
+    -------
+    W_crit : float
+        keV, Critical energy
+
+    Notes
+    -----
+
+    .. math::
+
+        \alpha' = \sum_i n_i Z_i^2 (1 + A_t / A_i)
+
+        \beta' = \frac{4}{3 \pi^{1/2}} n_e
+
+        W_\mathrm{crit} = T_e \left(\frac{m_T}{m_e}\right)^(1/3} \left(\frac{\alpha'}{\beta'}\right)^{2/3}
+
+    Bellan does not explicitly provide a formula for the critical slowing
+    energy, but it can be derived from Equation 13.72.
+    The major difference from Stix's treatment is that the summation here
+    called :math:`\alpha'` is over :math:`n_i Z_i^2 (1 + A_t/A_i)` whereas Stix sums
+    :math:`n_i Z_i^2 (A_t/A_i)`. This term is a reduced mass
+    :math:`\mu` and can be traced back to the collision operator. I'm not sure
+    why it's not present in Stix's treatment. Stix cites Sivukhin [3]_, Equation 8.1.
+
+    References
+    ----------
+    .. [1] Bellan, P. Fundamentals of Plasma Physics;
+       Cambridge University Press, 2006.
+
+    .. [2] Stix, T. H. Heating of Toroidal Plasmas by Neutral Injection.
+       Plasma Physics 1972, 14 (4), 367–384. https://doi.org/10.1088/0032-1028/14/4/002.
+
+    .. [3] Sivukhin, D. V. (1966). Reviews of Plasma Physics (M. A. Leontovich, Ed.)
+       Consultants Bureau, New York, Vol. 4, p.93, Equation 8.1
+
     """
     def setup(self):
         self.add_input('At', units="u", desc="Test particle atomic mass")
@@ -428,12 +604,51 @@ class FastParticleSlowing(om.Group):
         MJ, Fast particle energy in plasma
     logΛe: float
         Coulomb logarithm for electrons
+
+    Notes
+    -----
+    Inputs from the configuration file:
+
+    method: "Stix" or "Menard" or "Bellan"
+       This controls the calculation method for the critical slowing energy.
+       "Menard" is an alias for "Stix" here.
+
+    Te profile peaking factor for W_crit:
+       Acts as a scaling factor for W_crit
     """
+    BAD_METHOD_STR = """
+    Unknown method '%s' specified for fast particle slowing.
+    Valid methods are %s """
+    SUPPORTED_METHODS = ["Bellan", "Stix", "Menard"]
+
+    def initialize(self):
+        self.options.declare("config", default=None)
+
     def setup(self):
-        self.add_subsystem(
-            "Wcrit",
-            CriticalSlowingEnergy(),
-            promotes_inputs=["At", "ne", "Te", "ni", "Ai", "Zi"])
+        acc = self.options["config"].accessor(["h_cd", "NBI", "fast-ion slowing"])
+        method = acc(["method"])
+
+        if method is None or method == "default":
+            method = acc(["default"])
+
+        if method == "Bellan":
+            cse = BellanCriticalSlowingEnergy()
+        elif method in ["Menard", "Stix"]:
+            cse = StixCriticalSlowingEnergy()
+        else:
+            raise ValueError(self.BAD_METHOD_STR % (method,
+                self.SUPPORTED_METHODS))
+
+        acc = self.options["config"].accessor(["plasma"])
+        scale = acc(["Te profile peaking factor for W_crit"])
+
+        self.add_subsystem( "Wcrit0", cse, promotes_inputs=["At", "ne", "Te", "ni", "Ai", "Zi"])
+        self.add_subsystem("Wcrit", om.ExecComp("W_crit = scale * Wcrit0",
+            W_crit={"units": "keV"},
+            Wcrit0={"units": "keV"},
+            scale={"value": scale}))
+        self.connect("Wcrit0.W_crit", "Wcrit.Wcrit0")
+
         self.add_subsystem("logCoulombEl",
                            CoulombLogarithmElectrons(),
                            promotes_inputs=["ne", "Te"],
@@ -473,13 +688,14 @@ if __name__ == "__main__":
     from openmdao.utils.assert_utils import assert_check_partials
     from scipy.constants import m_p
     prob = om.Problem()
+    uc = UserConfigurator()
 
     prob.model.add_subsystem('ivc',
                              om.IndepVarComp('ni', val=np.ones(3),
                                              units='n20'),
                              promotes_outputs=["*"])
     prob.model.add_subsystem('fps',
-                             FastParticleSlowing(),
+                             FastParticleSlowing(config=uc),
                              promotes_inputs=["*"])
 
     prob.setup(force_alloc_complex=True)
@@ -500,4 +716,5 @@ if __name__ == "__main__":
     assert_check_partials(check)
 
     prob.run_driver()
+    all_inputs = prob.model.list_inputs(values=True, print_arrays=True)
     all_outputs = prob.model.list_outputs(values=True, print_arrays=True)

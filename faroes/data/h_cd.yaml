@@ -14,6 +14,10 @@ NBI:
     # the overall current drive efficiency is the same.
     fudge factor: {value: 0.37, reference: Menard N218}
 
+  fast-ion slowing:
+    method: Menard
+    default: Menard
+
   wall-plug efficiency : {value: 0.3, reference: Menard T366}
 
 RF:
