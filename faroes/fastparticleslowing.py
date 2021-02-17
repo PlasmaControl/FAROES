@@ -41,8 +41,6 @@ class SlowingThermalizationTime(om.ExplicitComponent):
     .. [1] Stix, T. H. Heating of Toroidal Plasmas by Neutral Injection.
        Plasma Physics 1972, 14 (4), 367–384.
        https://doi.org/10.1088/0032-1028/14/4/002.
-
-
     """
     def setup(self):
         self.add_input("W/Wc", desc="Initial beam energy / critical energy")
@@ -79,6 +77,32 @@ class FastParticleHeatingFractions(om.ExplicitComponent):
         Fraction of energy to ions
     f_i : float
         Fraction of energy to electrons
+
+    Notes
+    -----
+
+    This is the exact solution to an integral
+
+    .. math::
+
+       G = \frac{W_c}{W} \int_0^{W/W_c} \frac{dy}{1 + y^{3/2}}
+
+       G = \, _2F_1\left(\frac{2}{3},1;\frac{5}{3};-(W/W_c)^{3/2}\right)
+
+    where :math:`W_c` is the critical slowing energy.
+    See equation (17) of [1]_.
+
+    In Mathematica:
+
+    ```
+    G = wc/w Integrate[1/(1 + y^(3/2)), {y, 0, w/wc}]
+    ```
+
+    References
+    ----------
+    .. [1] Stix, T. H. Heating of Toroidal Plasmas by Neutral Injection.
+       Plasma Physics 1972, 14 (4), 367–384.
+       https://doi.org/10.1088/0032-1028/14/4/002.
     """
     def setup(self):
         self.add_input("W/Wc", desc="Initial beam energy / critical energy")
@@ -263,13 +287,9 @@ class AverageEnergyWhileSlowing(om.ExplicitComponent):
 
         denom = 4 * (1 + wrat**(3 / 2)) * np.log(1 + wrat**(3 / 2))**2
         term1 = wrat**(1 / 2)
-        # term2 = -term2
-        # arg = 1 / (1 + wrat**(3/2))
-        # term3 = -term3
         term4 = -6 * wrat * np.log(1 + wrat**(3 / 2))
         numer = -term1 * (term2 + term3 + term4)
         J["Wbar", "W/Wc"] = inputs["Wc"] * numer / denom
-
 
 
 class StixCriticalSlowingEnergy(om.ExplicitComponent):
@@ -394,6 +414,7 @@ class StixCriticalSlowingEnergy(om.ExplicitComponent):
         dαdAi = -(At / Ai**2) * ni * zi**2
         numer = (2 / 3) * mass_scale * Te * dαdAi
         J["W_crit", "Ai"] = numer / denom
+
 
 class BellanCriticalSlowingEnergy(om.ExplicitComponent):
     r"""Critical energy for fast particles slowing down
@@ -625,7 +646,8 @@ class FastParticleSlowing(om.Group):
         self.options.declare("config", default=None)
 
     def setup(self):
-        acc = self.options["config"].accessor(["h_cd", "NBI", "fast-ion slowing"])
+        acc = self.options["config"].accessor(
+            ["h_cd", "NBI", "fast-ion slowing"])
         method = acc(["method"])
 
         if method is None or method == "default":
@@ -636,17 +658,22 @@ class FastParticleSlowing(om.Group):
         elif method in ["Menard", "Stix"]:
             cse = StixCriticalSlowingEnergy()
         else:
-            raise ValueError(self.BAD_METHOD_STR % (method,
-                self.SUPPORTED_METHODS))
+            raise ValueError(self.BAD_METHOD_STR %
+                             (method, self.SUPPORTED_METHODS))
 
         acc = self.options["config"].accessor(["plasma"])
         scale = acc(["Te profile peaking factor for W_crit"])
 
-        self.add_subsystem( "Wcrit0", cse, promotes_inputs=["At", "ne", "Te", "ni", "Ai", "Zi"])
-        self.add_subsystem("Wcrit", om.ExecComp("W_crit = scale * Wcrit0",
-            W_crit={"units": "keV"},
-            Wcrit0={"units": "keV"},
-            scale={"value": scale}))
+        self.add_subsystem(
+            "Wcrit0",
+            cse,
+            promotes_inputs=["At", "ne", "Te", "ni", "Ai", "Zi"])
+        self.add_subsystem(
+            "Wcrit",
+            om.ExecComp("W_crit = scale * Wcrit0",
+                        W_crit={"units": "keV"},
+                        Wcrit0={"units": "keV"},
+                        scale={"value": scale}))
         self.connect("Wcrit0.W_crit", "Wcrit.Wcrit0")
 
         self.add_subsystem("logCoulombEl",

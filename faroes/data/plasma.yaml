@@ -7,7 +7,7 @@ Ti/Te: {value: 1.1, reference: Menard T34}
 radiation fraction : {value: 0.3, reference: Menard T33}
 
 Fusion enhancement from p-peaking: {value: 1.2, reference: Menard T38}
-Te profile peaking factor for W_crit : {value: 1.31, reference: Menard T35}
+Te profile peaking factor for W_crit : {value: 1.5, reference: Menard T35}
 
 impurities:
   model: oneimpurity

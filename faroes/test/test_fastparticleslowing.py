@@ -1,7 +1,7 @@
 import faroes.fastparticleslowing as fps
 from faroes.configurator import UserConfigurator
 from scipy.constants import pi
-import faroes.units
+import faroes.units  # noqa: F401
 import numpy as np
 
 import openmdao.api as om
@@ -128,12 +128,11 @@ class TestFastParticleSlowing(unittest.TestCase):
         prob.model.add_subsystem('ivc',
                                  om.IndepVarComp('ni',
                                                  val=np.ones(3),
-                                                 units='n20'),
+                                                 units="n20"),
                                  promotes_outputs=["*"])
-        prob.model.add_subsystem(
-            'fps',
-            fps.FastParticleSlowing(config=uc),
-            promotes_inputs=["*"])
+        prob.model.add_subsystem('fps',
+                                 fps.FastParticleSlowing(config=uc),
+                                 promotes_inputs=["*"])
 
         prob.setup()
         prob.set_val("ni",
@@ -152,14 +151,14 @@ class TestFastParticleSlowing(unittest.TestCase):
 
     def test_slowing_time_value(self):
         prob = self.prob
-        expectedτth = 0.3156  # seconds
+        expectedτth = 0.284  # seconds
         prob.run_driver()
         assert_near_equal(prob["fps.τth"], expectedτth, tolerance=1e-3)
 
     def test_average_energy_while_slowing(self):
         prob = self.prob
         # Menard gets 243 keV, so his calculation is close!
-        expectedWbar = 240.2  # keV
+        expectedWbar = 246.1  # keV
         prob.run_driver()
         assert_near_equal(prob["fps.Wbar"], expectedWbar, tolerance=1e-3)
 
@@ -173,16 +172,17 @@ class TestStixCriticalSlowingEnergy(unittest.TestCase):
                                                  val=np.ones(3),
                                                  units='n20'),
                                  promotes_outputs=["*"])
-        prob.model.add_subsystem(
-            'cse',
-            fps.StixCriticalSlowingEnergy(),
-            promotes_inputs=["*"])
+        prob.model.add_subsystem('cse',
+                                 fps.StixCriticalSlowingEnergy(),
+                                 promotes_inputs=["*"])
 
         prob.setup(force_alloc_complex=True)
         prob.set_val("At", 2, units='u')
         prob.set_val("ne", 1.0629e20, units='m**-3')
         prob.set_val("Te", 9.20, units='keV')
-        prob.set_val("ni", np.array([0.425e20, 0.425e20, 0.0354e20]), units='m**-3')
+        prob.set_val("ni",
+                     np.array([0.425e20, 0.425e20, 0.0354e20]),
+                     units='m**-3')
         prob.set_val("Ai", [2, 3, 12], units='u')
         prob.set_val("Zi", [1, 1, 6])
         self.prob = prob
@@ -195,8 +195,9 @@ class TestStixCriticalSlowingEnergy(unittest.TestCase):
     def test_value(self):
         prob = self.prob
         prob.run_driver()
-        expected= 155.5
+        expected = 155.5
         assert_near_equal(prob["cse.W_crit"], expected, tolerance=1e-3)
+
 
 class TestBellanCriticalSlowingEnergy(unittest.TestCase):
     def setUp(self):
@@ -207,11 +208,9 @@ class TestBellanCriticalSlowingEnergy(unittest.TestCase):
                                                  val=np.ones(2),
                                                  units='n20'),
                                  promotes_outputs=["*"])
-        prob.model.add_subsystem(
-            'cse',
-            fps.BellanCriticalSlowingEnergy(),
-
-            promotes_inputs=["*"])
+        prob.model.add_subsystem('cse',
+                                 fps.BellanCriticalSlowingEnergy(),
+                                 promotes_inputs=["*"])
 
         prob.setup(force_alloc_complex=True)
 
