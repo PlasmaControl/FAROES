@@ -8,21 +8,51 @@ from numpy import sin, cos
 
 
 class SauterGeometry(om.ExplicitComponent):
-    r"""Describes a D-shaped plasma based on Sauter's formulas.
+    r"""Plasma shape from Sauter's formulas.
+
+    Sauter's paper [1]_ describes plasma with a LCFS
+    (last closed flux surface) shape parameterized by the angle around the
+    magnetic axis :math:`\theta`,
 
     .. math::
 
         R &= R_0 + a\cos(\theta + \delta\sin(\theta) - \xi\sin(2\theta)) \\
-        Z &= \kappa * a\sin(\theta + \xi\sin(2\theta))
+        Z &= \kappa a\sin(\theta + \xi\sin(2\theta))
 
-    Other properties are determined using standard geometry formulas:
+    where :math:`a` is the minor radius, :math:`\kappa` is elongation,
+    :math:`\delta` is triangularity, and :math:`\xi` is "squareness".
+    The basic shape properties are defined in the usual way,
 
     .. math::
 
         R_0 &= \frac{R_\mathrm{max} + R_\mathrm{min}}{2} \\
         a &= \frac{R_\mathrm{max} - R_\mathrm{min}}{2} \\
         \epsilon &= a / R_0 \\
-        \kappa &= \frac{Z_\mathrm{max} - Z_\mathrm{min}}{R_\mathrm{max} - R_\mathrm{min}} \\
+        \kappa &= \frac{Z_\mathrm{max} - Z_\mathrm{min}}{R_\mathrm{max} -
+        R_\mathrm{min}}. \\
+
+    Because the exact cross-sectional area :math:`S_c`, poloidal circumference
+    :math:`L_\mathrm{pol}`, surface area :math:`A_p` and volume :math:`V`
+    cannot be described by algebraic functions of the input parameters,
+    Sauter provides best-fit formulas sampled from a wide range
+    in parameter space.
+
+    .. math::
+
+       S_c &= (\pi a^2 \kappa)(1 + 0.52 (w_{07} - 1)) \\
+        L_\mathrm{pol} &= (2 \pi a (1 + 0.55 (\kappa - 1))
+           (1 + 0.08 δ^2)(1 + 0.2(w_{07} - 1))) \\
+       A_p &= (2 \pi R_0)(1 - 0.32 \delta \epsilon) L_\mathrm{pol} \\
+       V &= (2 \pi R_0)(1 - 0.25\delta\epsilon) S_c
+
+    where :math:`w_{07}` is the plasma width at 0.7 of the
+    maximum height. It is defined by
+
+    .. math::
+
+       \theta_{07} &= \sin^{-1}(0.7) - (2 \xi) / (1 + (1 + 8 \xi^2)^{1/2}) \\
+       w_{07} &= \cos(\theta_{07}- \xi \sin(2 \theta_{07}) / 0.51^{1/2})
+            (1 - 0.49 \delta^2/2).
 
     Inputs
     ------
@@ -77,11 +107,10 @@ class SauterGeometry(om.ExplicitComponent):
     dZ_dθ : array
         m, Derivative of Z points w.r.t. θ
 
-    Reference
-    ---------
-    Fusion Engineering and Design 112, 633-645 (2016);
-    http://dx.doi.org/10.1016/j.fusengdes.2016.04.033
-
+    References
+    ----------
+    .. [1] Fusion Engineering and Design 112, 633-645 (2016);
+       http://dx.doi.org/10.1016/j.fusengdes.2016.04.033
     """
     def initialize(self):
         self.options.declare("config", default=None)
@@ -412,7 +441,7 @@ class SauterGeometry(om.ExplicitComponent):
 
 
 class SauterPlasmaGeometry(om.Group):
-    r"""Sauter's general plasma shape.
+    r"""Sauter's general plasma shape plus constant-width blanket
 
     """
     def initialize(self):
@@ -442,8 +471,9 @@ class SauterPlasmaGeometry(om.Group):
 
 
 class SauterPlasmaGeometryMarginalKappa(om.Group):
-    r"""Sauter's general plasma shape, with automatic elongation.
+    r"""Sauter's general plasma shape and blanket with automatic elongation.
 
+    Uses :code:`MenardKappaScaling`.
     """
     def initialize(self):
         self.options.declare('config', default=None)

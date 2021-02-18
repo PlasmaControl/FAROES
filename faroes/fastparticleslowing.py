@@ -31,7 +31,8 @@ class SlowingThermalizationTime(om.ExplicitComponent):
 
     .. math::
 
-       \tau_\mathrm{th} = \frac{t_s}{3} \log(1 + (\frac{W}{W_\mathrm{crit}})^{3/2})
+       \tau_\mathrm{th} = \frac{t_s}{3}
+           \log(1 + (\frac{W}{W_\mathrm{crit}})^{3/2})
 
     Where :math:`t_s` is the ion-electron slowing down time given
     by Spitzer [1]_.
@@ -326,7 +327,8 @@ class StixCriticalSlowingEnergy(om.ExplicitComponent):
 
         \beta' = \frac{4}{3 \pi^{1/2}} n_e
 
-        W_\mathrm{crit} = T_e \left(\frac{m_T}{m_e}\right)^(1/3} \left(\frac{\alpha'}{\beta'}\right)^{2/3}
+        W_\mathrm{crit} = T_e \left(\frac{m_T}{m_e}\right)^(1/3}
+            \left(\frac{\alpha'}{\beta'}\right)^{2/3}
 
     References
     ----------
@@ -450,15 +452,17 @@ class BellanCriticalSlowingEnergy(om.ExplicitComponent):
 
         \beta' = \frac{4}{3 \pi^{1/2}} n_e
 
-        W_\mathrm{crit} = T_e \left(\frac{m_T}{m_e}\right)^(1/3} \left(\frac{\alpha'}{\beta'}\right)^{2/3}
+        W_\mathrm{crit} = T_e \left(\frac{m_T}{m_e}\right)^(1/3}
+            \left(\frac{\alpha'}{\beta'}\right)^{2/3}
 
     Bellan does not explicitly provide a formula for the critical slowing
     energy, but it can be derived from Equation 13.72.
     The major difference from Stix's treatment is that the summation here
-    called :math:`\alpha'` is over :math:`n_i Z_i^2 (1 + A_t/A_i)` whereas Stix sums
-    :math:`n_i Z_i^2 (A_t/A_i)`. This term is a reduced mass
+    called :math:`\alpha'` is over :math:`n_i Z_i^2 (1 + A_t/A_i)`,
+    whereas Stix sums :math:`n_i Z_i^2 (A_t/A_i)`. This term is a reduced mass
     :math:`\mu` and can be traced back to the collision operator. I'm not sure
-    why it's not present in Stix's treatment. Stix cites Sivukhin [3]_, Equation 8.1.
+    why it's not present in Stix's treatment.
+    Stix cites Sivukhin [3]_, Equation 8.1.
 
     References
     ----------
@@ -466,9 +470,11 @@ class BellanCriticalSlowingEnergy(om.ExplicitComponent):
        Cambridge University Press, 2006.
 
     .. [2] Stix, T. H. Heating of Toroidal Plasmas by Neutral Injection.
-       Plasma Physics 1972, 14 (4), 367–384. https://doi.org/10.1088/0032-1028/14/4/002.
+       Plasma Physics 1972, 14 (4), 367–384.
+       https://doi.org/10.1088/0032-1028/14/4/002.
 
-    .. [3] Sivukhin, D. V. (1966). Reviews of Plasma Physics (M. A. Leontovich, Ed.)
+    .. [3] Sivukhin, D. V. (1966).
+       Reviews of Plasma Physics (M. A. Leontovich, Ed.)
        Consultants Bureau, New York, Vol. 4, p.93, Equation 8.1
 
     """
