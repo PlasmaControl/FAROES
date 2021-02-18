@@ -5,7 +5,6 @@ from faroes.simple_tf_magnet import MagnetRadialBuild
 from faroes.sauter_plasma import SauterPlasmaGeometry
 from faroes.threearcdeecoil import ThreeArcDeeTFSet
 from faroes.configurator import UserConfigurator
-from faroes.util import SquaredLengthSubtraction
 
 import numpy as np
 from scipy.constants import pi
@@ -29,12 +28,18 @@ class Machine(om.Group):
                            promotes_inputs=["R0"],
                            promotes_outputs=["V_enc"])
         self.connect("plasma.blanket envelope θ", "coils.θ")
-        self.add_subsystem("margin", SquaredLengthSubtraction())
-        self.connect("coils.d_sq", "margin.b")
-        self.connect("plasma.blanket envelope d_sq", "margin.a")
+
+        self.add_subsystem("margin", om.ExecComp("c = a - b",
+                a={"units":"m**2", "shape_by_conn":True},
+                b={"units":"m**2", "shape_by_conn":True, "copy_shape":"a"},
+                c={"units":"m**2", "copy_shape":"a"},
+                ))
+
+        self.connect("coils.d_sq", "margin.a")
+        self.connect("plasma.blanket envelope d_sq", "margin.b")
 
         self.add_subsystem(
-            'ks', om.KSComp(width=40, units="m**2", ref=10,
+            'ks', om.KSComp(width=40, units="m**2", ref=10, lower_flag=True,
                             rho=10, upper=0, add_constraint=True))
         self.connect("margin.c", "ks.g")
 
@@ -55,13 +60,6 @@ if __name__ == "__main__":
     prob.driver.options["optimizer"] = "SLSQP"
     prob.driver.options["disp"] = True
 
-    recorder = om.SqliteRecorder("cases.sql")
-    # attach recorder to the problem
-    prob.add_recorder(recorder)
-
-    # attach recorder to the driver
-    prob.driver.add_recorder(recorder)
-
     prob.model.add_design_var("coils.Ib TF R_out", lower=1.0, upper=4.5, ref=1.5, units="m")
     prob.model.add_design_var("coils.hhs", lower=1.0, upper=10.0, ref=3.0, units="m")
     prob.model.add_design_var("coils.e_a", lower=1.0, upper=15.0, ref=3.0, units="m")
@@ -69,30 +67,26 @@ if __name__ == "__main__":
 
     prob.model.add_objective("machine.V_enc")
     #
-    #    # set constraints
-    prob.model.add_constraint("machine.coils.constraint_axis_within_coils", lower=3)
+    # this is not always needed, but helps in some situations.
+    prob.model.add_constraint("machine.coils.constraint_axis_within_coils", lower=1)
 
     prob.setup(force_alloc_complex=True)
     #
     prob.set_val("R0", 6.0, units="m")
     prob.set_val("plasma.A", 2.4)
     prob.set_val("plasma.κ", 1.9)
-    prob.set_val("plasma.δ", 1.0)
-    prob.set_val("plasma.ξ", 0.0)
+    prob.set_val("plasma.δ", 0.4)
+    prob.set_val("plasma.ξ", 0.05)
     prob.set_val("offset", 1.5)
 
-    # initial values
- #   prob.set_val("coils.hhs", 5.0, units="m")
- #   prob.set_val("coils.r_c", 4.0, units="m")
+    # initial values for the design variables
+    # since we are 'shrink-wrapping' the coils, it's good to initially make
+    # them very large.
+
+    # prob.set_val("coils.hhs", 5.0, units="m")
+    # prob.set_val("coils.r_c", 4.0, units="m")
     prob.set_val("coils.e_a", 10, units="m")
- #   prob.set_val("coils.Ib TF R_out", 1.2, units="m")
-
-    # add recorder to the objective
-    # obj_cmp = prob.model.obj_cmp
-    # obj_cmp.add_recorder(recorder)
-
-    # add recorder to the solver
-    # prob.model.cycle.add_recorder(recorder)
+    # prob.set_val("coils.Ib TF R_out", 1.0, units="m")
 
     prob.run_driver()
 

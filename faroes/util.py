@@ -11,43 +11,6 @@ from plasmapy.particles import Particle, common_isotopes
 from plasmapy.particles import atomic_number, isotopic_abundance
 
 
-class SquaredLengthSubtraction(om.ExplicitComponent):
-    r"""
-
-    Subtracts two arrays that have dimensions of length squared.
-
-    Inputs
-    ------
-    a : array
-        m**2
-    b : array
-        m**2
-
-    Outputs
-    -------
-    c : array
-        m**2
-    """
-    def setup(self):
-        self.add_input("a", units="m**2", shape_by_conn=True)
-        self.add_input("b", units="m**2", shape_by_conn=True, copy_shape="a")
-        self.add_output("c", units="m**2", shape=(1, 40))
-
-    def compute(self, inputs, outputs):
-        outputs["c"] = inputs["a"] - inputs["b"]
-
-    def setup_partials(self):
-        size = self._get_var_meta("a", "size")
-        self.declare_partials("c", ["a", "b"],
-                              rows=range(size),
-                              cols=range(size))
-
-    def compute_partials(self, inputs, J):
-        size = self._get_var_meta("a", "size")
-        J["c", "a"] = np.ones(size)
-        J["c", "b"] = -np.ones(size)
-
-
 class PolarAngleAndDistanceFromPoint(om.ExplicitComponent):
     r"""
     Inputs
