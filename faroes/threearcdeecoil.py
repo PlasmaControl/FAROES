@@ -2,10 +2,8 @@ import faroes.util as util
 
 import openmdao.api as om
 from openmdao.utils.cs_safe import arctan2 as cs_safe_arctan2
-from openmdao.utils.cs_safe import abs as cs_safe_abs
 from scipy.constants import pi
 import numpy as np
-from numpy import sin, cos, tan
 
 
 class ThreeArcDeeTFSet(om.ExplicitComponent):
@@ -113,19 +111,19 @@ class ThreeArcDeeTFSet(om.ExplicitComponent):
         d2 = np.zeros(size, dtype=np.cdouble)
 
         θ = θ_all[on_straight]
-        d2[on_straight] = (R0 - r_ot)**2 / cos(θ)**2
+        d2[on_straight] = (R0 - r_ot)**2 / np.cos(θ)**2
 
         θ = θ_all[on_lower_circ]
-        d = util.polar_offset_ellipse(a=r_c, b=r_c, x=R-R0, y=-hhs, t=θ)
+        d = util.polar_offset_ellipse(a=r_c, b=r_c, x=R - R0, y=-hhs, t=θ)
         d2[on_lower_circ] = d**2
 
         θ = θ_all[on_upper_circ]
-        d = util.polar_offset_ellipse(a=r_c, b=r_c, x=R-R0, y=+hhs, t=θ)
+        d = util.polar_offset_ellipse(a=r_c, b=r_c, x=R - R0, y=+hhs, t=θ)
         d2[on_upper_circ] = d**2
 
         # distance to ellipse
         θ = θ_all[on_ellipse]
-        d = util.polar_offset_ellipse(a=e_a, b=e_b, x=R-R0, y=0, t=θ)
+        d = util.polar_offset_ellipse(a=e_a, b=e_b, x=R - R0, y=0, t=θ)
         d2[on_ellipse] = d**2
 
         outputs["d_sq"] = d2

@@ -2,7 +2,7 @@ import numpy as np
 from math import pi as π
 import scipy as scipy
 from scipy.special import ellipe, hyp2f1
-from numpy import sin, cos, tan
+from numpy import sin, cos
 
 import openmdao.api as om
 from openmdao.utils.cs_safe import abs as cs_safe_abs
@@ -360,6 +360,7 @@ def ellipse_perimeter_ramanujan_derivatives(a, b):
     dPda = π * (3 - (3 * a + 5 * b) / np.sqrt((3 * a + b) * (a + 3 * b)))
     dPdb = π * (3 - (5 * a + 3 * b) / np.sqrt((3 * a + b) * (a + 3 * b)))
     return {'a': dPda, 'b': dPdb}
+
 
 def polar_offset_ellipse(a, b, x, y, t):
     r"""Radius to an offset ellipse
