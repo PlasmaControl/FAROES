@@ -2,6 +2,7 @@ import numpy as np
 from math import pi as π
 import scipy as scipy
 from scipy.special import ellipe, hyp2f1
+from numpy import sin, cos, tan
 
 import openmdao.api as om
 from openmdao.utils.cs_safe import abs as cs_safe_abs
@@ -340,9 +341,9 @@ def ellipse_perimeter_ramanujan(a, b):
     Parameters
     ----------
     a : float
-       one minor radius of an ellipse
+       one semi-axis of an ellipse
     b : float
-       other minor radius of an ellipse
+       other semi-axis of an ellipse
 
     Returns
     -------
@@ -359,6 +360,53 @@ def ellipse_perimeter_ramanujan_derivatives(a, b):
     dPda = π * (3 - (3 * a + 5 * b) / np.sqrt((3 * a + b) * (a + 3 * b)))
     dPdb = π * (3 - (5 * a + 3 * b) / np.sqrt((3 * a + b) * (a + 3 * b)))
     return {'a': dPda, 'b': dPdb}
+
+def polar_offset_ellipse(a, b, x, y, t):
+    r"""Radius to an offset ellipse
+
+    The distance in polar form to an ellipse which is
+    offset from the origin is [1]_
+
+    .. math::
+
+       \rho(\theta) = \frac{b^2 x \cos (\theta)+a^2 y \sin (\theta)+a b
+           \sqrt{\left(b^2-y^2\right) \cos ^2(\theta)+2 x y \cos (\theta)
+           \sin(\theta)+\left(a^2-x^2\right) \sin ^2(\theta)}}
+           {b^2 \cos ^2(\theta)+a^2 \sin ^2(\theta)}
+
+    where :math:`a, b` are the horizontal and vertical semi-axes of the
+    ellipse, respectively, and the center of the ellipse is at :math:`(x,y)`.
+
+    Parameters
+    ----------
+    a : float
+       horizontal semi-axis of the ellipse
+    b : float
+       vertical semi-axis of the ellipse
+    x : float
+       horizontal ellipse center location
+    y : float
+       vertical ellipse center location
+    t : float
+       polar angle
+
+    Returns
+    -------
+    radius : float
+
+    References
+    ----------
+    .. [1] http://www.jaschwartz.net/journal/offset-ellipse-polar-form.html
+    """
+    s = sin(t)
+    c = cos(t)
+
+    root = np.sqrt((b**2 - y**2) * c**2 + 2 * x * y * c * s +
+                   (a**2 - x**2) * s**2)
+    numer = b**2 * x * c + a**2 * y * s + a * b * root
+    denom = (b * c)**2 + (a * s)**2
+    d = numer / denom
+    return d
 
 
 def torus_surface_area(R, a, b=None):

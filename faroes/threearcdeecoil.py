@@ -116,36 +116,17 @@ class ThreeArcDeeTFSet(om.ExplicitComponent):
         d2[on_straight] = (R0 - r_ot)**2 / cos(θ)**2
 
         θ = θ_all[on_lower_circ]
-
-        a = e_a
-        b = e_b
-        c = R - R0  # x-distance between ellipse center and plasma center
-        lower_circ_root = np.sqrt(-2 * (c**2 + hhs**2 - 2 * r_c**2) + 2 *
-                                  (c**2 + hhs**2) *
-                                  cos(2 * θ - 2 * cs_safe_arctan2(-hhs, c)))
-        d_lower_circ = c * cos(θ) - hhs * sin(θ) + (1 / 2) * lower_circ_root
-        d2[on_lower_circ] = d_lower_circ**2
-
-        θ = θ_all[on_ellipse]
-        t = tan(θ)
-
-        # distance to ellipse
-        # uses np.sign and np.abs...
-        root = (
-            b**2 * (a**2 + c**2) + a**2 * (a**2 - c**2) * t**2 +
-            np.sign(cos(θ)) * 2 * a * b * c * np.sqrt(b**2 +
-                                                      (a**2 - c**2) * t**2))
-        denom = (b**2 + a**2 * t**2) * cs_safe_abs(cos(θ))
-        d = b * np.sqrt(root) / denom
-
-        d2[on_ellipse] = d**2
+        d = util.polar_offset_ellipse(a=r_c, b=r_c, x=R-R0, y=-hhs, t=θ)
+        d2[on_lower_circ] = d**2
 
         θ = θ_all[on_upper_circ]
-        upper_circ_root = np.sqrt(-2 * (c**2 + hhs**2 - 2 * r_c**2) + 2 *
-                                  (c**2 + hhs**2) *
-                                  cos(2 * θ - 2 * cs_safe_arctan2(hhs, c)))
-        d_upper_circ = c * cos(θ) + hhs * sin(θ) + (1 / 2) * upper_circ_root
-        d2[on_upper_circ] = d_upper_circ**2
+        d = util.polar_offset_ellipse(a=r_c, b=r_c, x=R-R0, y=+hhs, t=θ)
+        d2[on_upper_circ] = d**2
+
+        # distance to ellipse
+        θ = θ_all[on_ellipse]
+        d = util.polar_offset_ellipse(a=e_a, b=e_b, x=R-R0, y=0, t=θ)
+        d2[on_ellipse] = d**2
 
         outputs["d_sq"] = d2
 
