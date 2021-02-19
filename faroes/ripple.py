@@ -74,7 +74,7 @@ class SimpleRipple(om.ExplicitComponent):
         self.declare_partials("δ", ["r1", "r2", "R"])
 
     def compute_partials(self, inputs, J, discrete_inputs):
-        n_coil = discrete_inputs['n_coil']
+        n = discrete_inputs['n_coil']
         R = inputs["R"]
         r1 = inputs["r1"]
         r2 = inputs["r2"]
