@@ -4,6 +4,7 @@ import openmdao.api as om
 from faroes.simple_tf_magnet import MagnetRadialBuild
 from faroes.sauter_plasma import SauterPlasmaGeometry
 from faroes.threearcdeecoil import ThreeArcDeeTFSet
+from faroes.princetondeecoil import PrincetonDeeTFSet
 from faroes.configurator import UserConfigurator
 
 import numpy as np
@@ -23,8 +24,12 @@ class Machine(om.Group):
                            SauterPlasmaGeometry(config=config),
                            promotes_inputs=["R0", ("θ", "θ_for_d2"), "offset"],
                            promotes_outputs=["R_max", "R_min"])
+        #self.add_subsystem("coils",
+        #                   ThreeArcDeeTFSet(),
+        #                   promotes_inputs=["R0"],
+        #                   promotes_outputs=["V_enc"])
         self.add_subsystem("coils",
-                           ThreeArcDeeTFSet(),
+                           PrincetonDeeTFSet(),
                            promotes_inputs=["R0"],
                            promotes_outputs=["V_enc"])
         self.connect("plasma.blanket envelope θ", "coils.θ")
@@ -39,7 +44,7 @@ class Machine(om.Group):
         self.connect("plasma.blanket envelope d_sq", "margin.b")
 
         self.add_subsystem(
-            'ks', om.KSComp(width=40, units="m**2", ref=10, lower_flag=True,
+            'ks', om.KSComp(width=100, units="m**2", ref=10, lower_flag=True,
                             rho=10, upper=0, add_constraint=True))
         self.connect("margin.c", "ks.g")
 
@@ -47,7 +52,7 @@ class Machine(om.Group):
 if __name__ == "__main__":
     prob = om.Problem()
 
-    θ = np.linspace(0, 2 * pi, 40, endpoint=False)
+    θ = np.linspace(0, 2 * pi, 100, endpoint=False)
     prob.model.add_subsystem("ivc",
                              om.IndepVarComp("θ_for_d2", val=θ),
                              promotes_outputs=["*"])
@@ -60,10 +65,13 @@ if __name__ == "__main__":
     prob.driver.options["optimizer"] = "SLSQP"
     prob.driver.options["disp"] = True
 
+    # prob.model.add_design_var("coils.Ib TF R_out", lower=1.0, upper=4.5, ref=1.5, units="m")
+    # prob.model.add_design_var("coils.hhs", lower=1.0, upper=10.0, ref=3.0, units="m")
+    # prob.model.add_design_var("coils.e_a", lower=1.0, upper=15.0, ref=3.0, units="m")
+    # prob.model.add_design_var("coils.r_c", lower=1.2, upper=10.0, ref=3.0, units="m")
+
     prob.model.add_design_var("coils.Ib TF R_out", lower=1.0, upper=4.5, ref=1.5, units="m")
-    prob.model.add_design_var("coils.hhs", lower=1.0, upper=10.0, ref=3.0, units="m")
-    prob.model.add_design_var("coils.e_a", lower=1.0, upper=15.0, ref=3.0, units="m")
-    prob.model.add_design_var("coils.r_c", lower=1.2, upper=10.0, ref=3.0, units="m")
+    prob.model.add_design_var("coils.ΔR", lower=1.2, upper=25.0, ref=3.0, units="m")
 
     prob.model.add_objective("machine.V_enc")
     #
@@ -74,8 +82,8 @@ if __name__ == "__main__":
     #
     prob.set_val("R0", 6.0, units="m")
     prob.set_val("plasma.A", 2.4)
-    prob.set_val("plasma.κ", 1.9)
-    prob.set_val("plasma.δ", 0.4)
+    prob.set_val("plasma.κ", 2.5)
+    prob.set_val("plasma.δ", -0.4)
     prob.set_val("plasma.ξ", 0.05)
     prob.set_val("offset", 1.5)
 
@@ -85,13 +93,14 @@ if __name__ == "__main__":
 
     # prob.set_val("coils.hhs", 5.0, units="m")
     # prob.set_val("coils.r_c", 4.0, units="m")
-    prob.set_val("coils.e_a", 10, units="m")
-    # prob.set_val("coils.Ib TF R_out", 1.0, units="m")
+    # prob.set_val("coils.e_a", 10, units="m")
+    prob.set_val("coils.Ib TF R_out", 1.0, units="m")
+    prob.set_val("coils.ΔR", 15.0, units="m")
 
     prob.run_driver()
 
-    #    all_inputs = prob.model.list_inputs(values=True, print_arrays=True)
-    all_outputs = prob.model.list_outputs(values=True, print_arrays=True)
+    # all_inputs = prob.model.list_inputs(values=True, print_arrays=True)
+    # all_outputs = prob.model.list_outputs(values=True, print_arrays=True)
 
     # plot resulting points
     coil_d_sq = prob.get_val("machine.coils.d_sq")
