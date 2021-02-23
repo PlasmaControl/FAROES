@@ -37,9 +37,9 @@ class SimpleEllipticalTFSet(om.ExplicitComponent):
     Outputs
     -------
     half-width : float
-        m, semi-minor axis of the ellipse
+        m, horizontal semi-axis of the ellipse
     half-height : float
-        m, semi-major axis of the ellipse
+        m, vertical semi-axis of the ellipse
     arc length: float
         m, average perimeter of the magnet
     V_single : float
@@ -70,19 +70,19 @@ class SimpleEllipticalTFSet(om.ExplicitComponent):
         self.add_discrete_input('n_coil', 18, desc='number of coils')
 
         self.add_output("half-width",
-                        units="m",
+                        units="m", lower=0,
                         desc="Average semi-minor axis of the magnet")
         self.add_output("half-height",
-                        units="m",
+                        units="m", lower=0,
                         desc="Average semi-major axis of the magnet")
         self.add_output("arc length",
-                        units="m",
+                        units="m", lower=0,
                         desc="Average perimeter of the magnet")
         self.add_output("V_single",
-                        units="m**3",
+                        units="m**3", lower=0,
                         desc="Material volume of one coil")
         self.add_output("V_set",
-                        units="m**3",
+                        units="m**3", lower=0,
                         desc="Material volume of the set")
         V_enc_ref = 1e3
         self.add_output("V_enc",
