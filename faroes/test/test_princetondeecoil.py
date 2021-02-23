@@ -50,6 +50,19 @@ class TestPrincetonDeeTFSet(unittest.TestCase):
         V_enc = prob.get_val("tadTF.V_enc", units="m**3")
         assert_near_equal(V_enc, expected, tolerance=1e-6)
 
+    def test_half_height(self):
+        prob = self.prob
+
+        prob.set_val("R0", 1)
+        prob.set_val("Ib TF R_out", np.exp(-1))
+        prob.set_val("ΔR", np.exp(1.0) - np.exp(-1.0))
+
+        prob.run_driver()
+
+        expected = 2.24395
+        hh = prob.get_val("tadTF.half-height", units="m")
+        assert_near_equal(hh, expected, tolerance=1e-6)
+
 
 if __name__ == "__main__":
     unittest.main()

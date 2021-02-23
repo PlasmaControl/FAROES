@@ -2,7 +2,7 @@ import openmdao.api as om
 from openmdao.utils.cs_safe import arctan2 as cs_safe_arctan2
 from scipy.constants import pi
 from scipy.integrate import solve_ivp
-from scipy.special import iv
+from scipy.special import iv, modstruve
 import numpy as np
 
 
@@ -48,10 +48,12 @@ class PrincetonDeeTFSet(om.ExplicitComponent):
         m**3, magnetized volume enclosed by the set
     arc length: float
         m, inner perimeter of the magnet
+    half-height : float
+        m, half the vertical height of the conductors
 
     constraint_axis_within_coils : float
         m, Constraint which is greater than 0 when the major axis
-           is within the bore
+           is within the outer legs
 
     References
     ----------
@@ -81,6 +83,9 @@ class PrincetonDeeTFSet(om.ExplicitComponent):
                         ref=V_enc_ref,
                         desc="magnetized volume enclosed by the set")
         self.add_output("d_sq", units="m**2", copy_shape="θ")
+        self.add_output("half-height",
+                        units="m", lower=0,
+                        desc="Average semi-major axis of the magnet")
 
     def inner_leg_half_height(self, k, r0):
         return r0 * k * pi * iv(1, k)
@@ -179,6 +184,10 @@ class PrincetonDeeTFSet(om.ExplicitComponent):
         outputs["V_enc"] = 2 * r0**3 * k * pi**2 * (iv(1, 3 * k) -
                                                     np.exp(-2 * k) * iv(1, k))
 
+        # compute the half-height
+        half_height = (1/2) * pi * k * r0 * (iv(1, k) + modstruve(-1, k))
+        outputs["half-height"] = half_height
+
     def setup_partials(self):
         size = self._get_var_meta("θ", "size")
         self.declare_partials("k", ["Ib TF R_out", "ΔR"], method="exact")
@@ -194,6 +203,7 @@ class PrincetonDeeTFSet(om.ExplicitComponent):
                               val=1)
         self.declare_partials("constraint_axis_within_coils", ["R0"], val=-1)
         self.declare_partials("V_enc", ["Ib TF R_out", "ΔR"], method="exact")
+        self.declare_partials("half-height", ["Ib TF R_out", "ΔR"], method="exact")
 
     def compute_partials(self, inputs, J):
         size = self._get_var_meta("θ", "size")
@@ -241,6 +251,12 @@ class PrincetonDeeTFSet(om.ExplicitComponent):
         J["V_enc", "ΔR"] = dV_dk * J["k", "ΔR"] + dV_dr0 * dr0_dΔR
         J["V_enc",
           "Ib TF R_out"] = dV_dk * J["k", "Ib TF R_out"] + dV_dr0 * dr0_drot
+
+        dhh_dr0 = (1/2) * pi * k * (iv(1, k) + modstruve(-1, k))
+        dhh_dk = ((1 / 2) * pi * k * r0 * (iv(0, k) + modstruve(-2, k)) +
+                  pi * r0 * modstruve(-1, k))
+        J["half-height", "ΔR"] = dhh_dk * J["k", "ΔR"] + dhh_dr0 * dr0_dΔR
+        J["half-height","Ib TF R_out"] = dhh_dk * J["k", "Ib TF R_out"] + dhh_dr0 * dr0_drot
 
     def plot(self, ax=None, **kwargs):
         color = "black"
