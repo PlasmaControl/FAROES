@@ -40,6 +40,8 @@ class ThreeArcDeeTFSet(om.ExplicitComponent):
         m, inner perimeter of the magnet
     V_enc : float
         m**3, magnetized volume enclosed by the set
+    half-height : float
+        m, half the vertical height of the conductors
     """
     def setup(self):
         self.add_input("R0", units="m", desc="Plasma major radius")
@@ -70,6 +72,9 @@ class ThreeArcDeeTFSet(om.ExplicitComponent):
                         ref=V_enc_ref,
                         desc="magnetized volume enclosed by the set")
         self.add_output("d_sq", units="m**2", copy_shape="θ")
+        self.add_output("half-height",
+                        units="m", lower=0,
+                        desc="Average semi-major axis of the magnet")
 
     def compute(self, inputs, outputs):
         size = self._get_var_meta("θ", "size")
@@ -128,8 +133,11 @@ class ThreeArcDeeTFSet(om.ExplicitComponent):
 
         outputs["d_sq"] = d2
 
+        outputs["half-height"] = e_b
+
     def setup_partials(self):
         self.declare_partials("e_b", ["hhs", "r_c"], val=1)
+        self.declare_partials("half-height", ["hhs", "r_c"], val=1)
         self.declare_partials("arc length", ["e_a", "hhs", "r_c"])
         self.declare_partials("V_enc", ["Ib TF R_out", "e_a", "hhs", "r_c"])
         self.declare_partials("d_sq", ["Ib TF R_out", "e_a", "hhs", "r_c"],
