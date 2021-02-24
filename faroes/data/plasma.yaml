@@ -17,3 +17,36 @@ impurities:
       Z_eff: 2.0
     references:
       - Menard T30-T32
+
+# SOL and divertor
+SOL:
+  plasma mix:
+    Z_eff: 2.0
+    Z-bar: 1.0
+    A-bar: 2.0
+  # yes this is different from "radiation fraction" above.
+  # Menard says that a newer version unites these two.
+  core radiated power fraction: {value: 0.8}
+  power fraction to outer divertor: {value: 0.8}
+  number of divertors: {value: 2}
+  poloidal tilt at plate: {value: 23.0, units: deg}
+  total B field incidence angle: {value: 1.0, units: deg}
+  poloidal flux expansion: {value: 22.0}
+  SOL width multiplier: 1.0
+
+  divertor:
+    model: SF
+    # options:
+    # SF: snowflake
+    # SXD: super-X divertor
+    SF:
+      outer strike point radius shift (SF, SFD):
+        value: 0.3
+    SXD:
+      outer strike point radius multiplier:
+        value: 1.6
+
+    # available options:
+    #   poloidal angle
+    #   total angle
+    peak heat flux model: poloidal angle

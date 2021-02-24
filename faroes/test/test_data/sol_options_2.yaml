@@ -1,0 +1,14 @@
+plasma:
+  SOL:
+    divertor:
+      model: SXD
+      # options:
+      # SF: snowflake
+      # SXD: super-X divertor
+      SF:
+        outer strike point radius shift (SF, SFD):
+          value: 0.3
+      SXD:
+        outer strike point radius multiplier:
+          value: 1.6
+      peak heat flux model: total angle

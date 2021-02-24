@@ -8,6 +8,7 @@ Welcome to FAROES's documentation!
 
    about
    plasma
+   sol
    magnets
 
 This is a test
