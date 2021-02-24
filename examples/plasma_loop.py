@@ -57,7 +57,7 @@ class Machine(om.Group):
         # neutral beam heating
         self.add_subsystem("NBIsource", SimpleNBISource(config=config))
         self.add_subsystem("NBIslowing",
-                           FastParticleSlowing(),
+                           FastParticleSlowing(config=config),
                            promotes_inputs=[("ne", "<n_e>"), ("Te", "<T_e>")])
         self.connect("ZeroDPlasma.ni",
                      ["NBIslowing.ni", "alphaslowing.ni", "nbicdEff.ni"])
@@ -91,7 +91,7 @@ class Machine(om.Group):
         self.connect("DTfusion.rate_fus", "alphasource.rate")
 
         self.add_subsystem("alphaslowing",
-                           FastParticleSlowing(),
+                           FastParticleSlowing(config=config),
                            promotes_inputs=[("ne", "<n_e>"), ("Te", "<T_e>")])
         self.connect("alphasource.S", ["alphaslowing.S"])
         self.connect("alphasource.E", ["alphaslowing.Wt"])

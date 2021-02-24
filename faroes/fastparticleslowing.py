@@ -652,8 +652,8 @@ class FastParticleSlowing(om.Group):
         self.options.declare("config", default=None)
 
     def setup(self):
-        acc = self.options["config"].accessor(
-            ["h_cd", "NBI", "fast-ion slowing"])
+        config = self.options["config"]
+        acc = config.accessor(["h_cd", "NBI", "fast-ion slowing"])
         method = acc(["method"])
 
         if method is None or method == "default":
