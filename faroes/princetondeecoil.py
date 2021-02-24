@@ -84,7 +84,8 @@ class PrincetonDeeTFSet(om.ExplicitComponent):
                         desc="magnetized volume enclosed by the set")
         self.add_output("d_sq", units="m**2", copy_shape="θ")
         self.add_output("half-height",
-                        units="m", lower=0,
+                        units="m",
+                        lower=0,
                         desc="Average semi-major axis of the magnet")
 
     def inner_leg_half_height(self, k, r0):
@@ -185,7 +186,7 @@ class PrincetonDeeTFSet(om.ExplicitComponent):
                                                     np.exp(-2 * k) * iv(1, k))
 
         # compute the half-height
-        half_height = (1/2) * pi * k * r0 * (iv(1, k) + modstruve(-1, k))
+        half_height = (1 / 2) * pi * k * r0 * (iv(1, k) + modstruve(-1, k))
         outputs["half-height"] = half_height
 
     def setup_partials(self):
@@ -203,7 +204,8 @@ class PrincetonDeeTFSet(om.ExplicitComponent):
                               val=1)
         self.declare_partials("constraint_axis_within_coils", ["R0"], val=-1)
         self.declare_partials("V_enc", ["Ib TF R_out", "ΔR"], method="exact")
-        self.declare_partials("half-height", ["Ib TF R_out", "ΔR"], method="exact")
+        self.declare_partials("half-height", ["Ib TF R_out", "ΔR"],
+                              method="exact")
 
     def compute_partials(self, inputs, J):
         size = self._get_var_meta("θ", "size")
@@ -252,11 +254,12 @@ class PrincetonDeeTFSet(om.ExplicitComponent):
         J["V_enc",
           "Ib TF R_out"] = dV_dk * J["k", "Ib TF R_out"] + dV_dr0 * dr0_drot
 
-        dhh_dr0 = (1/2) * pi * k * (iv(1, k) + modstruve(-1, k))
+        dhh_dr0 = (1 / 2) * pi * k * (iv(1, k) + modstruve(-1, k))
         dhh_dk = ((1 / 2) * pi * k * r0 * (iv(0, k) + modstruve(-2, k)) +
                   pi * r0 * modstruve(-1, k))
         J["half-height", "ΔR"] = dhh_dk * J["k", "ΔR"] + dhh_dr0 * dr0_dΔR
-        J["half-height","Ib TF R_out"] = dhh_dk * J["k", "Ib TF R_out"] + dhh_dr0 * dr0_drot
+        J["half-height",
+          "Ib TF R_out"] = dhh_dk * J["k", "Ib TF R_out"] + dhh_dr0 * dr0_drot
 
     def plot(self, ax=None, **kwargs):
         color = "black"

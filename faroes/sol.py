@@ -416,9 +416,11 @@ class SOLAndDivertor(om.Group):
         self.add_subsystem("props",
                            SOLProperties(config=config),
                            promotes_outputs=["*"])
-        self.add_subsystem("Psol", om.ExecComp("P_sol = P_heat * (1 - f_rad)",
-            P_sol={"units": "MW"},
-            P_heat={"units": "MW"}), promotes=["*"])
+        self.add_subsystem("Psol",
+                           om.ExecComp("P_sol = P_heat * (1 - f_rad)",
+                                       P_sol={"units": "MW"},
+                                       P_heat={"units": "MW"}),
+                           promotes=["*"])
         self.add_subsystem("R_strike",
                            StrikePointRadius(config=config),
                            promotes_inputs=["*"],
@@ -428,18 +430,18 @@ class SOLAndDivertor(om.Group):
                            promotes_inputs=["*"],
                            promotes_outputs=["T_sep", ("λ", "λ_HD")])
         self.add_subsystem("lambda_q",
-                om.ExecComp("lambda_q = lambda_q_HD * fudge_factor",
-                    lambda_q={"units": "mm"},
-                    lambda_q_HD={"units": "mm"}),
-                promotes_inputs=[("lambda_q_HD", "λ_HD"),
-                    ("fudge_factor", "SOL width multiplier")],
-                promotes_outputs=[("lambda_q", "λ_sol")])
+                           om.ExecComp("lambda_q = lambda_q_HD * fudge_factor",
+                                       lambda_q={"units": "mm"},
+                                       lambda_q_HD={"units": "mm"}),
+                           promotes_inputs=[("lambda_q_HD", "λ_HD"),
+                                            ("fudge_factor",
+                                             "SOL width multiplier")],
+                           promotes_outputs=[("lambda_q", "λ_sol")])
         self.add_subsystem("peak_heat_flux",
                            PeakHeatFlux(config=config),
                            promotes_inputs=["*"],
                            promotes_outputs=["*"])
         self.set_input_defaults("P_sol", units="MW", val=10)
-
 
 
 if __name__ == "__main__":

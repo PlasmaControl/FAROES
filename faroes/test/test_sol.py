@@ -106,6 +106,7 @@ class TestStrikePointRadius2(unittest.TestCase):
         expected = 4.8
         assert_near_equal(Rs, expected, tolerance=1e-4)
 
+
 class TestPeakHeatFlux1(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
@@ -145,7 +146,7 @@ class TestPeakHeatFlux1(unittest.TestCase):
         assert_near_equal(q_max, expected, tolerance=2e-3)
 
 
-class TestPeakHeatFlux1(unittest.TestCase):
+class TestPeakHeatFlux2(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
 
@@ -182,6 +183,7 @@ class TestPeakHeatFlux1(unittest.TestCase):
         q_max = prob.get_val("q_max", units="MW/m**2")
         expected = 4.25
         assert_near_equal(q_max, expected, tolerance=2e-3)
+
 
 if __name__ == '__main__':
     unittest.main()
