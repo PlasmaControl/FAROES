@@ -33,7 +33,7 @@ class SOLProperties(om.ExplicitComponent):
     def setup(self):
         config = self.options["config"].accessor(["plasma", "SOL"])
         n_div = config(["number of divertors"])
-        self.add_discrete_output("N_div", val=n_div)
+        self.add_output("N_div", val=n_div)
 
         acc = Accessor(self.options["config"])
         f = acc.accessor(["plasma", "SOL", "plasma mix"])
@@ -363,11 +363,11 @@ class PeakHeatFlux(om.ExplicitComponent):
         self.add_input("q_star")
         self.add_input("θ_pol", units="rad")
         self.add_input("θ_tot", units="rad")
-        self.add_discrete_input("N_div", 1)
+        self.add_input("N_div", 1)
         q_max_ref = 3e6
         self.add_output("q_max", units="MW/m**2", lower=0, ref=q_max_ref)
 
-    def compute(self, inputs, outputs, discrete_inputs, discrete_outputs):
+    def compute(self, inputs, outputs):
         Rs = inputs["R_strike"]
         κ = inputs["κ"]
         P_sol = inputs["P_sol"]
@@ -377,7 +377,7 @@ class PeakHeatFlux(om.ExplicitComponent):
         q_star = inputs["q_star"]
         θ_pol = inputs["θ_pol"]
         θ_tot = inputs["θ_tot"]
-        N_div = discrete_inputs["N_div"]
+        N_div = inputs["N_div"]
 
         if self.model == self.POLOIDAL_ANGLE_MODEL:
             q_max = P_sol * f_out * np.sin(θ_pol) / (N_div * 2 * pi * Rs *
