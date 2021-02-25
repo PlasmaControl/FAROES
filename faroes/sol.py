@@ -324,8 +324,6 @@ class PeakHeatFlux(om.ExplicitComponent):
     θ_tot : float
         rad, Total angle of the field to the strike point surface
 
-    Discrete inputs
-    ---------------
     N_div : int
         Number of divertors (1 or 2). 1 is for single-null, 2 is a double-null.
 
@@ -394,6 +392,7 @@ class PeakHeatFlux(om.ExplicitComponent):
         self.declare_partials("q_max",
                               ["R_strike", "P_sol", "f_outer", "λ_sol"],
                               method="cs")
+        self.declare_partials("q_max", ["N_div"], method="cs")
         if self.model == self.POLOIDAL_ANGLE_MODEL:
             self.declare_partials("q_max", ["f_fluxexp", "θ_pol"], method="cs")
             self.declare_partials("q_max", ["q_star", "θ_tot", "κ"],
