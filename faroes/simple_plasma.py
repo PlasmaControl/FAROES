@@ -623,7 +623,7 @@ class ZeroDThermalFusionPower(om.ExplicitComponent):
     enhancement : float
         Fusion enhancement from pressure peaking
     rate/V : float
-        mmol/m**3/s, Thermal fusion rate
+        1/m**3/s, Thermal fusion rate
     P_fus/V : float
         MW/m**3, Thermal fusion power density
     P_α/V : float
@@ -633,6 +633,8 @@ class ZeroDThermalFusionPower(om.ExplicitComponent):
 
     Outputs
     -------
+    rate_fus : float
+        1/fs, Total fusion rate
     P_fus : float
         MW, Thermal fusion power
     P_α : float
@@ -642,13 +644,13 @@ class ZeroDThermalFusionPower(om.ExplicitComponent):
     """
     def setup(self):
         self.add_input("V", units="m**3", desc="Plasma volume")
-        self.add_input("rate_fus/V", units="mmol/m**3/s")
+        self.add_input("rate_fus/V", units="1/m**3/fs")
         self.add_input("P_fus/V", units="MW/m**3")
         self.add_input("P_n/V", units="MW/m**3")
         self.add_input("P_α/V", units="MW/m**3")
         self.add_input("enhancement", desc="Fusion enhancement from p-peaking")
-        rate_fus_ref = 1e-1
-        self.add_output("rate_fus", lower=0, ref=rate_fus_ref, units="mmol/s")
+        rate_fus_ref = 1e4
+        self.add_output("rate_fus", lower=0, ref=rate_fus_ref, units="1/fs")
         Pref = 100
         self.add_output("P_fus", lower=0, ref=Pref, units="MW")
         self.add_output("P_n", lower=0, ref=Pref, units="MW")

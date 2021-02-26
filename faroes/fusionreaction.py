@@ -6,7 +6,7 @@ import faroes.units  # noqa: F401
 import openmdao.api as om
 from openmdao.api import unit_conversion
 
-from scipy.constants import mega, kilo, Avogadro
+from scipy.constants import mega, kilo, Avogadro, femto
 
 _REACTION_ENERGY = nuclear_reaction_energy(reactants=['D', 'T'],
                                            products=['alpha', 'n'])
@@ -76,7 +76,7 @@ class VolumetricThermalFusionRate(om.ExplicitComponent):
     Outputs
     -------
     rate_fus/V: float
-        mmol/m**3/s, Volumetric thermal fusion rate
+        1/m**3/s, Volumetric thermal fusion rate
     P_fus/V : float
         MW/m**3, Volumetric fusion energy production rate
     P_n/V : float
@@ -99,11 +99,11 @@ class VolumetricThermalFusionRate(om.ExplicitComponent):
 
         self.add_output("rate_fus/V",
                         lower=0,
-                        units="mmol/m**3/s",
+                        units="1/m**3/fs",
                         desc="Volumetric fusion rate")
         self.add_output("P_fus/V",
                         lower=0,
-                        units="MW/m**3",
+                        units="MW/m**3", ref=3,
                         desc="Volumetric fusion energy production")
         self.add_output("P_n/V",
                         lower=0,
@@ -116,7 +116,6 @@ class VolumetricThermalFusionRate(om.ExplicitComponent):
 
         self.n_conv = unit_conversion(n_units, 'm**-3')[0]
         self.sigma_conv = unit_conversion(σv_units, 'm**3/s')[0]
-        self.mmol = Avogadro / kilo  # number of particles in a millimole
 
     def compute(self, inputs, outputs):
         n_D = self.n_conv * inputs["n_D"]
@@ -127,7 +126,7 @@ class VolumetricThermalFusionRate(om.ExplicitComponent):
         rate = n_D * n_T * σv_avg
         # W / m**3
         energy_rate = rate * self.ENERGY_J
-        outputs["rate_fus/V"] = rate / self.mmol
+        outputs["rate_fus/V"] = rate * femto
         outputs["P_fus/V"] = energy_rate / mega
         outputs["P_n/V"] = self.n_fraction * energy_rate / mega
         outputs["P_α/V"] = self.α_fraction * energy_rate / mega
@@ -143,9 +142,9 @@ class VolumetricThermalFusionRate(om.ExplicitComponent):
         n_T = self.n_conv * inputs["n_T"]
         σv_avg = self.sigma_conv * inputs["<σv>"]
 
-        J["rate_fus/V", "n_D"] = self.n_conv * n_T * σv_avg / self.mmol
-        J["rate_fus/V", "n_T"] = self.n_conv * n_D * σv_avg / self.mmol
-        J["rate_fus/V", "<σv>"] = self.sigma_conv * n_D * n_T / self.mmol
+        J["rate_fus/V", "n_D"] = self.n_conv * n_T * σv_avg * femto
+        J["rate_fus/V", "n_T"] = self.n_conv * n_D * σv_avg * femto
+        J["rate_fus/V", "<σv>"] = self.sigma_conv * n_D * n_T * femto
         J["P_fus/V", "n_D"] = self.n_conv * n_T * σv_avg * self.ENERGY_J / mega
         J["P_fus/V", "n_T"] = self.n_conv * n_D * σv_avg * self.ENERGY_J / mega
         J["P_fus/V",
@@ -177,9 +176,7 @@ class NBIBeamTargetFusion(om.ExplicitComponent):
     Outputs
     -------
     rate_fus : float
-        mmol/s, Fusion reaction rate
-            millimoles/s are used to provide a number of scale 1e-2/s
-            rather than of scale 1e19/s
+        1/fs, Fusion reaction rate
     P_fus : float
         MW, Total fusion power
     #P_α : float
@@ -220,8 +217,8 @@ class NBIBeamTargetFusion(om.ExplicitComponent):
 
         self.mmol = Avogadro / kilo
 
-        R_fus_ref = 1e-2
-        self.add_output("rate_fus", units="mmol/s", ref=R_fus_ref, lower=0)
+        R_fus_ref = 1e4
+        self.add_output("rate_fus", units="1/fs", ref=R_fus_ref, lower=0)
         P_fus_ref = 10
         self.add_output("P_fus", units="MW", ref=P_fus_ref, lower=0)
         # self.add_output("P_α", units="MW", ref=P_fus_ref, lower=0)
@@ -233,7 +230,7 @@ class NBIBeamTargetFusion(om.ExplicitComponent):
         Te = inputs["<T_e>"]
 
         R = c * P_NBI * Te**(3 / 2)
-        outputs["rate_fus"] = R / self.mmol
+        outputs["rate_fus"] = R * femto
 
         energy_MJ = self.ENERGY_J / mega
         P_fus = R * energy_MJ
@@ -257,8 +254,8 @@ class NBIBeamTargetFusion(om.ExplicitComponent):
         P_NBI = inputs["P_NBI"]
         Te = inputs["<T_e>"]
         energy_MJ = self.ENERGY_J / mega
-        J["rate_fus", "P_NBI"] = c * Te**(3 / 2) / self.mmol
-        J["rate_fus", "<T_e>"] = (3 / 2) * c * P_NBI * Te**(1 / 2) / self.mmol
+        J["rate_fus", "P_NBI"] = c * Te**(3 / 2) * femto
+        J["rate_fus", "<T_e>"] = (3 / 2) * c * P_NBI * Te**(1 / 2) * femto
         J["P_fus", "P_NBI"] = c * Te**(3 / 2) * energy_MJ
         J["P_fus", "<T_e>"] = (3 / 2) * c * P_NBI * Te**(1 / 2) * energy_MJ
         # J["P_α", "P_NBI"] = self.α_fraction * J["P_fus", "P_NBI"]
@@ -273,9 +270,9 @@ class TotalDTFusionRate(om.ExplicitComponent):
     Inputs
     ------
     rate_th : float
-        mmol / s, Thermal fusion rate
+        1 / fs, Thermal fusion rate
     rate_NBI : float
-        mmol / s, NBI beam-target fusion rate
+        1 / fs, NBI beam-target fusion rate
 
     P_fus_th : float
         MW, Thermal fusion power
@@ -284,8 +281,8 @@ class TotalDTFusionRate(om.ExplicitComponent):
 
     Outputs
     -------
-    rate_tot : float
-        mmol / s
+    rate_fus : float
+        1 / fs
     P_fus : float
         MW, Total fusion power
     P_α : float
@@ -305,11 +302,12 @@ class TotalDTFusionRate(om.ExplicitComponent):
 
         self.add_input("P_fus_th", val=0, units="MW")
         self.add_input("P_fus_NBI", val=0, units="MW")
-        self.add_input("rate_th", val=0, units="mmol/s")
-        self.add_input("rate_NBI", val=0, units="mmol/s")
+        self.add_input("rate_th", val=0, units="1/fs")
+        self.add_input("rate_NBI", val=0, units="1/fs")
 
+        rate_fus_ref=1e5
+        self.add_output("rate_fus", lower=0, ref=rate_fus_ref, units="1/fs")
         P_fus_ref = 100
-        self.add_output("rate_fus", lower=0, ref=1e-1, units="mmol/s")
         self.add_output("P_fus", lower=0, ref=P_fus_ref, units="MW")
         self.add_output("P_α", lower=0, ref=P_fus_ref, units="MW")
         self.add_output("P_n", lower=0, ref=P_fus_ref, units="MW")
@@ -335,15 +333,8 @@ class TotalDTFusionRate(om.ExplicitComponent):
 class SimpleFusionAlphaSource(om.ExplicitComponent):
     r"""Source for alpha particle properties
 
-    Inputs
-    ------
-    rate : float
-        mmol/s, rate
-
     Outputs
     -------
-    S : float
-        1/s, rate
     E : float
         keV, energy per particle
     A : float
@@ -352,7 +343,7 @@ class SimpleFusionAlphaSource(om.ExplicitComponent):
         e, Charge of beam particles
     """
     def setup(self):
-        self.add_input("rate", val=0, units="mmol/s")
+        self.add_input("rate", val=0, units="1/s")
         # number of particles in a millimole
         self.mmol = Avogadro / kilo
 
@@ -374,13 +365,6 @@ class SimpleFusionAlphaSource(om.ExplicitComponent):
         self.add_output("A", val=A_α, units="u")
         self.add_output("Z", val=Z_α)
         self.add_output("v", val=v_α, units="m/s", ref=10e6)
-
-    def compute(self, inputs, outputs):
-        rate = inputs["rate"]
-        outputs["S"] = rate * self.mmol
-
-    def setup_partials(self):
-        self.declare_partials("S", "rate", val=self.mmol)
 
 
 if __name__ == "__main__":

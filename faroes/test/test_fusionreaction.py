@@ -26,7 +26,7 @@ class TestSimpleFusionRateCoefficient(unittest.TestCase):
     def test_vals(self):
         prob = self.prob
         prob.run_driver()
-        ratecoeff = prob.get_val('<σv>', units="m**3/s")
+        ratecoeff = prob.get_val("<σv>", units="m**3/s")
         assert_near_equal(ratecoeff, 1.1e-22)
 
 
@@ -60,6 +60,8 @@ class TestTotalDTFusionRate(unittest.TestCase):
         prob.setup(force_alloc_complex=True)
         prob.set_val("P_fus_th", 10, units="MW")
         prob.set_val("P_fus_NBI", 5, units="MW")
+        prob.set_val("rate_NBI", 12278, units="1/fs")
+        prob.set_val("rate_th", 100000, units="1/fs")
         self.prob = prob
 
     def test_partials(self):
@@ -101,6 +103,10 @@ class TestVolumetricThermalFusionRate(unittest.TestCase):
         fusrate = prob.get_val("P_fus/V", units="W/m**3")
         assert_near_equal(fusrate, 7750, tolerance=1e-3)
 
+        fusrate = prob.get_val("rate_fus/V", units="1/m**3/fs")
+        expected = 2.75
+        assert_near_equal(fusrate, expected, tolerance=1e-3)
+
 
 class TestSimpleFusionAlphaSource(unittest.TestCase):
     def setUp(self):
@@ -111,17 +117,6 @@ class TestSimpleFusionAlphaSource(unittest.TestCase):
         prob.setup(force_alloc_complex=True)
         prob.set_val("rate", 1.0, units="mmol/s")
         self.prob = prob
-
-    def test_partials(self):
-        prob = self.prob
-        check = prob.check_partials(out_stream=None, method='cs')
-        assert_check_partials(check)
-
-    def test_values(self):
-        prob = self.prob
-        prob.run_driver()
-        fusrate = prob.get_val("S", units="1/s")
-        assert_near_equal(fusrate, 6.022e20, tolerance=1e-3)
 
 
 if __name__ == '__main__':

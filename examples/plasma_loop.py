@@ -88,12 +88,11 @@ class Machine(om.Group):
         self.connect("NBIfusion.P_fus", ["DTfusion.P_fus_NBI"])
 
         self.add_subsystem("alphasource", SimpleFusionAlphaSource())
-        self.connect("DTfusion.rate_fus", "alphasource.rate")
 
         self.add_subsystem("alphaslowing",
                            FastParticleSlowing(config=config),
                            promotes_inputs=[("ne", "<n_e>"), ("Te", "<T_e>")])
-        self.connect("alphasource.S", ["alphaslowing.S"])
+        self.connect("DTfusion.rate_fus", ["alphaslowing.S"])
         self.connect("alphasource.E", ["alphaslowing.Wt"])
         self.connect("alphasource.A", ["alphaslowing.At"])
         self.connect("alphasource.Z", ["alphaslowing.Zt"])
