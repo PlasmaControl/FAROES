@@ -210,8 +210,8 @@ class SimpleGeneratedPower(om.ExplicitComponent):
         self.options.declare("config", default=None)
 
     def setup(self):
-        self.add_input("P_heat")
-        self.add_output("P_el")
+        self.add_input("P_heat", units="MW")
+        self.add_output("P_el", units="MW")
 
         if self.options['config'] is not None:
             self.config = self.options['config']

@@ -467,7 +467,7 @@ class MenardMagnetCoolingProperties(om.ExplicitComponent):
         acc = Accessor(self.options["config"])
         f = acc.accessor(["machine", "magnet cryogenics"])
         acc.set_output(self, f, "T_hot", units="K")
-        acc.set_output(self, f, "T_cold", units="K")
+        acc.set_output(self, f, "T_cold", component_name="T_cryo", units="K")
         acc.set_output(self, f, "FOM")
 
 
@@ -603,7 +603,7 @@ class MagnetCryoCoolingPower(om.Group):
 
     Outputs
     -------
-    T_cold : float
+    T_cryo : float
         K, Cold temperature
     f : float
        Inverse of the Coefficient of Performance
@@ -621,10 +621,10 @@ class MagnetCryoCoolingPower(om.Group):
         config = self.options["config"]
         self.add_subsystem("props",
                            MenardMagnetCoolingProperties(config=config),
-                           promotes_outputs=["T_cold"])
+                           promotes_outputs=["T_cryo"])
         self.add_subsystem("refrig_eff",
                            RefrigerationPerformance(),
-                           promotes_inputs=["T_cold"])
+                           promotes_inputs=[("T_cold", "T_cryo")])
         self.connect("props.T_hot", "refrig_eff.T_hot")
         self.connect("props.FOM", "refrig_eff.FOM")
         self.add_subsystem("power",
@@ -634,18 +634,170 @@ class MagnetCryoCoolingPower(om.Group):
         self.connect("refrig_eff.f", "power.f_refrigeration")
 
 
+class BlanketProperties(om.ExplicitComponent):
+    BAD_MODEL = "Only 'simple' is supported"
+
+    def initialize(self):
+        self.options.declare("config", default=None)
+
+    def setup(self):
+        config = self.options['config']
+        if self.options['config'] is None:
+            raise ValueError("BlanketProperties requries a config file")
+        acc = Accessor(self.options["config"])
+        f = acc.accessor(["machine", "blanket"])
+        model = f(["model"])
+        if model == "simple":
+            f = acc.accessor(["machine", "blanket", "simple"])
+            acc.set_output(self,
+                           f,
+                           "neutron power multiplier",
+                           component_name="M_n")
+        else:
+            raise ValueError(self.BAD_MODEL)
+
+
+class SimpleBlanketThermalPower(om.ExplicitComponent):
+    r"""
+    Inputs
+    ------
+    P_n : float
+        MW, Neutron power into blanket
+    M_n : float
+        Blanket neutron power multiplication factor
+
+    Outputs
+    -------
+    P_th : float
+        MW, Thermal power in blanket
+    """
+    def setup(self):
+        self.add_input("P_n", units="MW")
+        self.add_input("M_n",
+                       desc="Blanket neutron power multiplication factor")
+        P_th_ref = 500
+        self.add_output("P_th", units="MW", lower=0, ref=P_th_ref)
+
+    def compute(self, inputs, outputs):
+        outputs["P_th"] = inputs["P_n"] * inputs["M_n"]
+
+    def setup_partials(self):
+        self.declare_partials("P_th", ["P_n", "M_n"])
+
+    def compute_partials(self, inputs, J):
+        J["P_th", "M_n"] = inputs["P_n"]
+        J["P_th", "P_n"] = inputs["M_n"]
+
+
+class SimpleBlanketPower(om.Group):
+    r"""
+    Inputs
+    ------
+    P_n : float
+        MW, Neutron power into blanket
+
+    Outputs
+    -------
+    M_n : float
+        Blanket neutron power multiplication factor
+    P_th : float
+        MW, Thermal power in blanket
+    """
+    def initialize(self):
+        self.options.declare("config", default=None)
+
+    def setup(self):
+        config = self.options["config"]
+        self.add_subsystem("props",
+                           BlanketProperties(config=config),
+                           promotes_outputs=["*"])
+        self.add_subsystem("pow",
+                           SimpleBlanketThermalPower(),
+                           promotes_inputs=["*"],
+                           promotes_outputs=["*"])
+
+
+class NeutronWallLoading(om.ExplicitComponent):
+    r"""
+    Computes average neutron wall loading and inboard peaking factor.
+    Assumes that inboard midplane neutron flux is known already.
+
+    Inputs
+    ------
+    P_n : float
+        MW, neutron power
+    SA : float
+        m**2, First wall surface area
+    q_n_IB : float
+        MW/m**2, Inboard peak neutron flux
+
+    Outputs
+    -------
+    q_n_avg : float
+        MW/m**2, Average neutron wall loading
+    f_peak_IB : float
+        Inboard peaking factor
+    """
+    def setup(self):
+        self.add_input("P_n", units="MW")
+        self.add_input("SA", units="m**2")
+        self.add_input("q_n_IB", units="MW/m**2")
+        self.add_output("q_n_avg", units="MW/m**2", lower=0)
+        self.add_output("f_peak_IB", lower=0)
+
+    def compute(self, inputs, outputs):
+        P_n = inputs["P_n"]
+        SA = inputs["SA"]
+        q_n_avg = P_n / SA
+        outputs["q_n_avg"] = q_n_avg
+        q_n_IB = inputs["q_n_IB"]
+        f_peak_IB = q_n_IB / q_n_avg
+        outputs["f_peak_IB"] = f_peak_IB
+
+    def setup_partials(self):
+        self.declare_partials("q_n_avg", ["P_n", "SA"])
+        self.declare_partials("f_peak_IB", ["P_n", "SA", "q_n_IB"])
+
+    def compute_partials(self, inputs, J):
+        P_n = inputs["P_n"]
+        SA = inputs["SA"]
+        J["q_n_avg", "P_n"] = 1 / SA
+        J["q_n_avg", "SA"] = -P_n / SA**2
+        q_n_IB = inputs["q_n_IB"]
+        J["f_peak_IB", "P_n"] = -(q_n_IB * SA) / P_n**2
+        J["f_peak_IB", "SA"] = q_n_IB / P_n
+        J["f_peak_IB", "q_n_IB"] = SA / P_n
+
+
 if __name__ == "__main__":
     prob = om.Problem()
     uc = UserConfigurator()
 
-    prob.model = MagnetCryoCoolingPower(config=uc)
+    # prob.model = MagnetCryoCoolingPower(config=uc)
+    prob.model = InboardMidplaneNeutronFluxFromRing()
     prob.setup(force_alloc_complex=True)
+    """
+    S : float
+        s**-1, Neutrons per second from the ring source
+    P_n : float
+        MW, Total neutron power
+    R0 : float
+        m, Radius of neutron source ring. Not necessarily
+           the same as the plasma major radius.
+    r_in : float
+        m, radius
+    """
 
-    prob.set_val("Δr_sh", 0.6)
-    prob.set_val("P_n", 278.2)
+    prob.set_val("R0", 3.0, units="m")
+    prob.set_val("S", 1.234e20, units="s**-1")
+    prob.set_val("P_n", 278.2, units="MW")
+    prob.set_val("r_in", 1.125, units="m")
 
-    check = prob.check_partials(out_stream=None, method='cs')
-    assert_check_partials(check)
+    # prob.set_val("Δr_sh", 0.6)
+    # prob.set_val("P_n", 278.2)
+
+    # check = prob.check_partials(out_stream=None, method='cs')
+    # assert_check_partials(check)
     prob.run_driver()
     all_outputs = prob.model.list_outputs(values=True)
 

@@ -2,10 +2,10 @@ cryostat:
   TF height multiple: 2
 
 plasma control system:
-  power factor: {value: 0.04, reference: Menard T369}
+  power factor: {value: 0.04, reference: Menard O369}
 
 coolant pumping system:
-  power factor: {value: 0.03, reference: Menard T368}
+  power factor: {value: 0.03, reference: Menard O368}
 
 electrical generation:
   efficiency: {value: 0.45, reference: Menard T365}
@@ -16,3 +16,7 @@ magnet cryogenics:
   # figure of merit(?)
   FOM: {value: 0.325, reference: Menard J364}
 
+blanket:
+  model: simple
+  simple:
+    neutron power multiplier: {value: 1.1, reference: Menard O367}

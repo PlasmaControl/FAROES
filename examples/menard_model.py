@@ -23,7 +23,14 @@ from faroes.bootstrap import BootstrapCurrent
 
 from faroes.current import CurrentAndSafetyFactor
 
+from faroes.blanket import MagnetCryoCoolingPower
+from faroes.blanket import SimpleBlanketPower
+from faroes.blanket import InboardMidplaneNeutronFluxFromRing
+from faroes.blanket import NeutronWallLoading
+
 from faroes.sol import SOLAndDivertor
+
+from faroes.powerplant import Powerplant
 
 import openmdao.api as om
 
@@ -90,12 +97,11 @@ class Machine(om.Group):
         self.connect("NBIfusion.P_fus", ["DTfusion.P_fus_NBI"])
 
         self.add_subsystem("alphasource", SimpleFusionAlphaSource())
-        self.connect("DTfusion.rate_fus", "alphasource.rate")
 
         self.add_subsystem("alphaslowing",
                            FastParticleSlowing(config=config),
                            promotes_inputs=[("ne", "<n_e>"), ("Te", "<T_e>")])
-        self.connect("alphasource.S", ["alphaslowing.S"])
+        self.connect("DTfusion.rate_fus", ["alphaslowing.S"])
         self.connect("alphasource.E", ["alphaslowing.Wt"])
         self.connect("alphasource.A", ["alphaslowing.At"])
         self.connect("alphasource.Z", ["alphaslowing.Zt"])
@@ -169,12 +175,35 @@ class Machine(om.Group):
         self.connect("current.q_star", "bootstrap.q_star")
         self.connect("current.q_min", "bootstrap.q_min")
 
+        # magnet heating model;
+        # total power in blanket
+        self.add_subsystem("magcryo", MagnetCryoCoolingPower(config=config))
+        self.add_subsystem("blanket_P", SimpleBlanketPower(config=config))
+        self.connect("DTfusion.P_n", ["magcryo.P_n", "blanket_P.P_n"])
+
+        # powerplant model
+        self.add_subsystem("pplant", Powerplant(config=config))
+        self.connect("NBIsource.P", ["pplant.P_NBI"])
+        self.connect("NBIsource.eff", ["pplant.η_NBI"])
+        self.connect("DTfusion.P_α", ["pplant.P_α"])
+        self.connect("magcryo.P_c,el", ["pplant.P_cryo"])
+        self.connect("blanket_P.P_th", ["pplant.P_blanket"])
+
+        # SOL and divertor model. Useful for constraints.
         self.add_subsystem("SOL",
                            SOLAndDivertor(config=config),
                            promotes_inputs=["R0", "Bt", "Ip"])
         self.connect("plasmageom.a", "SOL.a")
         self.connect("plasmageom.κ", "SOL.κ")
         self.connect("P_heat.P_heat", "SOL.P_heat")
+
+        # Neutron wall flux models. Useful for constraints.
+        self.add_subsystem("q_n_IB", InboardMidplaneNeutronFluxFromRing(),
+                promotes_inputs=["R0"])
+        self.add_subsystem("q_n", NeutronWallLoading())
+        self.connect("plasmageom.R_min", "q_n_IB.r_in")
+        self.connect("plasmageom.surface area", "q_n.SA")
+        self.connect("DTfusion.P_n", ["q_n_IB.P_n", "q_n.P_n"])
 
 
 #        self.add_subsystem("radial_build",
@@ -235,6 +264,9 @@ if __name__ == "__main__":
     prob.set_val('specP.A', A)
     prob.set_val('nbicdEff.A', A)
     prob.set_val('Bt', 2.094, units='T')
+
+    # for magnet shielding
+    prob.set_val("magcryo.Δr_sh", 0.6, units="m")
 
     # plasma inputs
 
