@@ -15,6 +15,7 @@ NBI:
     fudge factor: {value: 0.37, reference: Menard N218}
 
   fast-ion slowing:
+    # options are "Menard", "Stix", or "Bellan".
     method: Menard
     default: Menard
 
