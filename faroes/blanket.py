@@ -1,5 +1,4 @@
 import numpy as np
-from openmdao.utils.assert_utils import assert_check_partials
 import openmdao.api as om
 from scipy.constants import pi
 from faroes.configurator import UserConfigurator, Accessor
@@ -642,9 +641,9 @@ class BlanketProperties(om.ExplicitComponent):
 
     def setup(self):
         config = self.options['config']
-        if self.options['config'] is None:
+        if config is None:
             raise ValueError("BlanketProperties requries a config file")
-        acc = Accessor(self.options["config"])
+        acc = Accessor(config)
         f = acc.accessor(["machine", "blanket"])
         model = f(["model"])
         if model == "simple":

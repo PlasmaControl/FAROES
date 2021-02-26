@@ -103,7 +103,8 @@ class VolumetricThermalFusionRate(om.ExplicitComponent):
                         desc="Volumetric fusion rate")
         self.add_output("P_fus/V",
                         lower=0,
-                        units="MW/m**3", ref=3,
+                        units="MW/m**3",
+                        ref=3,
                         desc="Volumetric fusion energy production")
         self.add_output("P_n/V",
                         lower=0,
@@ -305,7 +306,7 @@ class TotalDTFusionRate(om.ExplicitComponent):
         self.add_input("rate_th", val=0, units="1/fs")
         self.add_input("rate_NBI", val=0, units="1/fs")
 
-        rate_fus_ref=1e5
+        rate_fus_ref = 1e5
         self.add_output("rate_fus", lower=0, ref=rate_fus_ref, units="1/fs")
         P_fus_ref = 100
         self.add_output("P_fus", lower=0, ref=P_fus_ref, units="MW")
