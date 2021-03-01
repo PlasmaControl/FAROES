@@ -62,6 +62,8 @@ HTS cable:
   # type not specified
   Young's modulus: {value: 175, units: GPa}
   strain limit: 0.003
+  CCFE reference lifetime: {value: 9.36, units: year, reference: Menard T559}
+  CCFE reference fluence limit: {value: 0.35, note: Menard specifies units as 10^23/m**2}
 
 winding pack:
   j_eff_max : {value: 160, units: MA / m**2}

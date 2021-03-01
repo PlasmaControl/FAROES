@@ -7,6 +7,17 @@ from faroes.configurator import UserConfigurator, Accessor
 class MenardSTBlanketAndShieldMagnetProtection(om.ExplicitComponent):
     r"""Shielding properties of the blanket and shield for the Ib magnets
 
+    The relative shielding factor is defined as
+
+    .. math::
+
+       f_sh = 10^{(\Delta R_{sh, eff} - \Delta R_{ref}) / l_{decay}}
+
+    where :math:`\Delta R_{sh, eff}` is the Effective shield and blanket
+    neutron-stopping length, :math:`\Delta R_{ref}` is a reference thickness,
+    and :math:`l_{decay}` is a reference decay length. The last two quantities
+    are defined in the configuration files.
+
     Inputs
     ------
     Ib blanket thickness : float
@@ -21,7 +32,7 @@ class MenardSTBlanketAndShieldMagnetProtection(om.ExplicitComponent):
     Eff Sh+Bl n thickness : float
         m, Effective neutron-stopping length of inboard blanket and shield
     Total WC Sh thickness : float
-        m, Total thickness of the inboard blanket and shield
+        m, Total thickness of the shield
     Total Sh+Bl thickness : float
         m, Total thickness of the inboard blanket and shield
     Shielding factor : float
@@ -767,6 +778,69 @@ class NeutronWallLoading(om.ExplicitComponent):
         J["f_peak_IB", "P_n"] = -(q_n_IB * SA) / P_n**2
         J["f_peak_IB", "SA"] = q_n_IB / P_n
         J["f_peak_IB", "q_n_IB"] = SA / P_n
+
+class MenardMagnetLifetime(om.ExplicitComponent):
+    r"""Based on shielding thickness and inboard wall loading.
+
+    Here magnet lifetime vs neutrons is computed with reference to the lifetime
+    from a CCFE study.
+
+    .. math::
+
+       \mathrm{lifetime} = c0 c1 f_{sh} / q_{n, IB}
+
+    where :math:`c0` and :math:`c1` are reference lifetime and fluence limits,
+    respectively, :math:`f_sh` is the factor by which the shielding is better
+    than the reference shielding, and :math:`q_{n, IB}` is the inboard neutron
+    flux.
+
+    Inputs
+    ------
+    q_n_IB : float
+        MW/m**2, Inboard peak neutron flux
+    Shielding factor : float
+        Factor relative to reference lifetime
+
+    Outputs
+    -------
+    lifetime : float
+        year, Lifetime in full-power years
+
+    """
+    def initialize(self):
+        self.options.declare('config', default=None)
+
+    def setup(self):
+        config = self.options["config"]
+        if config is not None:
+            f = config.accessor(["materials", "HTS cable"])
+            self.ccfe_ref_life = f(["CCFE reference lifetime"], units="years")
+            self.ccfe_ref_fluence = f(["CCFE reference fluence limit"])
+        else:
+            self.ccfe_ref_life = 9.36
+            self.ccfe_ref_fluence = 0.35 # x 10^23 neutrons / m^2
+        self.add_input("q_n_IB", units="MW/m**2")
+        self.add_input("Shielding factor")
+        self.add_output("lifetime", units="year", lower=0, ref=10)
+
+    def compute(self, inputs, outputs):
+        c0 = self.ccfe_ref_life
+        c1 = self.ccfe_ref_fluence
+        sh = inputs["Shielding factor"]
+        q = inputs["q_n_IB"]
+        outputs["lifetime"] = c0 * c1 * sh / q
+
+    def setup_partials(self):
+        self.declare_partials("lifetime", ["Shielding factor", "q_n_IB"])
+
+    def compute_partials(self, inputs, J):
+        c0 = self.ccfe_ref_life
+        c1 = self.ccfe_ref_fluence
+        sh = inputs["Shielding factor"]
+        q = inputs["q_n_IB"]
+        J["lifetime", "Shielding factor"] = c0 * c1 / q
+        J["lifetime", "q_n_IB"] = -c0 * c1 * sh/ q**2
+
 
 
 if __name__ == "__main__":

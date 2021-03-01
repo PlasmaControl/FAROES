@@ -1,4 +1,4 @@
-import faroes.blanket
+import faroes.blanket as blanket
 from faroes.configurator import UserConfigurator
 
 import openmdao.api as om
@@ -12,7 +12,7 @@ class TestMenardSTBlanketAndShieldMagnetProtection(unittest.TestCase):
     def test_partials(self):
         prob = om.Problem()
 
-        prob.model = faroes.blanket.MenardSTBlanketAndShieldMagnetProtection()
+        prob.model = blanket.MenardSTBlanketAndShieldMagnetProtection()
 
         prob.setup(force_alloc_complex=True)
 
@@ -26,7 +26,7 @@ class TestMenardSTBlanketAndShieldMagnetProtection(unittest.TestCase):
     def test_loading(self):
         prob = om.Problem()
         uc = UserConfigurator()
-        prob.model = faroes.blanket.MenardSTBlanketAndShieldMagnetProtection(
+        prob.model = blanket.MenardSTBlanketAndShieldMagnetProtection(
             config=uc)
 
         prob.setup(force_alloc_complex=True)
@@ -42,7 +42,7 @@ class TestMenardSTBlanketAndShieldMagnetProtection(unittest.TestCase):
 class TestMenardSTBlanketAndShieldGeometry(unittest.TestCase):
     def test_partials(self):
         prob = om.Problem()
-        prob.model = faroes.blanket.MenardSTBlanketAndShieldGeometry()
+        prob.model = blanket.MenardSTBlanketAndShieldGeometry()
 
         prob.setup(force_alloc_complex=True)
 
@@ -53,7 +53,7 @@ class TestMenardSTBlanketAndShieldGeometry(unittest.TestCase):
 class TestInboardMidplaneNeutronFluxFromRing(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
-        prob.model = faroes.blanket.InboardMidplaneNeutronFluxFromRing()
+        prob.model = blanket.InboardMidplaneNeutronFluxFromRing()
         prob.setup(force_alloc_complex=True)
 
         prob.set_val('R0', 3.0)
@@ -79,7 +79,7 @@ class TestInboardMidplaneNeutronFluxFromRing(unittest.TestCase):
 class TestMenardMagnetCooling(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
-        prob.model = faroes.blanket.MenardMagnetCooling()
+        prob.model = blanket.MenardMagnetCooling()
         prob.setup(force_alloc_complex=True)
 
         prob.set_val('P_n', 278)
@@ -107,7 +107,7 @@ class TestMenardMagnetCooling(unittest.TestCase):
 class TestRefrigerationPerformance(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
-        prob.model = faroes.blanket.RefrigerationPerformance()
+        prob.model = blanket.RefrigerationPerformance()
         prob.setup(force_alloc_complex=True)
 
         prob.set_val("T_cold", 40, units="K")
@@ -127,6 +127,35 @@ class TestRefrigerationPerformance(unittest.TestCase):
         f = prob.get_val("f")
         expected = 20
         assert_near_equal(f, expected, tolerance=1e-3)
+
+class TestMenardMagnetLifetime(unittest.TestCase):
+    def setUp(self):
+        prob = om.Problem()
+        prob.model = blanket.MenardMagnetLifetime()
+        prob.setup(force_alloc_complex=True)
+
+        prob.set_val("Shielding factor", 1.5615)
+        prob.set_val("q_n_IB", 0.8860, units="MW/m**2")
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+    def test_value(self):
+        prob = self.prob
+        prob.run_driver()
+        lifetime = prob.get_val("lifetime")
+        expected = 5.773
+        assert_near_equal(lifetime, expected, tolerance=1e-3)
+
+    def test_loading(self):
+        prob = om.Problem()
+        uc = UserConfigurator()
+        prob.model = blanket.MenardMagnetLifetime(config=uc)
+
+
 
 
 if __name__ == '__main__':
