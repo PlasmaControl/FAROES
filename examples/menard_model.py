@@ -204,6 +204,8 @@ class Machine(om.Group):
         self.connect("plasmageom.R_min", "q_n_IB.r_in")
         self.connect("plasmageom.surface area", "q_n.SA")
         self.connect("DTfusion.P_n", ["q_n_IB.P_n", "q_n.P_n"])
+        self.connect("DTfusion.rate_fus", ["q_n_IB.S"])
+        self.connect("q_n_IB.q_n", ["q_n.q_n_IB"])
 
 
 #        self.add_subsystem("radial_build",

@@ -216,8 +216,6 @@ class NBIBeamTargetFusion(om.ExplicitComponent):
         self.add_input("P_NBI", units="MW", desc="Neutral beam injected power")
         self.add_input("<T_e>", units="keV")
 
-        self.mmol = Avogadro / kilo
-
         R_fus_ref = 1e4
         self.add_output("rate_fus", units="1/fs", ref=R_fus_ref, lower=0)
         P_fus_ref = 10
@@ -344,9 +342,7 @@ class SimpleFusionAlphaSource(om.ExplicitComponent):
         e, Charge of beam particles
     """
     def setup(self):
-        self.add_input("rate", val=0, units="1/s")
         # number of particles in a millimole
-        self.mmol = Avogadro / kilo
 
         data = _DT_fusion_data
         E = data["REACTION_ENERGY"].to(u.keV).value
@@ -361,7 +357,6 @@ class SimpleFusionAlphaSource(om.ExplicitComponent):
         E_J = data["REACTION_ENERGY"].to(u.J).value * self.α_fraction
         v_α = (2 * E_J / m_α)**(1 / 2)
 
-        self.add_output("S", val=0, units="1/s", ref=1e20)
         self.add_output("E", val=E_α, units="keV", ref=3.5e3)
         self.add_output("A", val=A_α, units="u")
         self.add_output("Z", val=Z_α)

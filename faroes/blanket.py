@@ -376,7 +376,8 @@ class InboardMidplaneNeutronFluxFromRing(om.ExplicitComponent):
         self.add_input("P_n", units="MW", val=0)
         self.add_input("R0", units="m")
         self.add_input("r_in", units="m")
-        self.add_output("Γ", units="m**-2 * s**-1")
+        Γ_ref = 1e17
+        self.add_output("Γ", units="m**-2 * s**-1", ref=Γ_ref)
         self.add_output("q_n", units="MW * m**-2")
         # coefficients for taylor expansion of
         # the 2 Ai * shape factor
