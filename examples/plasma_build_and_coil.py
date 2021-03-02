@@ -50,19 +50,18 @@ if __name__ == "__main__":
     prob.model.add_design_var('plasma.A', lower=1.6, upper=4.0, ref=2.0)
     prob.model.add_design_var('CS R_max',
                               lower=0.02,
-                              upper=1.0,
+                              upper=0.2,
                               ref=0.3,
                               units='m')
-    prob.model.add_design_var('magnets.r_im', lower=0.05, upper=1.0, ref=0.3)
+    prob.model.add_design_var('magnets.f_im', lower=0.05, upper=1.0, ref=0.3)
     prob.model.add_design_var('magnets.j_HTS', lower=10, upper=300, ref=100)
 
-    prob.model.add_objective('magnets.obj')
+    prob.model.add_objective('magnets.B0', scaler=-1)
 
     # set constraints
     prob.model.add_constraint('magnets.constraint_max_stress', lower=0)
     prob.model.add_constraint('magnets.constraint_B_on_coil', lower=0)
     prob.model.add_constraint('magnets.constraint_wp_current_density', lower=0)
-    prob.model.add_constraint('magnets.r_im_is_constraint', lower=0)
     prob.model.add_constraint('magnets.A_s', lower=0)
     prob.model.add_constraint('magnets.A_m', lower=0)
     prob.model.add_constraint('magnets.A_t', lower=0)
@@ -70,8 +69,10 @@ if __name__ == "__main__":
     prob.setup()
     # prob.check_config(checks=['unconnected_inputs'])
 
+    prob.set_val("magnets.f_im", 0.5)
+    prob.set_val("CS R_max", 0.30)
     prob.set_val('R0', 3, units='m')
-    # prob.set_val('plasma.A', 1.6)
+    prob.set_val('plasma.A', 1.7)
     prob.set_val('magnets.n_coil', 18)
     prob.set_val('magnets.windingpack.j_eff_max', 160)
     prob.set_val('magnets.windingpack.f_HTS', 0.76)

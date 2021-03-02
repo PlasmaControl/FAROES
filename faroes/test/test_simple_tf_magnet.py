@@ -3,24 +3,26 @@ from openmdao.utils.assert_utils import assert_near_equal
 from openmdao.utils.assert_utils import assert_check_partials
 import unittest
 
-import faroes.simple_tf_magnet
+import numpy.random as nprand
+
+import faroes.simple_tf_magnet as magnet
 
 
 class TestSimpleTFMagnet(unittest.TestCase):
     def test_magnet_build(self):
         prob = om.Problem()
 
-        prob.model = faroes.simple_tf_magnet.MagnetRadialBuild()
+        prob.model = magnet.MagnetRadialBuild()
 
         prob.driver = om.ScipyOptimizeDriver()
         prob.driver.options['optimizer'] = 'SLSQP'
         prob.driver.options['disp'] = False
 
-        prob.model.add_design_var('r_is', lower=0.03, upper=0.4)
-        prob.model.add_design_var('r_im', lower=0.05, upper=0.5)
-        prob.model.add_design_var('j_HTS', lower=0, upper=300)
+        prob.model.add_design_var('r_is', lower=0.03, upper=0.4, units="m")
+        prob.model.add_design_var('f_im', lower=0.05, upper=0.95)
+        prob.model.add_design_var('j_HTS', lower=0, upper=300, units="MA/m**2")
 
-        prob.model.add_objective('obj')
+        prob.model.add_objective('B0', scaler=-1)
 
         # set constraints
         prob.model.add_constraint('constraint_max_stress', lower=0)
@@ -32,6 +34,7 @@ class TestSimpleTFMagnet(unittest.TestCase):
 
         prob.set_val('R0', 3)
         prob.set_val('n_coil', 18)
+        prob.set_val('r_is', 0.1)
         prob.set_val('geometry.r_ot', 0.405)
         prob.set_val('geometry.r_iu', 8.025)
 
@@ -64,7 +67,7 @@ class TestFieldAtRadius(unittest.TestCase):
     def test_partials(self):
         prob = om.Problem()
 
-        prob.model = faroes.simple_tf_magnet.FieldAtRadius()
+        prob.model = magnet.FieldAtRadius()
         prob.setup(force_alloc_complex=True)
 
         prob['n_coil'] = 1
@@ -79,19 +82,21 @@ class TestFieldAtRadius(unittest.TestCase):
         assert_check_partials(check)
 
 
-class TestGeometry(unittest.TestCase):
-    def test_partials(self):
-        import numpy.random as nprand
+class TestMagnetGeometry(unittest.TestCase):
+    def setUp(self):
         prob = om.Problem()
 
-        prob.model = faroes.simple_tf_magnet.MagnetGeometry()
+        prob.model = magnet.MagnetGeometry()
         prob.setup(force_alloc_complex=True)
-
         prob['r_is'] = 0.5 * nprand.random()
-        prob['r_im'] = nprand.random() + 0.5
+        prob['f_im'] = nprand.random()
         prob['r_iu'] = 8 + nprand.random()
         prob['r_ot'] = 1.5 + nprand.random()
         prob['n_coil'] = 18
+        self.prob = prob
+
+    def test_partials(self):
+        prob=self.prob
 
         check = prob.check_partials(out_stream=None, method='cs')
         assert_check_partials(check)
@@ -99,10 +104,9 @@ class TestGeometry(unittest.TestCase):
 
 class TestMagnetCurrent(unittest.TestCase):
     def test_partials(self):
-        import numpy.random as nprand
         prob = om.Problem()
 
-        prob.model = faroes.simple_tf_magnet.MagnetCurrent()
+        prob.model = magnet.MagnetCurrent()
         prob.setup()
 
         prob['A_m'] = nprand.random()
@@ -115,10 +119,9 @@ class TestMagnetCurrent(unittest.TestCase):
 
 class TestInnerTFCoilStrain(unittest.TestCase):
     def test_partials(self):
-        import numpy.random as nprand
         prob = om.Problem()
 
-        prob.model = faroes.simple_tf_magnet.InnerTFCoilStrain()
+        prob.model = magnet.InnerTFCoilStrain()
         prob.setup(force_alloc_complex=True)
 
         prob['T1'] = nprand.random()
