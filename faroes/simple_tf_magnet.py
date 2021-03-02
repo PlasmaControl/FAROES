@@ -92,7 +92,8 @@ class InnerTFCoilTension(om.ExplicitComponent):
         self.add_input('r2',
                        units='m',
                        desc='avg radius of conductor outer leg, at midplane')
-        self.add_output('T1', units='MN', desc='Tension on the inner leg')
+        self.add_output('T1', units='MN',
+                        desc='Tension on the inner leg', lower=0)
 
     def setup_partials(self):
         self.declare_partials('T1', ['I_leg', 'B0', 'R0', 'r1', 'r2'])
@@ -160,7 +161,7 @@ class FieldAtRadius(om.ExplicitComponent):
         self.add_input('I_leg', units='MA')
         self.add_input('r_om', units='m')
         self.add_input('R0', units='m')
-        self.add_discrete_input('n_coil', 18)
+        self.add_input('n_coil', 18)
 
         self.add_output('B_on_coil', units='T')
         self.add_output('B0', units='T')
@@ -183,8 +184,8 @@ class FieldAtRadius(om.ExplicitComponent):
         b = mu_0 * i / (2 * np.pi * r)
         return b
 
-    def compute(self, inputs, outputs, discrete_inputs, discrete_outputs):
-        n_coil = discrete_inputs['n_coil']
+    def compute(self, inputs, outputs):
+        n_coil = inputs['n_coil']
         I_leg_MA = inputs['I_leg']
         R_coil_max = inputs['r_om']
         R0 = inputs['R0']
@@ -199,10 +200,12 @@ class FieldAtRadius(om.ExplicitComponent):
 
     def setup_partials(self):
         self.declare_partials('B0', ['I_leg', 'R0'])
+        self.declare_partials("B0", ["n_coil"], method="cs")
         self.declare_partials('B_on_coil', ['I_leg', 'r_om'])
+        self.declare_partials("B_on_coil", ["n_coil"], method="cs")
 
-    def compute_partials(self, inputs, J, discrete_inputs):
-        n_coil = discrete_inputs['n_coil']
+    def compute_partials(self, inputs, J):
+        n_coil = inputs['n_coil']
         I_leg_MA = inputs['I_leg']
         R_coil_max = inputs['r_om']
         R0 = inputs['R0']
@@ -456,7 +459,7 @@ class MagnetGeometry(om.ExplicitComponent):
         self.add_input('r_ot',
                        units='m',
                        desc='Magnet inboard leg outer structure radius')
-        self.add_discrete_input('n_coil', val=18, desc='number of coils')
+        self.add_input('n_coil', val=18, desc='number of coils')
         self.add_input('r_iu',
                        units='m',
                        desc='Inner radius of outboard TF leg')
@@ -491,14 +494,14 @@ class MagnetGeometry(om.ExplicitComponent):
 
         self.add_output('r_im_is_constraint', units='m')
 
-    def compute(self, inputs, outputs, discrete_inputs, discrete_outputs):
+    def compute(self, inputs, outputs):
         r_is = inputs['r_is']
         r_im = inputs['r_im']
         r_ot = inputs['r_ot']
 
         r_iu = inputs['r_iu']
 
-        n_coil = discrete_inputs['n_coil']
+        n_coil = inputs['n_coil']
 
         r_it = r_ot - self.Δr_t
         r_om = r_it - self.e_gap
@@ -559,6 +562,9 @@ class MagnetGeometry(om.ExplicitComponent):
         self.declare_partials('A_m', ['r_ot', 'r_im'])
         self.declare_partials('A_t', ['r_ot'])
         self.declare_partials('A_s', ['r_is', 'r_im'])
+        self.declare_partials(["A_m", "A_t", "A_s",
+                               "approximate cross section"], ["n_coil"],
+                              method="cs")
 
         self.declare_partials('r1', ['r_ot', 'r_im'], val=1 / 2)
         self.declare_partials('r2', 'r_ot', val=1 / 2)
@@ -572,8 +578,8 @@ class MagnetGeometry(om.ExplicitComponent):
 
         self.declare_partials('approximate cross section', ['r_ot', 'r_is'])
 
-    def compute_partials(self, inputs, J, discrete_inputs):
-        n_coil = discrete_inputs['n_coil']
+    def compute_partials(self, inputs, J):
+        n_coil = inputs['n_coil']
 
         whole_ang = np.sin(2 * np.pi / n_coil)
         r_to_l = 2 * np.sin(np.pi / n_coil)
@@ -743,5 +749,5 @@ if __name__ == "__main__":
 
     prob.run_driver()
 
-    # prob.model.list_inputs(values=True)
+    prob.model.list_inputs(values=True)
     prob.model.list_outputs(values=True)

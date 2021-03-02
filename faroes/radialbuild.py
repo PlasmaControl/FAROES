@@ -5,6 +5,7 @@ from faroes.configurator import UserConfigurator, Accessor
 class RadialBuildProperties(om.ExplicitComponent):
     r"""Helper for the Menard ST radial build
     """
+
     def initialize(self):
         self.options.declare('config', default=None)
 
@@ -81,6 +82,7 @@ class MenardSTOuterMachineRadialBuild(om.ExplicitComponent):
     cryostat R_out: float
         m, Outer radius of the cryostat
     """
+
     def setup(self):
         self.add_input("Ob TF R_out",
                        units="m",
@@ -108,6 +110,7 @@ class MenardSTRadialBuild(om.Group):
     New design variables from this group:
     Central solenoid outer diameter
     """
+
     def initialize(self):
         self.options.declare('config', default=None)
 
@@ -201,6 +204,7 @@ class MenardSTInboardRadialBuild(om.ExplicitComponent):
     TF R_min : float
         m, Inboard TF leg minimum radius
     """
+
     def initialize(self):
         self.options.declare('config', default=None)
 
@@ -354,9 +358,14 @@ class MenardSTOutboardRadialBuild(om.ExplicitComponent):
 
     Outputs
     -------
+    blanket R_in : float
+        m, inner radius of outboard blanket at midplane
+    blanket R_out : float
+        m, outer radius of outboard blanket at midplane
     TF R_min : float
         m, minimum radius of inner part of TF outboard leg
     """
+
     def initialize(self):
         self.options.declare('config', default=None)
 
@@ -378,6 +387,8 @@ class MenardSTOutboardRadialBuild(om.ExplicitComponent):
         self.add_input("VV thickness", units="m", desc="Vacuum vessel")
         self.add_input("shield thickness", units="m", desc="Neutron shield")
 
+        self.add_output("blanket R_in", units='m', lower=0)
+        self.add_output("blanket R_out", units='m', lower=0)
         self.add_output("TF R_min",
                         units='m',
                         desc="TF leg casing minimum radius")
@@ -390,8 +401,10 @@ class MenardSTOutboardRadialBuild(om.ExplicitComponent):
         self.declare_partials("TF R_min", "VV thickness", val=1)
         self.declare_partials("TF R_min", "shield thickness", val=1)
 
-    def compute_partials(self, inputs, J):
-        pass
+        self.declare_partials("blanket R_in", ["plasma R_max", "SOL width"],
+                              val=1)
+        self.declare_partials("blanket R_out", ["plasma R_max", "SOL width",
+                                                "blanket thickness"], val=1)
 
     def compute(self, inputs, outputs):
         # outboard build
@@ -401,6 +414,10 @@ class MenardSTOutboardRadialBuild(om.ExplicitComponent):
         ob_access_thickness = inputs["access thickness"]
         ob_vv_thickness = inputs["VV thickness"]
         ob_shield_thickness = inputs["shield thickness"]
+
+        outputs["blanket R_in"] = plasma_r_max + lfs_sol_width
+        outputs["blanket R_out"] = (
+            outputs["blanket R_in"] + ob_blanket_thickness)
 
         ob_build = [
             plasma_r_max, lfs_sol_width, ob_blanket_thickness,

@@ -128,6 +128,7 @@ class TestRefrigerationPerformance(unittest.TestCase):
         expected = 20
         assert_near_equal(f, expected, tolerance=1e-3)
 
+
 class TestMenardMagnetLifetime(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
@@ -154,8 +155,6 @@ class TestMenardMagnetLifetime(unittest.TestCase):
         prob = om.Problem()
         uc = UserConfigurator()
         prob.model = blanket.MenardMagnetLifetime(config=uc)
-
-
 
 
 if __name__ == '__main__':

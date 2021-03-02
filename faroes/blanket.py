@@ -38,6 +38,7 @@ class MenardSTBlanketAndShieldMagnetProtection(om.ExplicitComponent):
     Shielding factor : float
         Factor by which shielding is better than the reference case
     """
+
     def initialize(self):
         self.options.declare('config', default=None)
 
@@ -184,10 +185,11 @@ class MenardSTBlanketAndShieldGeometry(om.ExplicitComponent):
         m**3, Total blanket estimated volume
 
     """
+
     def initialize(self):
         # there may be a bug in menard's calculation for shield volume
         # if so, change self.bug to 1
-        self.bug = 0
+        self.bug = 1
 
     def setup(self):
         self.add_input("a", units="m", desc="Plasma minor radius")
@@ -382,6 +384,7 @@ class InboardMidplaneNeutronFluxFromRing(om.ExplicitComponent):
     q_n : float
         MW / m**2, Neutron energy flux at inboard midplane
     """
+
     def setup(self):
         self.add_input("S", units="s**-1", val=0)
         self.add_input("P_n", units="MW", val=0)
@@ -471,6 +474,7 @@ class MenardMagnetCoolingProperties(om.ExplicitComponent):
     FOM : float
         Figure of merit; amount that it is worse than Carnot
     """
+
     def initialize(self):
         self.options.declare("config", default=None)
 
@@ -501,6 +505,7 @@ class RefrigerationPerformance(om.ExplicitComponent):
     f : float
        Inverse of the Coefficient of Performance
     """
+
     def setup(self):
         self.add_input("T_cold", units="K")
         self.add_input("T_hot", units="K", val=300)
@@ -558,6 +563,7 @@ class MenardMagnetCooling(om.ExplicitComponent):
     P_c,el : float
         MW, Electric power to deliver cooling at cryogenic temperatures
     """
+
     def setup(self, ):
         self.add_input("Δr_sh", units="m", val=0.6)
         self.add_input("P_n", units="MW")
@@ -625,6 +631,7 @@ class MagnetCryoCoolingPower(om.Group):
     P_c,el : float
         MW, Electric power to deliver cooling at cryogenic temperatures
     """
+
     def initialize(self):
         self.options.declare("config", default=None)
 
@@ -682,6 +689,7 @@ class SimpleBlanketThermalPower(om.ExplicitComponent):
     P_th : float
         MW, Thermal power in blanket
     """
+
     def setup(self):
         self.add_input("P_n", units="MW")
         self.add_input("M_n",
@@ -714,6 +722,7 @@ class SimpleBlanketPower(om.Group):
     P_th : float
         MW, Thermal power in blanket
     """
+
     def initialize(self):
         self.options.declare("config", default=None)
 
@@ -749,6 +758,7 @@ class NeutronWallLoading(om.ExplicitComponent):
     f_peak_IB : float
         Inboard peaking factor
     """
+
     def setup(self):
         self.add_input("P_n", units="MW")
         self.add_input("SA", units="m**2")
@@ -779,6 +789,7 @@ class NeutronWallLoading(om.ExplicitComponent):
         J["f_peak_IB", "SA"] = q_n_IB / P_n
         J["f_peak_IB", "q_n_IB"] = SA / P_n
 
+
 class MenardMagnetLifetime(om.ExplicitComponent):
     r"""Based on shielding thickness and inboard wall loading.
 
@@ -807,6 +818,7 @@ class MenardMagnetLifetime(om.ExplicitComponent):
         year, Lifetime in full-power years
 
     """
+
     def initialize(self):
         self.options.declare('config', default=None)
 
@@ -814,11 +826,11 @@ class MenardMagnetLifetime(om.ExplicitComponent):
         config = self.options["config"]
         if config is not None:
             f = config.accessor(["materials", "HTS cable"])
-            self.ccfe_ref_life = f(["CCFE reference lifetime"], units="years")
+            self.ccfe_ref_life = f(["CCFE reference lifetime"], units="year")
             self.ccfe_ref_fluence = f(["CCFE reference fluence limit"])
         else:
             self.ccfe_ref_life = 9.36
-            self.ccfe_ref_fluence = 0.35 # x 10^23 neutrons / m^2
+            self.ccfe_ref_fluence = 0.35  # x 10^23 neutrons / m^2
         self.add_input("q_n_IB", units="MW/m**2")
         self.add_input("Shielding factor")
         self.add_output("lifetime", units="year", lower=0, ref=10)
@@ -839,8 +851,7 @@ class MenardMagnetLifetime(om.ExplicitComponent):
         sh = inputs["Shielding factor"]
         q = inputs["q_n_IB"]
         J["lifetime", "Shielding factor"] = c0 * c1 / q
-        J["lifetime", "q_n_IB"] = -c0 * c1 * sh/ q**2
-
+        J["lifetime", "q_n_IB"] = -c0 * c1 * sh / q**2
 
 
 if __name__ == "__main__":

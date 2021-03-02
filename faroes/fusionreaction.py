@@ -6,7 +6,7 @@ import faroes.units  # noqa: F401
 import openmdao.api as om
 from openmdao.api import unit_conversion
 
-from scipy.constants import mega, kilo, Avogadro, femto
+from scipy.constants import mega, femto
 
 _REACTION_ENERGY = nuclear_reaction_energy(reactants=['D', 'T'],
                                            products=['alpha', 'n'])

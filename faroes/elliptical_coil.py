@@ -49,6 +49,7 @@ class SimpleEllipticalTFSet(om.ExplicitComponent):
     V_enc : float
         m**3, magnetized volume enclosed by the set
     """
+
     def initialize(self):
         self.options.declare('config', default=None)
 
@@ -67,7 +68,7 @@ class SimpleEllipticalTFSet(om.ExplicitComponent):
         self.add_input(
             "elongation_multiplier",
             desc="The TF coils may be less elongated than the plasma")
-        self.add_discrete_input('n_coil', 18, desc='number of coils')
+        self.add_input('n_coil', 18, desc='number of coils')
 
         self.add_output("half-width",
                         units="m", lower=0,
@@ -91,7 +92,7 @@ class SimpleEllipticalTFSet(om.ExplicitComponent):
                         ref=V_enc_ref,
                         desc="magnetized volume enclosed by the set")
 
-    def compute(self, inputs, outputs, discrete_inputs, discrete_outputs):
+    def compute(self, inputs, outputs):
         R0 = inputs["R0"]
         r1 = inputs["r1"]
         r2 = inputs["r2"]
@@ -111,7 +112,7 @@ class SimpleEllipticalTFSet(om.ExplicitComponent):
         v_single = inputs["cross section"] * arc_length
         outputs["V_single"] = v_single
 
-        outputs["V_set"] = discrete_inputs["n_coil"] * v_single
+        outputs["V_set"] = inputs["n_coil"] * v_single
 
         v_enc = (pi * half_w * half_height) * (2 * pi * R0)
         outputs["V_enc"] = v_enc
@@ -125,14 +126,14 @@ class SimpleEllipticalTFSet(om.ExplicitComponent):
         self.declare_partials(
             'V_single',
             ['r1', 'r2', 'κ', 'elongation_multiplier', 'cross section'])
-        self.declare_partials(
-            'V_set',
-            ['r1', 'r2', 'κ', 'elongation_multiplier', 'cross section'])
+        self.declare_partials('V_set',
+                              ['r1', 'r2', 'κ', 'n_coil',
+                               'elongation_multiplier', 'cross section'])
         self.declare_partials('V_enc',
                               ['r1', 'r2', 'κ', 'elongation_multiplier', "R0"])
 
-    def compute_partials(self, inputs, J, discrete_inputs):
-        n_coil = discrete_inputs['n_coil']
+    def compute_partials(self, inputs, J):
+        n_coil = inputs['n_coil']
         R0 = inputs["R0"]
         r1 = inputs["r1"]
         r2 = inputs["r2"]
@@ -177,6 +178,9 @@ class SimpleEllipticalTFSet(om.ExplicitComponent):
                                               "elongation_multiplier"]
         J["V_single", "cross section"] = Pe
 
+        arc_length = util.ellipse_perimeter_ramanujan(half_width, half_height)
+        v_single = inputs["cross section"] * arc_length
+        J["V_set", "n_coil"] = v_single
         J["V_set", "r1"] = n_coil * J["V_single", "r1"]
         J["V_set", "r2"] = n_coil * J["V_single", "r2"]
         J["V_set", "κ"] = n_coil * J["V_single", "κ"]
