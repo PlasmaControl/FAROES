@@ -114,7 +114,8 @@ class TestCurrentAndSafetyFactor(unittest.TestCase):
 
     def test_partials(self):
         prob = self.prob
-        check = prob.check_partials(out_stream=None, method="cs", excludes="props")
+        check = prob.check_partials(
+            out_stream=None, method="cs", excludes="props")
         assert_check_partials(check)
 
     def test_values(self):

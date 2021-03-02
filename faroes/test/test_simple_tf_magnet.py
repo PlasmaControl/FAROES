@@ -96,7 +96,7 @@ class TestMagnetGeometry(unittest.TestCase):
         self.prob = prob
 
     def test_partials(self):
-        prob=self.prob
+        prob = self.prob
 
         check = prob.check_partials(out_stream=None, method='cs')
         assert_check_partials(check)
