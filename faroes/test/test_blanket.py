@@ -60,7 +60,7 @@ class TestInboardMidplaneNeutronFluxFromRing(unittest.TestCase):
         prob.set_val('r_in', 2.0)
 
         prob.set_val('P_n', 100, units="MW")
-        prob.set_val('S', 10, units="s**-1")
+        prob.set_val('S', 1e20, units="s**-1")
         self.prob = prob
 
     def test_partials(self):

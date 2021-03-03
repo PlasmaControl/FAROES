@@ -368,7 +368,7 @@ class InboardMidplaneNeutronFluxFromRing(om.ExplicitComponent):
     Inputs
     ------
     S : float
-        s**-1, Neutrons per second from the ring source
+        fs**-1, Neutrons per second from the ring source
     P_n : float
         MW, Total neutron power
     R0 : float
@@ -386,12 +386,12 @@ class InboardMidplaneNeutronFluxFromRing(om.ExplicitComponent):
     """
 
     def setup(self):
-        self.add_input("S", units="s**-1", val=0)
+        self.add_input("S", units="fs**-1", val=0)
         self.add_input("P_n", units="MW", val=0)
         self.add_input("R0", units="m")
         self.add_input("r_in", units="m")
-        Γ_ref = 1e17
-        self.add_output("Γ", units="m**-2 * s**-1", ref=Γ_ref)
+        Γ_ref = 1e2
+        self.add_output("Γ", units="m**-2 * fs**-1", ref=Γ_ref)
         self.add_output("q_n", units="MW * m**-2")
         # coefficients for taylor expansion of
         # the 2 Ai * shape factor
@@ -884,7 +884,8 @@ if __name__ == "__main__":
     # check = prob.check_partials(out_stream=None, method='cs')
     # assert_check_partials(check)
     prob.run_driver()
-    all_outputs = prob.model.list_outputs(values=True)
+    all_inputs = prob.model.list_inputs(values=True, units=True)
+    all_outputs = prob.model.list_outputs(values=True, units=True)
 
     # prob = om.Problem()
 
