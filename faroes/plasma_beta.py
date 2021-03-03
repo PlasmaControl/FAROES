@@ -26,6 +26,7 @@ class BetaNTotal(om.ExplicitComponent):
 
     No-wall limit, with 50% bootstrap fraction
     """
+
     def initialize(self):
         self.options.declare('config', default=None)
 
@@ -110,6 +111,7 @@ class BetaToroidal(om.ExplicitComponent):
     βt : float
         Toroidal beta
     """
+
     def setup(self):
         self.add_input("Ip", units="MA")
         self.add_input("Bt", units="T")
@@ -168,6 +170,7 @@ class SpecifiedTotalAveragePressure(om.ExplicitComponent):
     <p_tot> : float
         kPa, Total specified average pressure
     """
+
     def setup(self):
         self.add_input("Bt", units="T")
         self.add_input("βt")
@@ -206,11 +209,13 @@ class BPoloidal(om.ExplicitComponent):
     Bp : float
         T, average poloidal field
     """
+
     def setup(self):
         self.add_input("Ip", units="MA")
         self.add_input("L_pol", units="m")
         Bp_ref = 1
-        self.add_output("Bp", units="T", ref=Bp_ref, lower=0)
+        tiny = 1e-6
+        self.add_output("Bp", units="T", ref=Bp_ref, lower=tiny)
 
     def compute(self, inputs, outputs):
         Ip = inputs["Ip"]
@@ -247,6 +252,7 @@ class BetaPoloidal(om.ExplicitComponent):
     βp : float
         Poloidal beta
     """
+
     def setup(self):
         self.add_input("<p_tot>", units="kPa")
         self.add_input("Bp", units="T")
@@ -298,6 +304,7 @@ class SpecifiedPressure(om.Group):
     <p_tot> : float
         kPa, Total specified average pressure
     """
+
     def initialize(self):
         self.options.declare('config', default=None)
 
@@ -338,6 +345,7 @@ class ThermalBetaPoloidal(om.ExplicitComponent):
     thermal pressure fraction : float
         Fraction of pressure which is from thermal rather than fast particles.
     """
+
     def setup(self):
         self.add_input("βp")
         self.add_input("thermal pressure fraction")

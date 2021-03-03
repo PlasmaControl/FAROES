@@ -508,8 +508,6 @@ class MagnetGeometry(om.ExplicitComponent):
 
         r_iu = inputs['r_iu']
 
-        assert(r_ot > r_is)
-
         n_coil = inputs['n_coil']
 
         r_it = r_ot - self.Δr_t
@@ -579,7 +577,7 @@ class MagnetGeometry(om.ExplicitComponent):
                               method="cs")
 
         self.declare_partials('r1',
-                               ['r_ot', 'r_is', 'f_im', 'r_ot'], method="cs")
+                              ['r_ot', 'r_is', 'f_im', 'r_ot'], method="cs")
         self.declare_partials('r2', 'r_ot', val=1 / 2)
         self.declare_partials('r2', 'r_is', val=-1 / 2)
         self.declare_partials('r2', 'r_iu', val=1)

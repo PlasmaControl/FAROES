@@ -37,6 +37,7 @@ class SimpleRateCoeff(om.ExplicitComponent):
         m**3/s, Fusion reaction rate coefficient
 
     """
+
     def setup(self):
         self.coeff = 1.1e-24
         sigma_v_ref = self.coeff * 10**2
@@ -84,6 +85,7 @@ class VolumetricThermalFusionRate(om.ExplicitComponent):
     P_α/V : float
         MW/m**3, Volumetric alpha energy production rate
     """
+
     def setup(self):
         data = _DT_fusion_data
         self.ENERGY_J = data["ENERGY_J"]
@@ -205,6 +207,7 @@ class NBIBeamTargetFusion(om.ExplicitComponent):
     https://doi.org/10.1088/0029-5515/21/1/006.
 
     """
+
     def setup(self):
         data = _DT_fusion_data
         self.ENERGY_J = data["ENERGY_J"]
@@ -294,6 +297,7 @@ class TotalDTFusionRate(om.ExplicitComponent):
     The rates and powers are trivially linked, but they're already calculated
     elsewhere so I don't want to update everything.
     """
+
     def setup(self):
         data = _DT_fusion_data
         self.α_fraction = data["α_fraction"]
@@ -307,9 +311,10 @@ class TotalDTFusionRate(om.ExplicitComponent):
         rate_fus_ref = 1e5
         self.add_output("rate_fus", lower=0, ref=rate_fus_ref, units="1/fs")
         P_fus_ref = 100
-        self.add_output("P_fus", lower=0, ref=P_fus_ref, units="MW")
-        self.add_output("P_α", lower=0, ref=P_fus_ref, units="MW")
-        self.add_output("P_n", lower=0, ref=P_fus_ref, units="MW")
+        tiny = 1e-6
+        self.add_output("P_fus", lower=tiny, ref=P_fus_ref, units="MW")
+        self.add_output("P_α", lower=tiny, ref=P_fus_ref, units="MW")
+        self.add_output("P_n", lower=tiny, ref=P_fus_ref, units="MW")
 
     def compute(self, inputs, outputs):
         P_fus_th = inputs["P_fus_th"]
@@ -341,6 +346,7 @@ class SimpleFusionAlphaSource(om.ExplicitComponent):
     Z : int
         e, Charge of beam particles
     """
+
     def setup(self):
         # number of particles in a millimole
 

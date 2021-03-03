@@ -41,6 +41,7 @@ class ConfinementTime(om.Group):
         s, confinement time
 
     """
+
     def initialize(self):
         self.options.declare('config', default=None)
         self.options.declare("scaling", default=None)
@@ -79,6 +80,7 @@ class ConfinementTimeMultiplication(om.ExplicitComponent):
     This is a component in order to allow use of greek variables; otherwise it
     would be fine as an ExecComp.
     """
+
     def setup(self):
         self.add_input("τe_law",
                        units="s",
@@ -169,7 +171,8 @@ class ConfinementTimeScaling(om.ExplicitComponent):
         self.add_input("κa", desc="Effective elongation, S_c / πa²")
         self.add_input("M", units="u", desc="Ion mass number")
 
-        self.add_output("τe", units="s", desc="Energy confinement time")
+        self.add_output("τe", units="s", lower=1e-3,
+                        desc="Energy confinement time")
 
     def compute(self, inputs, outputs):
         τe = self.constant

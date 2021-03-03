@@ -36,8 +36,8 @@ class TrivialRadiation(om.ExplicitComponent):
         self.add_input("P_heat", units="MW")
         self.add_input("f_rad")
         P_ref = 100
-        self.add_output("P_rad", ref=P_ref, lower=0, units="MW")
-        self.add_output("P_loss", ref=P_ref, lower=0, units="MW")
+        self.add_output("P_rad", ref=P_ref, lower=0.1, units="MW")
+        self.add_output("P_loss", ref=P_ref, lower=0.1, units="MW")
 
     def compute(self, inputs, outputs):
         P_heat = inputs["P_heat"]

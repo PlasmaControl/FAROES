@@ -57,6 +57,7 @@ class QCylindrical(om.ExplicitComponent):
     Physics of Plasmas 2004, 11 (2), 639–646.
     https://doi.org/10.1063/1.1640623.
     """
+
     def setup(self):
         self.add_input("R0", units="m", val=1)
         self.add_input("L_pol", units="m")
@@ -122,12 +123,14 @@ class LineAveragedDensity(om.ExplicitComponent):
     n_bar : float
         n20, line-averaged electron density
     """
+
     def setup(self):
         self.add_input("Ip", units="MA")
         self.add_input("a", units="m")
         self.add_input("Greenwald fraction")
-        self.add_output("n_GW", units="n20", lower=0, ref=1)
-        self.add_output("n_bar", units="n20", lower=0, ref=1)
+        tiny = 1e-6
+        self.add_output("n_GW", units="n20", lower=tiny, ref=1)
+        self.add_output("n_bar", units="n20", lower=tiny, ref=1)
 
     def compute(self, inputs, outputs):
         Ip = inputs["Ip"]
@@ -180,17 +183,19 @@ class TotalPlasmaCurrent(om.ExplicitComponent):
     This could be a nice diagnostic in case the bootstrap current computation
     is changed to be more physically-based in the future.
     """
+
     def setup(self):
         self.add_input("I_BS", units="MA", val=5)
         self.add_input("I_NBI", units="MA", val=5)
         self.add_input("I_RF", units="MA", val=0)
         self.add_input("I_ohmic", units="MA", val=0)
-        self.add_output("Ip", units="MA", lower=0, val=10, ref=10)
+        tiny = 1e-3
+        self.add_output("Ip", units="MA", lower=tiny, val=10, ref=10)
         self.add_output("f_BS", units="MA", lower=0, val=0.5, upper=1, ref=1)
 
     def compute(self, inputs, outputs):
         Ip = inputs["I_BS"] + inputs["I_NBI"] + \
-             inputs["I_RF"] + inputs["I_ohmic"]
+            inputs["I_RF"] + inputs["I_ohmic"]
         outputs["Ip"] = Ip
         outputs["f_BS"] = inputs["I_BS"] / Ip
 
@@ -248,6 +253,7 @@ class CurrentAndSafetyFactor(om.Group):
     n_bar : float
         n20, line-averaged electron density
     """
+
     def initialize(self):
         self.options.declare('config', default=None)
 

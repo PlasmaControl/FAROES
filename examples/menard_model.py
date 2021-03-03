@@ -1,6 +1,8 @@
 # This is first example with a cycle of components, necessitating(?)
 # a nonlinear solver.
 
+from openmdao.utils.assert_utils import assert_check_partials
+
 from faroes.configurator import UserConfigurator
 import faroes.units  # noqa: F401
 
@@ -285,9 +287,10 @@ if __name__ == "__main__":
                               upper=0.05,
                               ref=0.3,
                               units='m')
-    prob.model.add_design_var('magnets.f_im', lower=0.05, upper=0.95, ref=0.2)
+    prob.model.add_design_var('aspect ratio', lower=1.6, upper=2.00, ref=2)
+    prob.model.add_design_var('magnets.f_im', lower=0.50, upper=0.95, ref=0.2)
     prob.model.add_design_var(
-        'magnets.j_HTS', lower=10, upper=300, ref=150, units="MA/m**2")
+        'magnets.j_HTS', lower=30, upper=300, ref=150, units="MA/m**2")
 
     prob.model.add_objective('magnets.B0', scaler=-1)
 
@@ -304,7 +307,7 @@ if __name__ == "__main__":
     prob.check_config(checks=['unconnected_inputs'])
 
     prob.set_val('R0', 3, units='m')
-    prob.set_val('aspect ratio', 1.6)
+    prob.set_val('aspect ratio', 2.0)
     prob.set_val('magnets.n_coil', 18)
     prob.set_val('magnets.windingpack.j_eff_max', 160, units="MA/m**2")
     prob.set_val('magnets.windingpack.f_HTS', 0.76)
@@ -312,21 +315,24 @@ if __name__ == "__main__":
                  220, units="GPa")
 
     # initial values for design variables
-    prob.set_val("magnets.f_im", 0.50)
+    prob.set_val("magnets.f_im", 0.60)
     prob.set_val("magnets.j_HTS", 130, units="MA/m**2")
     prob.set_val("CS R_max", 0.03, units="m")
 
     # initial inputs for intermediate variables
     prob.set_val('Hbalance.H', 1.7)
-    prob.set_val('Ip', 15., units="MA")
+    prob.set_val('Ip', 14., units="MA")
     prob.set_val("<n_e>", 1.20, units="n20")
-    prob.set_val("radiation.rad.P_loss", 90, units="MW")
-    prob.set_val('Bt', 1.8, units='T')
+    prob.set_val("radiation.rad.P_loss", 100, units="MW")
+    prob.set_val('Bt', 3.8, units='T')
 
     prob.model.nonlinear_solver = om.NewtonSolver(solve_subsystems=True)
-    # prob.model.nonlinear_solver = om.NonlinearBlockGS()
     prob.model.nonlinear_solver.options['iprint'] = 2
     prob.model.nonlinear_solver.options['maxiter'] = 20
+    prob.model.nonlinear_solver.linesearch = om.BoundsEnforceLS(
+        bound_enforcement="vector")
+    prob.model.nonlinear_solver.linesearch.options["iprint"] =2
+
     prob.model.linear_solver = om.DirectSolver()
 
     prob.run_driver()

@@ -30,6 +30,7 @@ class MainIonMix(om.ExplicitComponent):
     m : float
         kg, Averaged main ion mass
     """
+
     def setup(self):
         self.add_input("f_D", val=0.5, desc="Fraction of D in main ions")
         self.add_output("f_T", val=0.5, desc="Fraction of T in main ions")
@@ -139,6 +140,7 @@ class ZeroDPlasmaDensities(om.ExplicitComponent):
     ρ : float
         kg/m**3, Mass density
     """
+
     def setup(self):
         ρref = 1e-7
         self.add_input("f_D", val=0.5)
@@ -291,6 +293,7 @@ class ZeroDPlasmaStoredEnergy(om.ExplicitComponent):
     thermal pressure fraction : float
         Fraction of pressure from thermal particles.
     """
+
     def setup(self):
         self.add_input("V", units="m**3", desc="Plasma volume")
         self.add_input("τ_th",
@@ -410,6 +413,7 @@ class ZeroDPlasmaPressures(om.ExplicitComponent):
     <p_i> : float
         kPa, Averaged ion pressure
     """
+
     def setup(self):
         self.add_input("Ti/Te", val=1.0)
         self.add_input("Z_ave")
@@ -476,6 +480,7 @@ class ZeroDPlasmaTemperatures(om.ExplicitComponent):
     <T_i> : float
         keV, Averaged ion temperature
     """
+
     def setup(self):
         self.add_input("<n_e>", units="n20", desc="Average electron density")
         self.add_input("ni/ne", desc="Ratio of ions to electrons")
@@ -483,13 +488,14 @@ class ZeroDPlasmaTemperatures(om.ExplicitComponent):
         self.add_input("<p_i>", units="kPa", desc="Averaged ion pressure")
 
         Tref = 10
+        tiny = 1e-3
         self.add_output("<T_e>",
-                        lower=0,
+                        lower=tiny,
                         units="keV",
                         ref=Tref,
                         desc="Averaged electron temperature")
         self.add_output("<T_i>",
-                        lower=0,
+                        lower=tiny,
                         units="keV",
                         ref=Tref,
                         desc="Averaged ion temperature")
@@ -579,16 +585,18 @@ class ThermalVelocity(om.ExplicitComponent):
     Units of eV are used here for temperature rather than J to avoid
     small numbers in J; this is bad for the derivatives.
     """
+
     def initialize(self):
         self.options.declare('mass', default=electron_mass)
 
     def setup(self):
         self.add_input("T", units='eV')
         vref = 1e6
-        self.add_output("v_th", ref=vref, lower=0, units='m/s')
-        self.add_output("v_mps", ref=vref, lower=0, units='m/s')
-        self.add_output("v_rms", ref=vref, lower=0, units='m/s')
-        self.add_output("v_meanmag", ref=vref, lower=0, units='m/s')
+        tiny = 1e-3
+        self.add_output("v_th", ref=vref, lower=tiny, units='m/s')
+        self.add_output("v_mps", ref=vref, lower=tiny, units='m/s')
+        self.add_output("v_rms", ref=vref, lower=tiny, units='m/s')
+        self.add_output("v_meanmag", ref=vref, lower=tiny, units='m/s')
 
     def compute(self, inputs, outputs):
         mass = self.options['mass']
@@ -642,6 +650,7 @@ class ZeroDThermalFusionPower(om.ExplicitComponent):
     P_n : float
         MW, Thermal neutron power
     """
+
     def setup(self):
         self.add_input("V", units="m**3", desc="Plasma volume")
         self.add_input("rate_fus/V", units="1/m**3/fs")
@@ -721,6 +730,7 @@ class ZeroDThermalFusion(om.Group):
     P_n : float
         MW, Thermal neutron power
     """
+
     def initialize(self):
         self.options.declare('config', default=None)
 
@@ -771,6 +781,7 @@ class IonMixMux(om.ExplicitComponent):
     Zi2 : array
         e**2, squares of ion charges
     """
+
     def setup(self):
         n = 3
         self.add_input("n_D", units="n20")
@@ -778,7 +789,8 @@ class IonMixMux(om.ExplicitComponent):
         self.add_input("n_imp", units="n20")
         self.add_input("A_imp", units="u")
         self.add_input("Z_imp")
-        self.add_output("ni", units="n20", lower=0, shape=(n, ))
+        tiny = 1e-8
+        self.add_output("ni", units="n20", lower=tiny, shape=(n, ))
         self.add_output("Ai", units="u", lower=0, shape=(n, ))
         self.add_output("Zi", lower=0, shape=n)
         self.add_output("Zi2", shape=n)
@@ -900,6 +912,7 @@ class ZeroDPlasma(om.Group):
     -----
     <q> refers to the volume average of a quantity q
     """
+
     def initialize(self):
         self.options.declare('config', default=None)
 

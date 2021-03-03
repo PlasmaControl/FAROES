@@ -140,7 +140,7 @@ class CoulombLogarithmElectrons(om.ExplicitComponent):
     def setup(self):
         self.add_input("ne", units="n20")
         self.add_input("Te", units="eV")
-        self.add_output("logΛe", lower=0, upper=100, ref=20)
+        self.add_output("logΛe", lower=3, upper=100, ref=20)
         self.c0 = 31.3
 
     def compute(self, inputs, outputs):

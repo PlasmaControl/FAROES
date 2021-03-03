@@ -27,6 +27,7 @@ class SOLProperties(om.ExplicitComponent):
     f_fluxexp : float
         Poloidal flux expansion factor
     """
+
     def initialize(self):
         self.options.declare("config", default=None)
 
@@ -221,6 +222,7 @@ class GoldstonHDSOL(om.ExplicitComponent):
        https://doi.org/10.1088/0029-5515/52/1/013009.
        Equations (6) and (7).
     """
+
     def setup(self):
         # reference: Menard T109
         self.c_Tesep = 30.81
@@ -246,6 +248,7 @@ class GoldstonHDSOL(om.ExplicitComponent):
         κ = inputs["κ"]
         Bt = inputs["Bt"]
         Ip = inputs["Ip"]
+        assert(Ip > 0)
         P_sol = inputs["P_sol"]
         Z_eff = inputs["Z_eff"]
         Z_bar = inputs["Z-bar"]
@@ -417,7 +420,7 @@ class SOLAndDivertor(om.Group):
                            promotes_outputs=["*"])
         self.add_subsystem("Psol",
                            om.ExecComp("P_sol = P_heat * (1 - f_rad)",
-                                       P_sol={"units": "MW"},
+                                       P_sol={"units": "MW", "lower": 0.1},
                                        P_heat={"units": "MW"}),
                            promotes=["*"])
         self.add_subsystem("R_strike",

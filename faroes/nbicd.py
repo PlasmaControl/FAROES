@@ -16,6 +16,7 @@ electron_mass_in_u = physical_constants["electron mass in u"][0]
 class CurrentDriveProperties(om.ExplicitComponent):
     """Helper class to load properties
     """
+
     def initialize(self):
         self.options.declare('config', default=None)
 
@@ -59,6 +60,7 @@ class CurrentDriveBeta1(om.ExplicitComponent):
     in Toroidal Plasmas. Plasma Physics 1980, 22 (4), 303–316.
     https://doi.org/10.1088/0032-1028/22/4/002.
     """
+
     def setup(self):
         self.add_input("Z_eff")
         self.add_input("Ab", units='u')
@@ -106,6 +108,7 @@ class CurrentDriveA(om.ExplicitComponent):
     this is from.
 
     """
+
     def initialize(self):
         self.options.declare("config", default=None)
 
@@ -166,6 +169,7 @@ class TrappedParticleFractionUpperEst(om.ExplicitComponent):
     Physics of Plasmas 1995, 2 (5), 1666–1668.
     https://doi.org/10.1063/1.871315.
     """
+
     def setup(self):
         self.add_input("ε")
         self.add_output("ftrap_u", lower=0)
@@ -232,6 +236,7 @@ class CurrentDriveAlphaCubed(om.ExplicitComponent):
     This equation is referenced to be from a paper by Cordey and Haas
 
     """
+
     def setup(self):
         self.add_input("v0", units="Mm/s")
         self.add_input("ve", units="Mm/s")
@@ -249,7 +254,8 @@ class CurrentDriveAlphaCubed(om.ExplicitComponent):
                        shape_by_conn=True,
                        copy_shape='ni',
                        desc="Ion field particle charges")
-        self.add_output('α³', lower=0)
+        tiny = 1e-6
+        self.add_output('α³', lower=tiny)
         self.const = 0.75 * pi**(1 / 2) * electron_mass_in_u
 
     def compute(self, inputs, outputs):
@@ -308,6 +314,7 @@ class CurrentDriveG(om.ExplicitComponent):
     From Menard's spreadsheet cell T129. I don't know where this formula
     originate. It's labeled as G(Z_eff, A) but there are additional inputs...
     """
+
     def setup(self):
         self.add_input("ftrap_u")
         self.add_input("A")
@@ -365,6 +372,7 @@ class CurrentDriveEfficiencyTerm1(om.ExplicitComponent):
     in Toroidal Plasmas. Plasma Physics 1980, 22 (4), 303–316.
     https://doi.org/10.1088/0032-1028/22/4/002.
     """
+
     def setup(self):
         self.add_input("τs", units="s")
         self.add_input("v0", units="Mm/s")
@@ -447,6 +455,7 @@ class CurrentDriveEfficiencyTerm2(om.ExplicitComponent):
     https://doi.org/10.1088/0032-1028/22/4/002.
 
     """
+
     def setup(self):
         self.add_input("α³")
         self.add_input("β1")
@@ -512,6 +521,7 @@ class CurrentDriveEfficiencyTerm3(om.ExplicitComponent):
     The function is fairly smooth so it should be acceptable.
 
     """
+
     def setup(self):
         self.add_input("α³")
         self.add_input("β1")
@@ -575,6 +585,7 @@ class CurrentDriveEfficiencyEquation(om.ExplicitComponent):
     in Toroidal Plasmas. Plasma Physics 1980, 22 (4), 303–316.
     https://doi.org/10.1088/0032-1028/22/4/002.
     """
+
     def setup(self):
         self.add_input("line1", units="A/W")
         self.add_input("line2")
@@ -645,6 +656,7 @@ class CurrentDriveEfficiency(om.Group):
         A/W, Ratio of the net current flowing parallel to the magnetic field
             to the injected neutral beam power
     """
+
     def initialize(self):
         self.options.declare("config", default=None)
 
@@ -726,6 +738,7 @@ class NBICurrent(om.ExplicitComponent):
     I_NBI : float
         MA, total neutral-beam-driven current
     """
+
     def initialize(self):
         self.options.declare("config", default=None)
 

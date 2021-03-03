@@ -45,8 +45,9 @@ class SimpleNBISourceProperties(om.ExplicitComponent):
         beam_ion_Z = species.integer_charge
         beam_ion_mass_number = species.mass_number
         beam_ion_mass = species.mass.to(apunits.kg).value
-        m_ref = 1e-27
-        self.add_output("m", units='kg', lower=0, ref=m_ref, val=beam_ion_mass)
+        m_ref = 1.0e-27
+        self.add_output("m", units='kg', lower=1e-28,
+                        ref=m_ref, val=beam_ion_mass)
         self.add_output("A", units="u", lower=0, val=beam_ion_mass_number)
         self.add_output("Z", val=beam_ion_Z)
 

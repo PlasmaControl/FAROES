@@ -24,6 +24,7 @@ class AuxilliaryPower(om.ExplicitComponent):
     P_aux,e : float
        MW, wall-plug aux heating/current drive power
     """
+
     def setup(self):
         self.add_input("P_NBI",
                        units="MW",
@@ -90,6 +91,7 @@ class RecirculatingElectricPower(om.ExplicitComponent):
     P_recirc : float
         MW, Recirculating electric power
     """
+
     def setup(self):
         self.add_input("P_aux",
                        units="MW",
@@ -107,7 +109,8 @@ class RecirculatingElectricPower(om.ExplicitComponent):
                        units="MW",
                        val=0,
                        desc="Electric power to drive plasma control systems")
-        self.add_output("P_recirc", units="MW", lower=0)
+        tiny = 1e-6
+        self.add_output("P_recirc", units="MW", lower=tiny)
 
     def compute(self, inputs, outputs):
         P_aux = inputs["P_aux"]
@@ -144,6 +147,7 @@ class TotalThermalPower(om.ExplicitComponent):
     P_heat : float
         MW, Thermal power delivered to electricity generating systems
     """
+
     def setup(self):
         self.add_input("P_blanket",
                        units="MW",
@@ -206,6 +210,7 @@ class SimpleGeneratedPower(om.ExplicitComponent):
     P_el : float
         MW, Electrical power generated
     """
+
     def initialize(self):
         self.options.declare("config", default=None)
 
@@ -257,6 +262,7 @@ class PowerplantQ(om.ExplicitComponent):
     f_recirc : float
         Fraction of generated electric power which is recirculated
     """
+
     def setup(self):
         self.add_input("P_gen", units="MW", desc="Power generated")
         self.add_input("P_recirc",
@@ -331,6 +337,7 @@ class Powerplant(om.Group):
     f_recirc : float
         Fraction of generated electric power which is recirculated
     """
+
     def initialize(self):
         self.options.declare("config", default=None)
 
