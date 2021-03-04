@@ -140,8 +140,11 @@ class ConfinementTimeScaling(om.ExplicitComponent):
     Exponents are loaded from fits.yaml. Not all inputs to this component are
     necessarily used.
     """
-    BAD_TERM_STR = """Unknown term '%s' in confinement scaling.
+    BAD_TERM = """Unknown term '%s' in confinement scaling.
     Valid terms are %s """
+
+    NEGATIVE_TERM = "Term '%s' is non-positive in " + \
+        "the confinement time calculation. Its value was %f."
 
     def initialize(self):
         self.options.declare("config", default=None)
@@ -157,7 +160,7 @@ class ConfinementTimeScaling(om.ExplicitComponent):
         valid_terms = ["c0", "Ip", "Bt", "n19", "PL", "R", "ε", "κa", "M"]
         for k, v in terms.items():
             if k not in valid_terms:
-                raise ValueError(self.BAD_TERM_STR % (k, valid_terms))
+                raise ValueError(self.BAD_TERM % (k, valid_terms))
 
         self.constant = terms.pop("c0")
         self.varterms = terms
@@ -177,7 +180,10 @@ class ConfinementTimeScaling(om.ExplicitComponent):
     def compute(self, inputs, outputs):
         τe = self.constant
         for k, v in self.varterms.items():
-            τe *= inputs[k]**v
+            term = inputs[k]
+            if term <= 0:
+                raise om.AnalysisError(self.NEGATIVE_TERM % (k, term))
+            τe *= term**v
 
         outputs["τe"] = τe
 
