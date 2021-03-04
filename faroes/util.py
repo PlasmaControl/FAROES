@@ -30,18 +30,19 @@ class SmoothShiftedReLu(om.ExplicitComponent):
     x0 : float
        Point at which it starts to turn on
     """
+
     def initialize(self):
         self.options.declare('x0', default=0)
         self.options.declare('bignum', default=10)
 
     def setup(self):
-        self.b= self.options["bignum"]
-        self.x0= self.options["x0"]
+        self.b = self.options["bignum"]
+        self.x0 = self.options["x0"]
         self.add_input("x")
         self.add_output("y")
 
     def compute(self, inputs, outputs):
-        b= self.b
+        b = self.b
         x0 = self.x0
         x = inputs["x"]
         y = (1/b) * np.log(1 + np.exp(b * (x - x0)))
@@ -51,7 +52,7 @@ class SmoothShiftedReLu(om.ExplicitComponent):
         self.declare_partials("y", "x")
 
     def compute_partials(self, inputs, J):
-        b= self.b
+        b = self.b
         x0 = self.x0
         x = inputs["x"]
         J["y", "x"] = 1 / (1 + np.exp(b * (x0 - x)))
@@ -79,6 +80,7 @@ class PolarAngleAndDistanceFromPoint(om.ExplicitComponent):
         Angle from origin to points (x,y).
            In the range (-pi, pi].
     """
+
     def setup(self):
         self.add_input("x", units="m", shape_by_conn=True)
         self.add_input("y", units="m", shape_by_conn=True, copy_shape="x")
@@ -159,6 +161,7 @@ class OffsetParametricCurvePoints(om.ExplicitComponent):
     [1] https://mathworld.wolfram.com/ParallelCurves.html
     [2] https://en.wikipedia.org/wiki/Parallel_curve
     """
+
     def setup(self):
         self.add_input("x", units="m", shape_by_conn=True)
         self.add_input("y", units="m", copy_shape="x", shape_by_conn=True)

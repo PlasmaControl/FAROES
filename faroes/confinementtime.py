@@ -179,6 +179,15 @@ class ConfinementTimeScaling(om.ExplicitComponent):
 
     def compute(self, inputs, outputs):
         τe = self.constant
+
+        Ip = inputs["Ip"]
+        if Ip > 1000:
+            raise om.AnalysisError(f"Plasma current is too large, {Ip} MA")
+
+        n19 = inputs["n19"]
+        if n19 > 10000:
+            raise om.AnalysisError(f"Density is too large, {n19} x e19")
+
         for k, v in self.varterms.items():
             term = inputs[k]
             if term <= 0:

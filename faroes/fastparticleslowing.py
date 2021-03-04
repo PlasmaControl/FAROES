@@ -252,6 +252,10 @@ class AverageEnergyWhileSlowing(om.ExplicitComponent):
     W-bar : float
         keV, Average energy while slowing
     """
+    SLOW_RATIO = 1e-1
+    SLOW_ERR = """Fast particles are subthermal. Probably something has gone
+    wrong upstream, like the Te being extraordinarily high."""
+
     def setup(self):
         self.add_input(
             "W/Wc", desc="Ratio of initial energy to critical slowing energy")
@@ -264,6 +268,9 @@ class AverageEnergyWhileSlowing(om.ExplicitComponent):
 
     def compute(self, inputs, outputs):
         wrat = inputs["W/Wc"]
+        if wrat < self.SLOW_RATIO:
+            raise om.AnalysisError(self.SLOW_ERR)
+
         wc = inputs["Wc"]
         term1 = wc / (6 * np.log(1 + wrat**(3 / 2)))
         term2 = -4 * 3**(1 / 2) * pi
@@ -278,6 +285,9 @@ class AverageEnergyWhileSlowing(om.ExplicitComponent):
 
     def compute_partials(self, inputs, J):
         wrat = inputs["W/Wc"]
+        if wrat < self.SLOW_RATIO:
+            raise om.AnalysisError(self.SLOW_ERR)
+
         term1 = 1 / (6 * np.log(1 + wrat**(3 / 2)))
         term2 = -4 * 3**(1 / 2) * pi
         arg = 1 / (1 + wrat**(3 / 2))
