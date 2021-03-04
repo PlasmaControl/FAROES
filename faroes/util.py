@@ -12,6 +12,51 @@ from plasmapy.particles import Particle, common_isotopes
 from plasmapy.particles import atomic_number, isotopic_abundance
 
 
+class SmoothShiftedReLu(om.ExplicitComponent):
+    r"""
+    Inputs
+    ------
+    x : float
+
+    Outputs
+    -------
+    y : float
+
+    Notes
+    -----
+    config options:
+    bignum : float
+       sharpness of curve. typically >10
+    x0 : float
+       Point at which it starts to turn on
+    """
+    def initialize(self):
+        self.options.declare('x0', default=0)
+        self.options.declare('bignum', default=10)
+
+    def setup(self):
+        self.b= self.options["bignum"]
+        self.x0= self.options["x0"]
+        self.add_input("x")
+        self.add_output("y")
+
+    def compute(self, inputs, outputs):
+        b= self.b
+        x0 = self.x0
+        x = inputs["x"]
+        y = (1/b) * np.log(1 + np.exp(b * (x - x0)))
+        outputs["y"] = y
+
+    def setup_partials(self):
+        self.declare_partials("y", "x")
+
+    def compute_partials(self, inputs, J):
+        b= self.b
+        x0 = self.x0
+        x = inputs["x"]
+        J["y", "x"] = 1 / (1 + np.exp(b * (x0 - x)))
+
+
 class PolarAngleAndDistanceFromPoint(om.ExplicitComponent):
     r"""
     Inputs

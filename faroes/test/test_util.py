@@ -104,5 +104,29 @@ class TestOffsetParametricCurvePoints(unittest.TestCase):
         prob.run_driver()
 
 
+class TestSmoothShiftedReLu(unittest.TestCase):
+    def setUp(self):
+        prob = om.Problem()
+
+        prob.model = util.SmoothShiftedReLu(x0=1, bignum=20)
+
+        prob.setup(force_alloc_complex=True)
+        prob.set_val("x", 1.0)
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+    def test_values(self):
+        prob = self.prob
+        prob.run_driver()
+        expected = 0.0346574
+        y = prob.get_val("y")
+        assert_near_equal(y, expected, tolerance=1e-4)
+
+
 if __name__ == "__main__":
     unittest.main()
