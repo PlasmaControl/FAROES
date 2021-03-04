@@ -530,6 +530,10 @@ class CurrentDriveEfficiencyTerm3(om.ExplicitComponent):
     def compute(self, inputs, outputs):
         β1 = inputs["β1"]
         α3 = inputs["α³"]
+
+        if α3 < 1e-10:
+            raise om.AnalysisError("Current drive α3 is too small")
+
         p1 = (3 + β1) / 3
         p2 = (4 + β1) / 3
         p3 = (7 + β1) / 3

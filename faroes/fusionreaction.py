@@ -231,6 +231,9 @@ class NBIBeamTargetFusion(om.ExplicitComponent):
         P_NBI = inputs["P_NBI"]
         Te = inputs["<T_e>"]
 
+        if Te < 0:
+            raise om.AnalysisError("Negative temperatures.")
+
         R = c * P_NBI * Te**(3 / 2)
         outputs["rate_fus"] = R * femto
 

@@ -600,7 +600,12 @@ class ThermalVelocity(om.ExplicitComponent):
 
     def compute(self, inputs, outputs):
         mass = self.options['mass']
-        TeV = eV * inputs["T"]
+        T = inputs["T"]
+        TeV = eV * T
+
+        if T < 0:
+            raise om.AnalysisError("Negative temperatures.")
+
         outputs["v_th"] = (TeV / mass)**(1 / 2)
         outputs["v_mps"] = (2 * TeV / mass)**(1 / 2)
         outputs["v_rms"] = (3 * TeV / mass)**(1 / 2)
@@ -615,6 +620,8 @@ class ThermalVelocity(om.ExplicitComponent):
     def compute_partials(self, inputs, J):
         mass = self.options['mass']
         T = inputs["T"]
+        if T < 0:
+            raise om.AnalysisError("Negative temperatures.")
         J["v_th", "T"] = (1 * eV)**(1 / 2) / (2 * (T * mass)**(1 / 2))
         J["v_mps", "T"] = (2 * eV)**(1 / 2) / (2 * (T * mass)**(1 / 2))
         J["v_rms", "T"] = (3 * eV)**(1 / 2) / (2 * (T * mass)**(1 / 2))

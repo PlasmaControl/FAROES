@@ -146,6 +146,10 @@ class CoulombLogarithmElectrons(om.ExplicitComponent):
     def compute(self, inputs, outputs):
         ne20 = inputs["ne"]
         Te = inputs["Te"]
+
+        if ne20 < 0:
+            raise om.AnalysisError("Negative densities not allowed.")
+
         logLe = self.c0 - np.log(10**10 * ne20**(1 / 2) / Te)
         outputs["logΛe"] = logLe
 

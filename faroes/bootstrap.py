@@ -49,6 +49,12 @@ class BootstrapMultiplier(om.ExplicitComponent):
         b = self.b
         qs = inputs["q_star"]
         qm = inputs["q_min"]
+
+        if qs > 1000:
+            raise om.AnalysisError("q_star is greater than 1000")
+        if qm > 1000:
+            raise om.AnalysisError("q_min is greater than 1000")
+
         e1 = y0 - (qs / qm) / f
         e2 = y1
         bs_mult = np.log(b**e1 + b**e2) / np.log(b)
