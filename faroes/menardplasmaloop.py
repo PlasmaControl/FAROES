@@ -60,7 +60,6 @@ class MenardPlasmaLoop(om.Group):
     radiation.rad.P_loss : float
         MW, Power lost via particle diffusion into the SOL.
     """
-
     def initialize(self):
         self.options.declare('config')
 
@@ -143,9 +142,10 @@ class MenardPlasmaLoop(om.Group):
 
         self.add_subsystem("specP",
                            SpecifiedPressure(config=config),
-                           promotes_inputs=["Bt", "Ip", ("a", "minor_radius"),
-                                            ("L_pol", "L_pol"),
-                                            ("A", "aspect_ratio")])
+                           promotes_inputs=[
+                               "Bt", "Ip", ("a", "minor_radius"),
+                               ("L_pol", "L_pol"), ("A", "aspect_ratio")
+                           ])
 
         # self.connect("plasmageom.a", ["specP.a"])
         # self.connect("plasmageom.L_pol", ["specP.L_pol"])
@@ -183,10 +183,11 @@ class MenardPlasmaLoop(om.Group):
 
         self.add_subsystem('current',
                            CurrentAndSafetyFactor(config=config),
-                           promotes_inputs=["R0", "Bt", ("a", "minor_radius"),
-                                            ("L_pol", "L_pol_simple")],
-                           promotes_outputs=["Ip",
-                                             ("n_bar", "<n_e>")])
+                           promotes_inputs=[
+                               "R0", "Bt", ("a", "minor_radius"),
+                               ("L_pol", "L_pol_simple")
+                           ],
+                           promotes_outputs=["Ip", ("n_bar", "<n_e>")])
 
         self.connect("NBIcurr.I_NBI", "current.I_NBI")
         self.connect("bootstrap.I_BS", "current.I_BS")
@@ -210,10 +211,12 @@ if __name__ == "__main__":
                                promotes_outputs=["ε", "κa", "V"])
 
             mpl = MenardPlasmaLoop(config=config)
-            self.add_subsystem("plasma", mpl,
-                               promotes_inputs=["R0", "Bt", "ε",
-                                                "κa", "V",
-                                                ("aspect_ratio", "A")])
+            self.add_subsystem("plasma",
+                               mpl,
+                               promotes_inputs=[
+                                   "R0", "Bt", "ε", "κa", "V",
+                                   ("aspect_ratio", "A")
+                               ])
             self.connect("plasmageom.a", "plasma.minor_radius")
             self.connect("plasmageom.L_pol", "plasma.L_pol")
             self.connect("plasmageom.L_pol_simple", "plasma.L_pol_simple")
