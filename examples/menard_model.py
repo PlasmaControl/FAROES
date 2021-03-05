@@ -239,16 +239,16 @@ if __name__ == "__main__":
     newton.options['iprint'] = 2
     newton.options['maxiter'] = 20
     mpl.linear_solver = om.DirectSolver()
-    mpl.linesearch = om.BoundsEnforceLS(bound_enforcement="scalar")
-    mpl.linesearch.options["iprint"] = 2
+    newton.linesearch = om.BoundsEnforceLS(bound_enforcement="scalar")
+    newton.linesearch.options["iprint"] = 2
 
     pplant = prob.model.pplant
     newton = pplant.nonlinear_solver = om.NewtonSolver(solve_subsystems=True)
     newton.options['iprint'] = 2
     newton.options['maxiter'] = 20
     pplant.linear_solver = om.DirectSolver()
-    pplant.linesearch = om.BoundsEnforceLS(bound_enforcement="scalar")
-    pplant.linesearch.options["iprint"] = 2
+    newton.linesearch = om.BoundsEnforceLS(bound_enforcement="scalar")
+    newton.linesearch.options["iprint"] = 2
 
     prob.run_driver()
 
