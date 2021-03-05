@@ -38,7 +38,6 @@ class MenardSTBlanketAndShieldMagnetProtection(om.ExplicitComponent):
     Shielding factor : float
         Factor by which shielding is better than the reference case
     """
-
     def initialize(self):
         self.options.declare('config', default=None)
 
@@ -185,7 +184,6 @@ class MenardSTBlanketAndShieldGeometry(om.ExplicitComponent):
         m**3, Total blanket estimated volume
 
     """
-
     def initialize(self):
         # there may be a bug in menard's calculation for shield volume
         # if so, change self.bug to 1
@@ -384,7 +382,6 @@ class InboardMidplaneNeutronFluxFromRing(om.ExplicitComponent):
     q_n : float
         MW / m**2, Neutron energy flux at inboard midplane
     """
-
     def setup(self):
         self.add_input("S", units="fs**-1", val=0)
         self.add_input("P_n", units="MW", val=0)
@@ -474,7 +471,6 @@ class MenardMagnetCoolingProperties(om.Group):
     FOM : float
         Figure of merit; amount that it is worse than Carnot
     """
-
     def initialize(self):
         self.options.declare("config", default=None)
 
@@ -486,7 +482,6 @@ class MenardMagnetCoolingProperties(om.Group):
         acc.set_output(ivc, f, "T_cold", component_name="T_cryo", units="K")
         acc.set_output(ivc, f, "FOM")
         self.add_subsystem("ivc", ivc, promotes=["*"])
-
 
 
 class RefrigerationPerformance(om.ExplicitComponent):
@@ -508,7 +503,6 @@ class RefrigerationPerformance(om.ExplicitComponent):
     f : float
        Inverse of the Coefficient of Performance
     """
-
     def setup(self):
         self.add_input("T_cold", units="K")
         self.add_input("T_hot", units="K", val=300)
@@ -566,7 +560,6 @@ class MenardMagnetCooling(om.ExplicitComponent):
     P_c,el : float
         MW, Electric power to deliver cooling at cryogenic temperatures
     """
-
     def setup(self, ):
         self.add_input("Δr_sh", units="m")
         self.add_input("P_n", units="MW")
@@ -634,7 +627,6 @@ class MagnetCryoCoolingPower(om.Group):
     P_c,el : float
         MW, Electric power to deliver cooling at cryogenic temperatures
     """
-
     def initialize(self):
         self.options.declare("config", default=None)
 
@@ -694,7 +686,6 @@ class SimpleBlanketThermalPower(om.ExplicitComponent):
     P_th : float
         MW, Thermal power in blanket
     """
-
     def setup(self):
         self.add_input("P_n", units="MW")
         self.add_input("M_n",
@@ -727,7 +718,6 @@ class SimpleBlanketPower(om.Group):
     P_th : float
         MW, Thermal power in blanket
     """
-
     def initialize(self):
         self.options.declare("config", default=None)
 
@@ -763,7 +753,6 @@ class NeutronWallLoading(om.ExplicitComponent):
     f_peak_IB : float
         Inboard peaking factor
     """
-
     def setup(self):
         self.add_input("P_n", units="MW")
         self.add_input("SA", units="m**2")
@@ -823,7 +812,6 @@ class MenardMagnetLifetime(om.ExplicitComponent):
         year, Lifetime in full-power years
 
     """
-
     def initialize(self):
         self.options.declare('config', default=None)
 
