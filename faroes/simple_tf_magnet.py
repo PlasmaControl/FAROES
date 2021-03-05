@@ -7,41 +7,45 @@ from faroes.configurator import UserConfigurator, Accessor
 from importlib import resources
 
 
-class WindingPackProperties(om.ExplicitComponent):
+class WindingPackProperties(om.Group):
     def initialize(self):
         self.options.declare('config', default=None)
 
     def setup(self):
+        ivc = om.IndepVarComp()
         acc = Accessor(self.options['config'])
         f = acc.accessor(["magnet_geometry", "winding pack"])
-        acc.set_output(self, f, "f_HTS")
+        acc.set_output(ivc, f, "f_HTS")
 
         f = acc.accessor(["materials", "winding pack"])
-        acc.set_output(self, f, "j_eff_max", units='MA/m**2')
-        acc.set_output(self, f, "B_max", units='T')
+        acc.set_output(ivc, f, "j_eff_max", units='MA/m**2')
+        acc.set_output(ivc, f, "B_max", units='T')
 
         if self.options['config'] is not None:
             f = acc.accessor(["materials", "HTS cable"])
             max_strain = f(["strain limit"])
             youngs = f(["Young's modulus"], units="GPa")
-            self.add_output("Young's modulus", youngs, units="GPa")
-            self.add_output("max_strain", max_strain)
-            self.add_output("max_stress", max_strain * youngs, units="GPa")
+            ivc.add_output("Young's modulus", youngs, units="GPa")
+            ivc.add_output("max_strain", max_strain)
+            ivc.add_output("max_stress", max_strain * youngs, units="GPa")
 
         else:
-            self.add_output("Young's modulus", units="GPa")
-            self.add_output("max_strain")
-            self.add_output("max_stress", units="MPa")
+            ivc.add_output("Young's modulus", units="GPa")
+            ivc.add_output("max_strain")
+            ivc.add_output("max_stress", units="MPa")
+        self.add_subsystem("ivc", ivc, promotes=["*"])
 
 
-class MagnetStructureProperties(om.ExplicitComponent):
+class MagnetStructureProperties(om.Group):
     def initialize(self):
         self.options.declare('config', default=None)
 
     def setup(self):
+        ivc = om.IndepVarComp()
         acc = Accessor(self.options['config'])
         f = acc.accessor(["materials", "structural steel"])
-        acc.set_output(self, f, "Young's modulus", units="GPa")
+        acc.set_output(ivc, f, "Young's modulus", units="GPa")
+        self.add_subsystem("ivc", ivc, promotes=["*"])
 
 
 class InnerTFCoilTension(om.ExplicitComponent):

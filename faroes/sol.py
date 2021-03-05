@@ -6,7 +6,7 @@ from scipy.constants import kilo
 import numpy as np
 
 
-class SOLProperties(om.ExplicitComponent):
+class SOLProperties(om.Group):
     r"""
     Outputs
     -------
@@ -32,40 +32,42 @@ class SOLProperties(om.ExplicitComponent):
         self.options.declare("config", default=None)
 
     def setup(self):
+        ivc = om.IndepVarComp()
         config = self.options["config"].accessor(["plasma", "SOL"])
         n_div = config(["number of divertors"])
-        self.add_output("N_div", val=n_div)
+        ivc.add_output("N_div", val=n_div)
 
         acc = Accessor(self.options["config"])
         f = acc.accessor(["plasma", "SOL", "plasma mix"])
-        acc.set_output(self, f, "Z_eff")
-        acc.set_output(self, f, "Z-bar")
-        acc.set_output(self, f, "A-bar")
+        acc.set_output(ivc, f, "Z_eff")
+        acc.set_output(ivc, f, "Z-bar")
+        acc.set_output(ivc, f, "A-bar")
         f = acc.accessor(["plasma", "SOL"])
-        acc.set_output(self,
+        acc.set_output(ivc,
                        f,
                        "core radiated power fraction",
                        component_name="f_rad")
-        acc.set_output(self,
+        acc.set_output(ivc,
                        f,
                        "power fraction to outer divertor",
                        component_name="f_outer")
 
-        acc.set_output(self,
+        acc.set_output(ivc,
                        f,
                        "poloidal tilt at plate",
                        component_name="θ_pol",
                        units="rad")
-        acc.set_output(self,
+        acc.set_output(ivc,
                        f,
                        "total B field incidence angle",
                        component_name="θ_tot",
                        units="rad")
-        acc.set_output(self,
+        acc.set_output(ivc,
                        f,
                        "poloidal flux expansion",
                        component_name="f_fluxexp")
-        acc.set_output(self, f, "SOL width multiplier")
+        acc.set_output(ivc, f, "SOL width multiplier")
+        self.add_subsystem("ivc", ivc, promotes=["*"])
 
 
 class StrikePointRadius(om.ExplicitComponent):

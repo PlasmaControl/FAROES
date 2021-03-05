@@ -462,7 +462,7 @@ class InboardMidplaneNeutronFluxFromRing(om.ExplicitComponent):
             + q_tube * dshape_dAi * dAi_dr_in
 
 
-class MenardMagnetCoolingProperties(om.ExplicitComponent):
+class MenardMagnetCoolingProperties(om.Group):
     r"""Loads default magnet cryogenics properties
 
     Outputs
@@ -481,9 +481,12 @@ class MenardMagnetCoolingProperties(om.ExplicitComponent):
     def setup(self):
         acc = Accessor(self.options["config"])
         f = acc.accessor(["machine", "magnet cryogenics"])
-        acc.set_output(self, f, "T_hot", units="K")
-        acc.set_output(self, f, "T_cold", component_name="T_cryo", units="K")
-        acc.set_output(self, f, "FOM")
+        ivc = om.IndepVarComp()
+        acc.set_output(ivc, f, "T_hot", units="K")
+        acc.set_output(ivc, f, "T_cold", component_name="T_cryo", units="K")
+        acc.set_output(ivc, f, "FOM")
+        self.add_subsystem("ivc", ivc, promotes=["*"])
+
 
 
 class RefrigerationPerformance(om.ExplicitComponent):
@@ -565,7 +568,7 @@ class MenardMagnetCooling(om.ExplicitComponent):
     """
 
     def setup(self, ):
-        self.add_input("Δr_sh", units="m", val=0.6)
+        self.add_input("Δr_sh", units="m")
         self.add_input("P_n", units="MW")
         self.add_input("f_refrigeration", val=1)
         sh_ref = 1e-4
@@ -652,7 +655,7 @@ class MagnetCryoCoolingPower(om.Group):
         self.connect("refrig_eff.f", "power.f_refrigeration")
 
 
-class BlanketProperties(om.ExplicitComponent):
+class BlanketProperties(om.Group):
     BAD_MODEL = "Only 'simple' is supported"
 
     def initialize(self):
@@ -662,17 +665,19 @@ class BlanketProperties(om.ExplicitComponent):
         config = self.options['config']
         if config is None:
             raise ValueError("BlanketProperties requries a config file")
+        ivc = om.IndepVarComp()
         acc = Accessor(config)
         f = acc.accessor(["machine", "blanket"])
         model = f(["model"])
         if model == "simple":
             f = acc.accessor(["machine", "blanket", "simple"])
-            acc.set_output(self,
+            acc.set_output(ivc,
                            f,
                            "neutron power multiplier",
                            component_name="M_n")
         else:
             raise ValueError(self.BAD_MODEL)
+        self.add_subsystem("ivc", ivc, promotes=["*"])
 
 
 class SimpleBlanketThermalPower(om.ExplicitComponent):
@@ -858,34 +863,28 @@ if __name__ == "__main__":
     prob = om.Problem()
     uc = UserConfigurator()
 
-    # prob.model = MagnetCryoCoolingPower(config=uc)
-    prob.model = InboardMidplaneNeutronFluxFromRing()
+    prob.model = MenardMagnetCoolingProperties(config=uc)
     prob.setup(force_alloc_complex=True)
-    """
-    S : float
-        s**-1, Neutrons per second from the ring source
-    P_n : float
-        MW, Total neutron power
-    R0 : float
-        m, Radius of neutron source ring. Not necessarily
-           the same as the plasma major radius.
-    r_in : float
-        m, radius
-    """
-
-    prob.set_val("R0", 3.0, units="m")
-    prob.set_val("S", 1.234e20, units="s**-1")
-    prob.set_val("P_n", 278.2, units="MW")
-    prob.set_val("r_in", 1.125, units="m")
-
-    # prob.set_val("Δr_sh", 0.6)
-    # prob.set_val("P_n", 278.2)
-
-    # check = prob.check_partials(out_stream=None, method='cs')
-    # assert_check_partials(check)
     prob.run_driver()
     all_inputs = prob.model.list_inputs(values=True, units=True)
     all_outputs = prob.model.list_outputs(values=True, units=True)
+
+    # prob.model = InboardMidplaneNeutronFluxFromRing()
+    # prob.setup(force_alloc_complex=True)
+
+    # prob.set_val("R0", 3.0, units="m")
+    # prob.set_val("S", 1.234e20, units="s**-1")
+    # prob.set_val("P_n", 278.2, units="MW")
+    # prob.set_val("r_in", 1.125, units="m")
+
+    # # prob.set_val("Δr_sh", 0.6)
+    # # prob.set_val("P_n", 278.2)
+
+    # # check = prob.check_partials(out_stream=None, method='cs')
+    # # assert_check_partials(check)
+    # prob.run_driver()
+    # all_inputs = prob.model.list_inputs(values=True, units=True)
+    # all_outputs = prob.model.list_outputs(values=True, units=True)
 
     # prob = om.Problem()
 

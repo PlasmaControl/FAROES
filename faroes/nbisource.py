@@ -4,7 +4,7 @@ from faroes.configurator import UserConfigurator, Accessor
 from astropy import units as apunits
 
 
-class SimpleNBISourceProperties(om.ExplicitComponent):
+class SimpleNBISourceProperties(om.Group):
     r"""Helper for the SimpleNBISource
 
     Outputs
@@ -33,11 +33,12 @@ class SimpleNBISourceProperties(om.ExplicitComponent):
         self.options.declare("config", default=None)
 
     def setup(self):
+        ivc = om.IndepVarComp()
         acc = Accessor(self.options['config'])
         f = acc.accessor(["h_cd", "NBI"])
-        acc.set_output(self, f, "energy", component_name="E", units="keV")
-        acc.set_output(self, f, "power", component_name="P", units="MW")
-        acc.set_output(self, f, "wall-plug efficiency", component_name="eff")
+        acc.set_output(ivc, f, "energy", component_name="E", units="keV")
+        acc.set_output(ivc, f, "power", component_name="P", units="MW")
+        acc.set_output(ivc, f, "wall-plug efficiency", component_name="eff")
 
         config = self.options["config"].accessor(["h_cd", "NBI"])
         species_name = config(['ion'])
@@ -45,11 +46,10 @@ class SimpleNBISourceProperties(om.ExplicitComponent):
         beam_ion_Z = species.integer_charge
         beam_ion_mass_number = species.mass_number
         beam_ion_mass = species.mass.to(apunits.kg).value
-        m_ref = 1.0e-27
-        self.add_output("m", units='kg', lower=1e-28,
-                        ref=m_ref, val=beam_ion_mass)
-        self.add_output("A", units="u", lower=0, val=beam_ion_mass_number)
-        self.add_output("Z", val=beam_ion_Z)
+        ivc.add_output("m", units='kg', val=beam_ion_mass)
+        ivc.add_output("A", units="u", val=beam_ion_mass_number)
+        ivc.add_output("Z", val=beam_ion_Z)
+        self.add_subsystem("ivc", ivc, promotes=["*"])
 
 
 class SimpleNBISource(om.Group):

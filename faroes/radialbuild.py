@@ -2,7 +2,7 @@ import openmdao.api as om
 from faroes.configurator import UserConfigurator, Accessor
 
 
-class RadialBuildProperties(om.ExplicitComponent):
+class RadialBuildProperties(om.Group):
     r"""Helper for the Menard ST radial build
     """
 
@@ -10,61 +10,63 @@ class RadialBuildProperties(om.ExplicitComponent):
         self.options.declare('config', default=None)
 
     def setup(self):
+        ivc = om.IndepVarComp()
         acc = Accessor(self.options['config'])
         f = acc.accessor(["radial_build", "inboard"])
-        acc.set_output(self,
+        acc.set_output(ivc,
                        f,
                        "SOL width",
                        component_name="Ib SOL width",
                        units="m")
-        acc.set_output(self,
+        acc.set_output(ivc,
                        f,
                        "fw thickness",
                        component_name="Ib FW thickness",
                        units="m")
-        acc.set_output(self,
+        acc.set_output(ivc,
                        f,
                        "blanket thickness",
                        component_name="Ib blanket thickness",
                        units="m")
-        acc.set_output(self,
+        acc.set_output(ivc,
                        f,
                        "WC n shield thickness",
                        component_name="Ib WC shield thickness",
                        units="m")
-        acc.set_output(self,
+        acc.set_output(ivc,
                        f,
                        "vv shielding thickness",
                        component_name="Ib WC VV shield thickness",
                        units="m")
 
         f = acc.accessor(["radial_build", "outboard"])
-        acc.set_output(self,
+        acc.set_output(ivc,
                        f,
                        "SOL width",
                        component_name="Ob SOL width",
                        units="m")
-        acc.set_output(self,
+        acc.set_output(ivc,
                        f,
                        "blanket thickness",
                        component_name="Ob blanket thickness",
                        units="m")
-        acc.set_output(self,
+        acc.set_output(ivc,
                        f,
                        "access thickness",
                        component_name="Ob access thickness",
                        units="m")
-        acc.set_output(self,
+        acc.set_output(ivc,
                        f,
                        "vv thickness",
                        component_name="Ob vv thickness",
                        units="m")
-        acc.set_output(self,
+        acc.set_output(ivc,
                        f,
                        "shield thickness",
                        component_name="Ob shield thickness",
                        units="m")
-        acc.set_output(self, f, "TF-cryostat thickness", units="m")
+        acc.set_output(ivc, f, "TF-cryostat thickness", units="m")
+        self.add_subsystem("ivc", ivc, promotes=["*"])
 
 
 class MenardSTOuterMachineRadialBuild(om.ExplicitComponent):

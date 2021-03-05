@@ -4,15 +4,17 @@ import openmdao.api as om
 from scipy.constants import pi
 
 
-class TokamakMagneticConfigurationLimitProperties(om.ExplicitComponent):
+class TokamakMagneticConfigurationLimitProperties(om.Group):
     def initialize(self):
         self.options.declare('config', default=None)
 
     def setup(self):
+        ivc = om.IndepVarComp()
         acc = Accessor(self.options['config'])
         f = acc.accessor(["plasma"])
-        acc.set_output(self, f, "q_min")
-        acc.set_output(self, f, "Greenwald fraction")
+        acc.set_output(ivc, f, "q_min")
+        acc.set_output(ivc, f, "Greenwald fraction")
+        self.add_subsystem("ivc", ivc, promotes=["*"])
 
 
 class QCylindrical(om.ExplicitComponent):

@@ -13,7 +13,7 @@ import numpy as np
 electron_mass_in_u = physical_constants["electron mass in u"][0]
 
 
-class CurrentDriveProperties(om.ExplicitComponent):
+class CurrentDriveProperties(om.Group):
     """Helper class to load properties
     """
 
@@ -21,9 +21,11 @@ class CurrentDriveProperties(om.ExplicitComponent):
         self.options.declare('config', default=None)
 
     def setup(self):
+        ivc = om.IndepVarComp()
         acc = Accessor(self.options['config'])
         f = acc.accessor(["h_cd", "NBI", "current drive estimate"])
-        acc.set_output(self, f, "ε fraction")
+        acc.set_output(ivc, f, "ε fraction")
+        self.add_subsystem("ivc", ivc, promotes=["*"])
 
 
 class CurrentDriveBeta1(om.ExplicitComponent):

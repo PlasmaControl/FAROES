@@ -4,14 +4,16 @@ import faroes.units  # noqa: F401
 import openmdao.api as om
 
 
-class CoreRadiationProperties(om.ExplicitComponent):
+class CoreRadiationProperties(om.Group):
     def initialize(self):
         self.options.declare('config', default=None)
 
     def setup(self):
+        ivc = om.IndepVarComp()
         acc = Accessor(self.options['config'])
         f = acc.accessor(["plasma"])
-        acc.set_output(self, f, "radiation fraction")
+        acc.set_output(ivc, f, "radiation fraction")
+        self.add_subsystem("ivc", ivc, promotes=["*"])
 
 
 class TrivialRadiation(om.ExplicitComponent):

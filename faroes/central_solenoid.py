@@ -10,21 +10,23 @@ from scipy.special import ellipk, ellipe
 import numpy as np
 
 
-class CentralSolenoidProperties(om.ExplicitComponent):
+class CentralSolenoidProperties(om.Group):
     """Helper class to load properties
     """
     def initialize(self):
         self.options.declare('config', default=None)
 
     def setup(self):
+        ivc = om.IndepVarComp()
         acc = Accessor(self.options['config'])
         f = acc.accessor(["materials", "CS winding pack"])
-        acc.set_output(self, f, "j_max", units='MA/m**2')
-        acc.set_output(self,
+        acc.set_output(ivc, f, "j_max", units='MA/m**2')
+        acc.set_output(ivc,
                        f,
                        "B_max",
                        component_name='B_max_conductor',
                        units='T')
+        self.add_subsystem("ivc", ivc, promotes=["*"])
 
 
 class ThinSolenoidInductance(om.ExplicitComponent):

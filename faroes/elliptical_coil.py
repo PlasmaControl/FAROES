@@ -9,9 +9,11 @@ class TFSetProperties(om.ExplicitComponent):
         self.options.declare('config', default=None)
 
     def setup(self):
+        ivc = om.IndepVarComp()
         acc = Accessor(self.options['config'])
         f = acc.accessor(["magnet_geometry", "profile"])
-        acc.set_output(self, f, "elongation_multiplier")
+        acc.set_output(ivc, f, "elongation_multiplier")
+        self.add_subsystem("ivc", ivc, promotes=["*"])
 
 
 class SimpleEllipticalTFSet(om.ExplicitComponent):
