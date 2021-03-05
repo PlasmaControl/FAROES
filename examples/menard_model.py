@@ -70,6 +70,7 @@ class Machine(om.Group):
         self.connect('plasmageom.R_max', ['totalbuild.plasma R_max'])
         self.connect('plasmageom.R_min', ['totalbuild.plasma R_min'])
 
+
         mpl = MenardPlasmaLoop(config=config)
         self.add_subsystem(
             "plasma",
@@ -81,6 +82,19 @@ class Machine(om.Group):
         self.connect("plasmageom.L_pol_simple", "plasma.L_pol_simple")
 
         self.connect("totalbuild.Bt", ["plasma.Bt", "SOL.Bt"])
+
+        # this needs to be run after the radial build but before
+        # the magnet cryo calculations
+        self.add_subsystem(
+            "blanket_sh",
+            MenardSTBlanketAndShieldMagnetProtection(config=config))
+        self.connect("totalbuild.radial_build.props.Ib blanket thickness",
+                     "blanket_sh.Ib blanket thickness")
+        self.connect("totalbuild.radial_build.props.Ib WC shield thickness",
+                     "blanket_sh.Ib WC shield thickness")
+        self.connect("totalbuild.radial_build.props.Ib WC VV shield thickness",
+                     "blanket_sh.Ib WC VV shield thickness")
+        self.connect("blanket_sh.Eff Sh+Bl n thickness", "magcryo.Δr_sh")
 
         # magnet heating model;
         # total power in blanket
@@ -142,15 +156,6 @@ class Machine(om.Group):
         self.connect("totalbuild.radial_build.ib.WC VV shield R_min",
                      "blanketgeom.Ib WC VV shield R_in")
 
-        self.add_subsystem(
-            "blanket_sh",
-            MenardSTBlanketAndShieldMagnetProtection(config=config))
-        self.connect("totalbuild.radial_build.props.Ib blanket thickness",
-                     "blanket_sh.Ib blanket thickness")
-        self.connect("totalbuild.radial_build.props.Ib WC shield thickness",
-                     "blanket_sh.Ib WC shield thickness")
-        self.connect("totalbuild.radial_build.props.Ib WC VV shield thickness",
-                     "blanket_sh.Ib WC VV shield thickness")
 
         self.add_subsystem("maglife", MenardMagnetLifetime(config=config))
         self.connect("q_n_IB.q_n", "maglife.q_n_IB")
@@ -164,6 +169,11 @@ if __name__ == "__main__":
     prob.model = Machine(config=uc)
 
     model = prob.model
+
+    ivc = om.IndepVarComp()
+    ivc.add_output("R0", 3.0, units="m")
+    ivc.add_output("aspect_ratio", 2.0)
+    prob.model.add_subsystem("P", ivc, promotes_outputs=["*"])
 
     prob.driver = om.ScipyOptimizeDriver()
     prob.driver.options['disp'] = True
@@ -206,16 +216,7 @@ if __name__ == "__main__":
     prob.setup()
     prob.check_config(checks=['unconnected_inputs'])
 
-    prob.set_val('R0', 3, units='m')
-    prob.set_val('aspect_ratio', 2.0)
     prob.set_val('totalbuild.magnets.n_coil', 18)
-    prob.set_val('totalbuild.magnets.windingpack.j_eff_max',
-                 160,
-                 units="MA/m**2")
-    prob.set_val('totalbuild.magnets.windingpack.f_HTS', 0.76)
-    prob.set_val("totalbuild.magnets.magnetstructure_props.Young's modulus",
-                 220,
-                 units="GPa")
 
     # initial values for design variables
     prob.set_val("totalbuild.magnets.f_im", 0.60)
@@ -241,7 +242,6 @@ if __name__ == "__main__":
     mpl.linear_solver = om.DirectSolver()
     mpl.linesearch = om.BoundsEnforceLS(bound_enforcement="scalar")
     mpl.linesearch.options["iprint"] = 2
-    mpl.linear_solver = om.DirectSolver()
 
     pplant = prob.model.pplant
     newton = pplant.nonlinear_solver = om.NewtonSolver(solve_subsystems=True)
@@ -250,13 +250,12 @@ if __name__ == "__main__":
     pplant.linear_solver = om.DirectSolver()
     pplant.linesearch = om.BoundsEnforceLS(bound_enforcement="scalar")
     pplant.linesearch.options["iprint"] = 2
-    pplant.linear_solver = om.DirectSolver()
 
     prob.run_driver()
 
     all_inputs = prob.model.list_inputs(values=True,
                                         print_arrays=True,
                                         units=True)
-    all_outputs = prob.model.list_outputs(values=True,
-                                          print_arrays=True,
-                                          units=True)
+    # all_outputs = prob.model.list_outputs(values=True,
+    #                                       print_arrays=True,
+    #                                       units=True)
