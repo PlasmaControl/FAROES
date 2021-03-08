@@ -171,7 +171,7 @@ if __name__ == "__main__":
 
     ivc = om.IndepVarComp()
     ivc.add_output("R0", 3.0, units="m")
-    ivc.add_output("aspect_ratio", 1.60)
+    ivc.add_output("aspect_ratio", 2.00)
     prob.model.add_subsystem("P", ivc, promotes_outputs=["*"])
 
     prob.driver = om.ScipyOptimizeDriver()
@@ -182,11 +182,11 @@ if __name__ == "__main__":
     prob.driver.options['optimizer'] = 'SLSQP'
 
     prob.model.add_design_var('totalbuild.CS R_max',
-                              lower=0.02,
-                              upper=0.05,
-                              ref=0.03,
+                              lower=0.20,
+                              upper=0.350,
+                              ref=0.10,
                               units='m')
-    prob.model.add_design_var('aspect_ratio', lower=1.6, upper=1.60, ref=1.6)
+    prob.model.add_design_var('aspect_ratio', lower=1.6, upper=5.00, ref=1.6)
     prob.model.add_design_var('totalbuild.magnets.f_im',
                               lower=0.50,
                               upper=0.95,
@@ -197,9 +197,9 @@ if __name__ == "__main__":
                               ref=100,
                               units="MA/m**2")
 
-    prob.model.add_objective('totalbuild.magnets.B0', scaler=-1)
+    # prob.model.add_objective('totalbuild.magnets.B0', scaler=-1)
     # prob.model.add_constraint('pplant.overall.P_net', lower=400)
-    # prob.model.add_objective('pplant.overall.P_net', scaler=-1)
+    prob.model.add_objective('pplant.overall.P_net', scaler=-1)
 
     # set constraints
     prob.model.add_constraint('totalbuild.magnets.constraint_max_stress',
@@ -229,17 +229,19 @@ if __name__ == "__main__":
     build.linear_solver = om.DirectSolver()
 
     # initial inputs for intermediate variables
-    prob.set_val("plasma.Hbalance.H", 1.70)
-    prob.set_val("plasma.Ip", 14., units="MA")
-    prob.set_val("plasma.<n_e>", 1.32, units="n20")
-    prob.set_val("plasma.radiation.rad.P_loss", 150, units="MW")
+    prob.set_val("plasma.Hbalance.H", 1.00)
+    prob.set_val("plasma.Ip", 10., units="MA")
+    prob.set_val("plasma.<n_e>", 1.0 , units="n20")
+    prob.set_val("plasma.radiation.rad.P_loss", 100, units="MW")
 
     mpl = prob.model.plasma
     newton = mpl.nonlinear_solver = om.NewtonSolver(solve_subsystems=True)
     newton.options['iprint'] = 2
     newton.options['maxiter'] = 20
     mpl.linear_solver = om.DirectSolver()
-    newton.linesearch = om.BoundsEnforceLS(bound_enforcement="scalar")
+    newton.linesearch = om.ArmijoGoldsteinLS(retry_on_analysis_error=True,
+            rho=0.5, c=0.10, method="Armijo", bound_enforcement="vector")
+    newton.linesearch.options["maxiter"] = 10
     newton.linesearch.options["iprint"] = 2
 
     pplant = prob.model.pplant
