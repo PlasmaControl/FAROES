@@ -8,18 +8,32 @@ from faroes.plasma_beta import ThermalBetaPoloidal
 class BootstrapMultiplier(om.ExplicitComponent):
     r"""
 
+    The 'bootstrap multiplier' is given by
+
     .. math::
 
         \max(1.2 - (q^* / q_{min} / 5), 0.6)
 
     Notes
     -----
-    I don't know where this expression comes from.
-    Implemented using a LogSumExp function
+    In terms of physics, I don't know where this expression comes from.
+
+    We'd like to approximate the `max` function in a way such that the first
+    derivatives are continuous. One way is to use a LogSumExp function,
 
     .. math::
 
        \max(a, b) \approx \log({base}^a + {base}^b) / \log({base})
+
+    but this turns out to be bad numerically as `base` needs to be a large
+    number, like 10^5. Instead we use
+
+    .. math::
+
+       \frac{1}{s f q_{min}} \log(1 + \exp((q_{min} f y_1 - q^*) s)) + y_1
+
+    where :math:`f = 5`, and :math:`y_1 = 0.6`, and :math:`s` is a sharpness
+    parameter.
 
     Inputs
     ------
@@ -33,48 +47,47 @@ class BootstrapMultiplier(om.ExplicitComponent):
     bs_mult : float
         Bootstrap multiplier
     """
+
     def setup(self):
-        self.y0 = 1.2
         self.f = 5
         self.y1 = 0.6
-        self.b = 10**5  # can be a fairly large arbitrary number
+        self.s = 2.0  # sharpness factor
         self.add_input("q_star", val=3.5)
         self.add_input("q_min", val=2.2)
         self.add_output("bs_mult")
 
     def compute(self, inputs, outputs):
-        y0 = self.y0
         f = self.f
         y1 = self.y1
-        b = self.b
+        s = self.s
         qs = inputs["q_star"]
         qm = inputs["q_min"]
 
-        if qs > 1000:
-            raise om.AnalysisError("q_star is greater than 1000")
-        if qm > 1000:
-            raise om.AnalysisError("q_min is greater than 1000")
+        if qs > 20:
+            raise om.AnalysisError("q_star = {qs} > 20")
+        if qs < 0:
+            raise om.AnalysisError("q_star = {qs} < 0")
 
-        e1 = y0 - (qs / qm) / f
-        e2 = y1
-        bs_mult = np.log(b**e1 + b**e2) / np.log(b)
+        e1 = qm * y1 * f - qs
+        bs_mult = 1 / (s * qm * f) * np.log(1 + np.exp(s * e1)) + y1
         outputs["bs_mult"] = bs_mult
 
     def setup_partials(self):
         self.declare_partials("bs_mult", ["q_star", "q_min"])
 
     def compute_partials(self, inputs, J):
-        y0 = self.y0
         f = self.f
         y1 = self.y1
-        b = self.b
+        s = self.s
         qs = inputs["q_star"]
         qm = inputs["q_min"]
-        J["bs_mult",
-          "q_star"] = -1 / (f * qm + f * qm * b**(y1 + qs / (f * qm) - y0))
-        J["bs_mult",
-          "q_min"] = b**y0 * qs / ((b**y0 + b**(qs /
-                                                (f * qm) + y1)) * f * qm**2)
+        J["bs_mult", "q_star"] = -1 / \
+            (f * qm + f * qm * np.exp(s * (qs - f * qm * y1)))
+
+        term1 = np.exp(s * f * qm * y1) * qm * y1 / \
+            (np.exp(qs * s) + np.exp(f * qm * y1 * s))
+        term2 = -1 / (s*f) * np.log(1 + np.exp(-qs * s + s*f*qm*y1))
+        J["bs_mult", "q_min"] = (term1 + term2)/qm**2
 
 
 class BootstrapFraction(om.ExplicitComponent):
@@ -102,6 +115,7 @@ class BootstrapFraction(om.ExplicitComponent):
     -----
     I don't know where this formula came from.
     """
+
     def setup(self):
         self.add_input("bs_mult", desc="Bootstrap multiplier")
         self.add_input("ε")
@@ -153,6 +167,7 @@ class BootstrapCurrent(om.Group):
     I_BS : float
         MA, Boostrap current
     """
+
     def setup(self):
         self.add_subsystem("beta_pth",
                            ThermalBetaPoloidal(),

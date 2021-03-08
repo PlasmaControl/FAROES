@@ -27,7 +27,7 @@ class TestBootstrapMultiplier(unittest.TestCase):
     def test_value(self):
         prob = self.prob
         prob.run_driver()
-        assert_near_equal(prob["bs_mult"], 1.00086, tolerance=1e-4)
+        assert_near_equal(prob["bs_mult"], 1.0018, tolerance=1e-4)
 
 
 class TestBootstrapFraction(unittest.TestCase):
