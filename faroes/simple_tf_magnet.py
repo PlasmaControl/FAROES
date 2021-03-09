@@ -440,6 +440,9 @@ class MagnetGeometry(om.ExplicitComponent):
         m, Outer 'length' of the outer structure of the inboard leg.
 
     """
+    WHOLE_TF_INVERT_ERROR = """Inner TF coil is out/in inverted:
+        r_ot = %s < r_is = %s"""
+
     def initialize(self):
         self.options.declare('config', default=None)
 
@@ -510,11 +513,18 @@ class MagnetGeometry(om.ExplicitComponent):
         f_im = inputs['f_im']
         r_ot = inputs['r_ot']
 
+        if r_ot < r_is:
+            raise om.AnalysisError(self.WHOLE_TF_INVERT_ERROR % (r_ot, r_is))
+
         r_iu = inputs['r_iu']
 
         n_coil = inputs['n_coil']
 
         r_it = r_ot - self.Δr_t
+
+        if r_it - 2 * e_gap < r_is:
+            raise om.AnalysisError("Not enough space for inner TF.")
+
         r_om = r_it - self.e_gap
 
         r_os = r_is + (r_ot - Δr_t - 2 * e_gap - r_is) * f_im
