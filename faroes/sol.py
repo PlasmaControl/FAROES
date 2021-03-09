@@ -250,7 +250,10 @@ class GoldstonHDSOL(om.ExplicitComponent):
         κ = inputs["κ"]
         Bt = inputs["Bt"]
         Ip = inputs["Ip"]
-        assert(Ip > 0)
+
+        if Ip <= 0:
+            raise om.AnalysisError(f"GoldstonHDSolWidth: Ip = {Ip} < 0")
+
         P_sol = inputs["P_sol"]
         Z_eff = inputs["Z_eff"]
         Z_bar = inputs["Z-bar"]
