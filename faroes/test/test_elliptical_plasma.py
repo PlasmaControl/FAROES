@@ -35,6 +35,7 @@ class TestKappaScaling(unittest.TestCase):
         prob.model.κ_ε_scaling_constants = [1.9, 1.9, 1.4]
         prob.model.κ_area_frac = 0.8
         prob.setup(force_alloc_complex=True)
+        prob.set_val('A', 1.6)
         self.prob = prob
 
     def test_partials(self):

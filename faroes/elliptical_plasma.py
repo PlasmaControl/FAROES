@@ -34,6 +34,7 @@ class MenardKappaScaling(om.ExplicitComponent):
     -----
     The fit coefficients are loaded from the configuration tree.
     """
+
     def initialize(self):
         self.options.declare('config', default=None)
 
@@ -84,7 +85,6 @@ class MenardKappaScaling(om.ExplicitComponent):
 
         if A <= 1:
             raise om.AnalysisError(f"Aspect ratio A ={A} < 1")
-
 
         κ = self.kappa_multiplier * self.marginal_kappa_epsilon_scaling(A)
         outputs["κ"] = κ
@@ -176,6 +176,7 @@ class EllipseLikeGeometry(om.ExplicitComponent):
     V : float
         m**3, Plasma volume
     """
+
     def setup(self):
         self.add_input("R0", units='m', desc="Major radius")
         self.add_input("A", desc="Aspect Ratio")
@@ -320,6 +321,7 @@ class EllipticalPlasmaGeometry(om.Group):
 
     Otherwise behaves like :code:`EllipseLikePlasma`.
     """
+
     def initialize(self):
         self.options.declare('config', default=None)
 
@@ -349,6 +351,7 @@ class MenardPlasmaGeometry(om.Group):
 
     Otherwise behaves like :code:`EllipseLikePlasma`.
     """
+
     def initialize(self):
         self.options.declare('config', default=None)
 
