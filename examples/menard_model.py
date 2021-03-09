@@ -182,7 +182,7 @@ if __name__ == "__main__":
     prob.driver.options['optimizer'] = 'SLSQP'
 
     prob.model.add_design_var('totalbuild.CS R_max',
-                              lower=0.20,
+                              lower=0.10,
                               upper=0.350,
                               ref=0.10,
                               units='m')
@@ -208,9 +208,9 @@ if __name__ == "__main__":
                               lower=0)
     prob.model.add_constraint(
         'totalbuild.magnets.constraint_wp_current_density', lower=0)
-    # prob.model.add_constraint('totalbuild.magnets.A_s', lower=0)
-    # prob.model.add_constraint('totalbuild.magnets.A_m', lower=0)
-    # prob.model.add_constraint('totalbuild.magnets.A_t', lower=0)
+    prob.model.add_constraint('totalbuild.magnets.A_s', lower=0)
+    prob.model.add_constraint('totalbuild.magnets.A_m', lower=0)
+    prob.model.add_constraint('totalbuild.magnets.A_t', lower=0)
 
     prob.setup()
     # prob.check_config(checks=['unconnected_inputs'])
@@ -220,13 +220,17 @@ if __name__ == "__main__":
     # initial values for design variables
     prob.set_val("totalbuild.magnets.f_im", 0.30)
     prob.set_val("totalbuild.magnets.j_HTS", 130, units="MA/m**2")
-    prob.set_val("totalbuild.CS R_max", 0.03, units="m")
+    prob.set_val("totalbuild.CS R_max", 0.20, units="m")
 
     build = prob.model.totalbuild
     newton = build.nonlinear_solver = om.NewtonSolver(solve_subsystems=True)
     newton.options['iprint'] = 2
     newton.options['maxiter'] = 20
     build.linear_solver = om.DirectSolver()
+    newton.linesearch = om.ArmijoGoldsteinLS(retry_on_analysis_error=True,
+            rho=0.5, c=0.10, method="Armijo", bound_enforcement="vector")
+    newton.linesearch.options["maxiter"] = 10
+    newton.linesearch.options["iprint"] = 2
 
     # initial inputs for intermediate variables
     prob.set_val("plasma.Hbalance.H", 1.00)
@@ -237,26 +241,26 @@ if __name__ == "__main__":
     mpl = prob.model.plasma
     newton = mpl.nonlinear_solver = om.NewtonSolver(solve_subsystems=True)
     newton.options['iprint'] = 2
-    newton.options['maxiter'] = 20
+    newton.options['maxiter'] = 30
     mpl.linear_solver = om.DirectSolver()
     newton.linesearch = om.ArmijoGoldsteinLS(retry_on_analysis_error=True,
-            rho=0.5, c=0.10, method="Armijo", bound_enforcement="vector")
-    newton.linesearch.options["maxiter"] = 10
+            rho=0.65, c=0.1, method="Armijo", bound_enforcement="vector")
+    newton.linesearch.options["maxiter"] = 30
     newton.linesearch.options["iprint"] = 2
 
     pplant = prob.model.pplant
     newton = pplant.nonlinear_solver = om.NewtonSolver(solve_subsystems=True)
     newton.options['iprint'] = 2
-    newton.options['maxiter'] = 20
+    newton.options['maxiter'] = 10
     pplant.linear_solver = om.DirectSolver()
     newton.linesearch = om.BoundsEnforceLS(bound_enforcement="scalar")
     newton.linesearch.options["iprint"] = 2
 
     prob.run_driver()
 
-    all_inputs = prob.model.list_inputs(values=True,
-                                        print_arrays=True,
-                                        units=True)
-    all_outputs = prob.model.list_outputs(values=True,
-                                          print_arrays=True,
-                                          units=True)
+    # all_inputs = prob.model.list_inputs(values=True,
+    #                                     print_arrays=True,
+    #                                     units=True)
+    # all_outputs = prob.model.list_outputs(values=True,
+    #                                       print_arrays=True,
+    #                                       units=True)
