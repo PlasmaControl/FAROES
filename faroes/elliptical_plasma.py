@@ -50,7 +50,7 @@ class MenardKappaScaling(om.ExplicitComponent):
         self.add_output("κ", lower=0, ref=2, desc="Elongation")
         self.add_output("κa", lower=0, ref=2, desc="Effective elongation")
 
-    def marginal_kappa_epsilon_scaling(self, t4_aspect_ratio):
+    def marginal_kappa_epsilon_scaling(self, aspect_ratio):
         """
         marginal kappa(epsilon) scaling
 
@@ -77,10 +77,15 @@ class MenardKappaScaling(om.ExplicitComponent):
         b = constants[0]
         c = constants[1]
         d = constants[2]
-        return b + c / (t4_aspect_ratio**d)
+        return b + c / (aspect_ratio**d)
 
     def compute(self, inputs, outputs):
         A = inputs["A"]
+
+        if A <= 1:
+            raise om.AnalysisError(f"Aspect ratio A ={A} < 1")
+
+
         κ = self.kappa_multiplier * self.marginal_kappa_epsilon_scaling(A)
         outputs["κ"] = κ
         outputs["κa"] = κ * self.κ_area_frac
