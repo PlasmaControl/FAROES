@@ -9,35 +9,51 @@ import numpy as np
 import unittest
 
 
-@unittest.skip
-class TestSquaredLengthSubtraction(unittest.TestCase):
+class TestDoubleSmoothShiftedReLu(unittest.TestCase):
     def setUp(self):
-        x = [1, 2, 3, 4]
-        y = [0, 1, 2, 0]
-
-        sas = util.SquaredLengthSubtraction()
+        dssrl = util.DoubleSmoothShiftedReLu(sharpness=25, x0=1.8, x1=2.25,
+                                             s1=0.5, s2=0.1, units_out="m")
         prob = om.Problem()
-        ivc = om.IndepVarComp()
-        ivc.add_output("a", val=x, units="m**2")
-        ivc.add_output("b", val=y, units="m**2")
-        prob.model.add_subsystem("ivc", ivc, promotes_outputs=["*"])
-        prob.model.add_subsystem("sas", sas, promotes_inputs=["*"])
-
+        prob.model = dssrl
         prob.setup(force_alloc_complex=True)
         self.prob = prob
 
-    def test_partials(self):
+    def test_values(self):
         prob = self.prob
-        check = prob.check_partials(out_stream=None, method='cs')
-        assert_check_partials(check)
+        prob.set_val("x", 2)
+        prob.run_driver()
+        expected = 0.100103
+        y = prob.get_val("y", units="m")
+        assert_near_equal(y, expected, tolerance=1e-5)
+
+        prob.set_val("x", 3)
+        prob.run_driver()
+        expected = 0.3
+        y = prob.get_val("y", units="m")
+        assert_near_equal(y, expected, tolerance=1e-5)
+
+class TestDoubleSmoothShiftedReLuNoUnits(unittest.TestCase):
+    def setUp(self):
+        dssrl = util.DoubleSmoothShiftedReLu(sharpness=25, x0=1.8, x1=2.25,
+                                             s1=0.5, s2=0.1)
+        prob = om.Problem()
+        prob.model = dssrl
+        prob.setup(force_alloc_complex=True)
+        self.prob = prob
 
     def test_values(self):
         prob = self.prob
+        prob.set_val("x", 2)
         prob.run_driver()
-        c = prob.get_val("sas.c", units="m**2")
-        expected = [1, 1, 1, 4]
-        assert_near_equal(c, expected)
+        expected = 0.100103
+        y = prob.get_val("y")
+        assert_near_equal(y, expected, tolerance=1e-5)
 
+        prob.set_val("x", 3)
+        prob.run_driver()
+        expected = 0.3
+        y = prob.get_val("y")
+        assert_near_equal(y, expected, tolerance=1e-5)
 
 class TestPolarAngleAndDistanceFromPoint(unittest.TestCase):
     def setUp(self):

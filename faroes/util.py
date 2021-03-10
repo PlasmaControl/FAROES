@@ -12,6 +12,59 @@ from plasmapy.particles import Particle, common_isotopes
 from plasmapy.particles import atomic_number, isotopic_abundance
 
 
+class DoubleSmoothShiftedReLu(om.Group):
+    r"""
+    Inputs
+    ------
+    x : float
+
+    Outputs:
+    y : float
+
+    Notes:
+    ------
+    Config options:
+    sharpness : float
+       sharpness of curve. typically >10
+    x0 : float
+       Point at which it turns up
+    s1 : float
+       First slope
+    x1 : float
+       Point at which it turns again. Must be larger than x0.
+    s2 : float
+       Second slope
+    """
+
+    def initialize(self):
+        self.options.declare("sharpness", default=10)
+        self.options.declare("x0", default=0)
+        self.options.declare("x1", default=1)
+        self.options.declare("s1", default=1)
+        self.options.declare("s2", default=0)
+        self.options.declare("units_out", default=None)
+
+    def setup(self):
+        b = self.options["sharpness"]
+        x0 = self.options["x0"]
+        x1 = self.options["x1"]
+        s1 = self.options["s1"]
+        s2 = self.options["s2"]
+        u_o = self.options["units_out"]
+        diff = s2 - s1
+
+        one = SmoothShiftedReLu(bignum=b, x0=x0)
+        two = SmoothShiftedReLu(bignum=b, x0=x1)
+        self.add_subsystem("one", one, promotes_inputs=["x"],
+                           promotes_outputs=[("y", "oney")])
+        self.add_subsystem("two", two, promotes_inputs=["x"],
+                           promotes_outputs=[("y", "twoy")])
+        self.add_subsystem("out", om.ExecComp(f"y = {s1} * oney + {diff} * twoy",
+                                              y={"units": u_o}),
+                           promotes_inputs=["*"],
+                           promotes_outputs=["y"])
+
+
 class SmoothShiftedReLu(om.ExplicitComponent):
     r"""
     Inputs
