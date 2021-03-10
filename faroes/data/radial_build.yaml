@@ -7,14 +7,38 @@ inboard:
   fw thickness: {value: 3, units: cm}
 
   # some designs have no room for an inboard breeding blanket
-  # (excel column T has 0; column W has 5 cm}
-  blanket thickness: {value: 0, units: cm}
+  blanket thickness:
+    model: doubleReLu
+    # options:
+    #   constant
+    #   doubleReLu : function of aspect ratio. See blanket.py.
+    constant: {value: 0, units: cm}
+    doubleReLu:
+      # parameters:
+      sharpness: 25
+      x0: 1.8
+      slope1: 0.5
+      x1: 2.25
+      slope2: 0.1
 
   # vacuum vessel true position tolerance
   vv tpt: &vvtpt {value: 5, units: mm}
 
   # tungsten carbide neutron shield thickness
-  WC n shield thickness: {value: 0.5, units: m}
+  WC n shield thickness:
+    model: doubleReLu
+    # options:
+    #   constant
+    #   doubleReLu : function of aspect ratio. See blanket.py.
+    constant: {value: 0.5, units: m}
+    doubleReLu:
+      # parameters:
+      sharpness: 25
+      thickness_0: {value: 0.5, units: m}
+      x0: 1.8
+      slope1: -0.25
+      x1: 2.25
+      slope2: -0.05
 
   # vacuum vessel shield thickness
   vv shell thickness: {value: 12, units: mm}

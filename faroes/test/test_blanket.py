@@ -6,6 +6,127 @@ from openmdao.utils.assert_utils import assert_check_partials
 from openmdao.utils.assert_utils import assert_near_equal
 
 import unittest
+from importlib import resources
+
+
+class TestMenardInboardBlanketFitDoubleReLu(unittest.TestCase):
+    def setUp(self):
+        prob = om.Problem()
+
+        resource_dir = "faroes.test.test_data"
+        resource_name = "blanket_thickness_1.yaml"
+        if resources.is_resource(resource_dir, resource_name):
+            with resources.path(resource_dir, resource_name) as path:
+                uc = UserConfigurator(user_data_file=path)
+
+        prob.model = blanket.MenardInboardBlanketFit(config=uc)
+
+        prob.setup(force_alloc_complex=True)
+        prob.set_val("A", 2.2)
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+    def test_values(self):
+        prob = self.prob
+        prob.run_driver()
+        th = prob.get_val("blanket_thickness", units="m")
+        expected = 0.19597
+        assert_near_equal(th, expected, tolerance=1e-4)
+
+
+class TestMenardInboardShieldFitDoubleReLu(unittest.TestCase):
+    def setUp(self):
+        prob = om.Problem()
+
+        resource_dir = "faroes.test.test_data"
+        resource_name = "blanket_thickness_1.yaml"
+        if resources.is_resource(resource_dir, resource_name):
+            with resources.path(resource_dir, resource_name) as path:
+                uc = UserConfigurator(user_data_file=path)
+
+        prob.model = blanket.MenardInboardShieldFit(config=uc)
+
+        prob.setup(force_alloc_complex=True)
+        prob.set_val("A", 2.2)
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+    def test_values(self):
+        prob = self.prob
+        prob.run_driver()
+        th = prob.get_val("shield_thickness", units="m")
+        expected = 0.402015
+        assert_near_equal(th, expected, tolerance=1e-4)
+
+
+class TestMenardInboardBlanketFitConstant(unittest.TestCase):
+    def setUp(self):
+        prob = om.Problem()
+
+        resource_dir = "faroes.test.test_data"
+        resource_name = "blanket_thickness_2.yaml"
+        if resources.is_resource(resource_dir, resource_name):
+            with resources.path(resource_dir, resource_name) as path:
+                uc = UserConfigurator(user_data_file=path)
+
+        prob.model = blanket.MenardInboardBlanketFit(config=uc)
+
+        prob.setup(force_alloc_complex=True)
+        prob.set_val("A", 2.2)
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+    def test_values(self):
+        prob = self.prob
+        prob.run_driver()
+        th = prob.get_val("blanket_thickness", units="m")
+        expected = 0.0
+        assert_near_equal(th, expected, tolerance=1e-4)
+
+
+class TestMenardInboardShieldFitConstant(unittest.TestCase):
+    def setUp(self):
+        prob = om.Problem()
+
+        resource_dir = "faroes.test.test_data"
+        resource_name = "blanket_thickness_2.yaml"
+        if resources.is_resource(resource_dir, resource_name):
+            with resources.path(resource_dir, resource_name) as path:
+                uc = UserConfigurator(user_data_file=path)
+
+        prob.model = blanket.MenardInboardShieldFit(config=uc)
+
+        prob.setup(force_alloc_complex=True)
+        prob.set_val("A", 2.2)
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+    def test_values(self):
+        prob = self.prob
+        prob.run_driver()
+        th = prob.get_val("shield_thickness", units="m")
+        expected = 0.5
+        assert_near_equal(th, expected, tolerance=1e-4)
 
 
 class TestMenardSTBlanketAndShieldMagnetProtection(unittest.TestCase):

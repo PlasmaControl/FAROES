@@ -1,0 +1,33 @@
+
+radial_build:
+  # From Menard's spreadsheet, roughly T413-T437
+  inboard:
+    blanket thickness:
+      model: doubleReLu
+      # options:
+      #   constant
+      #   doubleReLu : function of aspect ratio. See blanket.py.
+      constant: {value: 0, units: cm}
+      doubleReLu:
+        # parameters:
+        sharpness: 25
+        x0: 1.8
+        slope1: 0.5
+        x1: 2.25
+        slope2: 0.1
+
+    # tungsten carbide neutron shield thickness
+    WC n shield thickness:
+      model: doubleReLu
+      # options:
+      #   constant
+      #   doubleReLu : function of aspect ratio. See blanket.py.
+      constant: {value: 0.5, units: m}
+      doubleReLu:
+        # parameters:
+        sharpness: 25
+        thickness_0: {value: 0.5, units: m}
+        x0: 1.8
+        slope1: -0.25
+        x1: 2.25
+        slope2: -0.05

@@ -16,11 +16,11 @@ class Machine(om.Group):
 
         self.add_subsystem("plasma",
                            MenardPlasmaGeometry(config=config),
-                           promotes_inputs=["R0"])
+                           promotes_inputs=["R0", "A"])
 
         self.add_subsystem("radial_build",
                            MenardSTRadialBuild(config=config),
-                           promotes_inputs=['CS R_max'])
+                           promotes_inputs=['CS R_max', "A"])
 
         self.add_subsystem("magnets",
                            MagnetRadialBuild(config=config),
@@ -47,7 +47,7 @@ if __name__ == "__main__":
     prob.driver.options['optimizer'] = 'SLSQP'
     prob.driver.options['disp'] = True
 
-    prob.model.add_design_var('plasma.A', lower=1.6, upper=4.0, ref=2.0)
+    prob.model.add_design_var('A', lower=1.6, upper=2.0, ref=2.0)
     prob.model.add_design_var('CS R_max',
                               lower=0.02,
                               upper=0.2,

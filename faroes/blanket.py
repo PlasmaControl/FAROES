@@ -2,6 +2,159 @@ import numpy as np
 import openmdao.api as om
 from scipy.constants import pi
 from faroes.configurator import UserConfigurator, Accessor
+from faroes.util import DoubleSmoothShiftedReLu
+
+
+class MenardInboardBlanketFit(om.Group):
+    r"""
+    Blanket thickness as a function of A
+
+    Inputs
+    ------
+    A : float
+        Plasma aspect ratio
+
+    Outputs
+    -------
+    blanket_thickness: float
+        m, Inboard blanket thickness
+
+    Options
+    -------
+    Configuration options are either "constant" or "doubleReLu".
+    If the former, this function outputs the constant thickness regardless of
+    A.
+
+    If the latter:
+    The "smoothed, shifted double ReLu" function is
+    nearly flat at thickness=0 for :math:`A < x_0`, transitions to slope1 for
+    :math:`x_0 < A < x_1`, and transitions to slope2 for :math:`x_1 < A`.
+    The sharpness of the transitions is given by the "sharpness" parameter.
+
+    Notes
+    -----
+    This group needs to always be given "A" as an input, even when it's not
+    used. This is architectural decision made so that this is the only place
+    where there is an "if" statement related to the choice of options.
+    """
+    BAD_BL_MODEL = "Blanket thickness model %s not supported"
+
+    def initialize(self):
+        self.options.declare('config', default=None)
+
+    def setup(self):
+        if self.options['config'] is None:
+            raise ValueError("Configuration tree required.")
+        config = self.options["config"]
+
+        # set up blanket thickness
+        f = config.accessor(["radial_build", "inboard",
+                             "blanket thickness"])
+        model = f(["model"])
+        if model == "doubleReLu":
+            f = config.accessor(["radial_build", "inboard",
+                                 "blanket thickness", "doubleReLu"])
+            sharpness = f(["sharpness"])
+            x0 = f(["x0"])
+            x1 = f(["x1"])
+            s1 = f(["slope1"])
+            s2 = f(["slope2"])
+            bl = DoubleSmoothShiftedReLu(sharpness=sharpness, x0=x0,
+                                         x1=x1, s1=s1, s2=s2, units_out="m")
+            self.add_subsystem("bl", bl, promotes_inputs=[("x", "A")],
+                               promotes_outputs=[("y", "blanket_thickness")])
+
+        elif model == "constant":
+            f = config.accessor(["radial_build", "inboard",
+                                 "blanket thickness"])
+            thickness = f(["constant"], units="m")
+            self.add_subsystem("bl", om.ExecComp(f"y = {thickness} + 0 * A",
+                                                 y={"units": "m"}),
+                               promotes_inputs=["A"],
+                               promotes_outputs=[("y", "blanket_thickness")])
+        else:
+            raise ValueError(self.BAD_BL_MODEL % (model))
+
+
+class MenardInboardShieldFit(om.Group):
+    r"""
+    Inboard WC shield thickness as a function of A
+
+    Inputs
+    ------
+    A : float
+        Plasma aspect ratio
+
+    Outputs
+    -------
+    shield_thickness: float
+        m, Inboard shield thickness
+
+    Options
+    -------
+    Configuration options are either "constant" or "doubleReLu".
+    If the former, this function outputs the constant thickness regardless of
+    A.
+
+    If the latter:
+    The "smoothed, shifted double ReLu" function is
+    nearly flat at thickness:math:`=t_0` for :math:`A < x_0`,
+    transitions to slope1 for :math:`x_0 < A < x_1`,
+    and transitions to slope2 for :math:`x_1 < A`.
+    The sharpness of the transitions is given by the "sharpness" parameter.
+
+    Notes
+    -----
+    This group needs to always be given "A" as an input, even when it's not
+    used. This is architectural decision made so that this is the only place
+    where there is an "if" statement related to the choice of options.
+    """
+    BAD_SH_MODEL = "Shield thickness model %s not supported"
+
+    def initialize(self):
+        self.options.declare('config', default=None)
+
+    def setup(self):
+        if self.options['config'] is None:
+            raise ValueError("Configuration tree required.")
+        config = self.options["config"]
+
+        # set up blanket thickness
+        f = config.accessor(["radial_build", "inboard",
+                             "WC n shield thickness"])
+        model = f(["model"])
+        if model == "doubleReLu":
+            f = config.accessor(["radial_build", "inboard",
+                                 "WC n shield thickness", "doubleReLu"])
+            sharpness = f(["sharpness"])
+            t0 = f(["thickness_0"], units="m")
+            x0 = f(["x0"])
+            x1 = f(["x1"])
+            s1 = f(["slope1"])
+            s2 = f(["slope2"])
+            sh = DoubleSmoothShiftedReLu(sharpness=sharpness, x0=x0,
+                                         x1=x1, s1=s1, s2=s2, units_out="m")
+            self.add_subsystem("shd", sh, promotes_inputs=[("x", "A")],
+                               promotes_outputs=[("y", "change")])
+            self.add_subsystem("sh",
+                               om.ExecComp(f"shield_thickness = {t0} + change",
+                                           shield_thickness={
+                                               "units": "m", "lower": 0},
+                                           change={"units": "m"}),
+                               promotes_inputs=["change"],
+                               promotes_outputs=["shield_thickness"])
+
+        elif model == "constant":
+            f = config.accessor(["radial_build", "inboard",
+                                 "WC n shield thickness"])
+            thickness = f(["constant"], units="m")
+            self.add_subsystem("sh",
+                               om.ExecComp(f"y = {thickness} + 0 * A",
+                                           y={"units": "m"}),
+                               promotes_inputs=["A"],
+                               promotes_outputs=[("y", "shield_thickness")])
+        else:
+            raise ValueError(self.BAD_SH_MODEL % (model))
 
 
 class MenardSTBlanketAndShieldMagnetProtection(om.ExplicitComponent):
@@ -38,6 +191,7 @@ class MenardSTBlanketAndShieldMagnetProtection(om.ExplicitComponent):
     Shielding factor : float
         Factor by which shielding is better than the reference case
     """
+
     def initialize(self):
         self.options.declare('config', default=None)
 
@@ -184,6 +338,7 @@ class MenardSTBlanketAndShieldGeometry(om.ExplicitComponent):
         m**3, Total blanket estimated volume
 
     """
+
     def initialize(self):
         # there may be a bug in menard's calculation for shield volume
         # if so, change self.bug to 1
@@ -382,6 +537,7 @@ class InboardMidplaneNeutronFluxFromRing(om.ExplicitComponent):
     q_n : float
         MW / m**2, Neutron energy flux at inboard midplane
     """
+
     def setup(self):
         self.add_input("S", units="fs**-1", val=0)
         self.add_input("P_n", units="MW", val=0)
@@ -471,6 +627,7 @@ class MenardMagnetCoolingProperties(om.Group):
     FOM : float
         Figure of merit; amount that it is worse than Carnot
     """
+
     def initialize(self):
         self.options.declare("config", default=None)
 
@@ -503,6 +660,7 @@ class RefrigerationPerformance(om.ExplicitComponent):
     f : float
        Inverse of the Coefficient of Performance
     """
+
     def setup(self):
         self.add_input("T_cold", units="K")
         self.add_input("T_hot", units="K", val=300)
@@ -560,6 +718,7 @@ class MenardMagnetCooling(om.ExplicitComponent):
     P_c,el : float
         MW, Electric power to deliver cooling at cryogenic temperatures
     """
+
     def setup(self, ):
         self.add_input("Δr_sh", units="m")
         self.add_input("P_n", units="MW")
@@ -627,6 +786,7 @@ class MagnetCryoCoolingPower(om.Group):
     P_c,el : float
         MW, Electric power to deliver cooling at cryogenic temperatures
     """
+
     def initialize(self):
         self.options.declare("config", default=None)
 
@@ -686,6 +846,7 @@ class SimpleBlanketThermalPower(om.ExplicitComponent):
     P_th : float
         MW, Thermal power in blanket
     """
+
     def setup(self):
         self.add_input("P_n", units="MW")
         self.add_input("M_n",
@@ -718,6 +879,7 @@ class SimpleBlanketPower(om.Group):
     P_th : float
         MW, Thermal power in blanket
     """
+
     def initialize(self):
         self.options.declare("config", default=None)
 
@@ -753,6 +915,7 @@ class NeutronWallLoading(om.ExplicitComponent):
     f_peak_IB : float
         Inboard peaking factor
     """
+
     def setup(self):
         self.add_input("P_n", units="MW")
         self.add_input("SA", units="m**2")
@@ -812,6 +975,7 @@ class MenardMagnetLifetime(om.ExplicitComponent):
         year, Lifetime in full-power years
 
     """
+
     def initialize(self):
         self.options.declare('config', default=None)
 
@@ -851,9 +1015,13 @@ if __name__ == "__main__":
     prob = om.Problem()
     uc = UserConfigurator()
 
-    prob.model = MenardMagnetCoolingProperties(config=uc)
+    prob.model = MenardInboardShieldFit(config=uc)
     prob.setup(force_alloc_complex=True)
+    prob.set_val("A", 2.6)
     prob.run_driver()
+    # prob.model = MenardMagnetCoolingProperties(config=uc)
+    # prob.setup(force_alloc_complex=True)
+    # prob.run_driver()
     all_inputs = prob.model.list_inputs(values=True, units=True)
     all_outputs = prob.model.list_outputs(values=True, units=True)
 

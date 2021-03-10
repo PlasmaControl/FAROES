@@ -1,6 +1,9 @@
 import openmdao.api as om
 from faroes.configurator import UserConfigurator, Accessor
 
+from faroes.blanket import MenardInboardBlanketFit
+from faroes.blanket import MenardInboardShieldFit
+
 
 class RadialBuildProperties(om.Group):
     r"""Helper for the Menard ST radial build
@@ -22,16 +25,6 @@ class RadialBuildProperties(om.Group):
                        f,
                        "fw thickness",
                        component_name="Ib FW thickness",
-                       units="m")
-        acc.set_output(ivc,
-                       f,
-                       "blanket thickness",
-                       component_name="Ib blanket thickness",
-                       units="m")
-        acc.set_output(ivc,
-                       f,
-                       "WC n shield thickness",
-                       component_name="Ib WC shield thickness",
                        units="m")
         acc.set_output(ivc,
                        f,
@@ -120,6 +113,12 @@ class MenardSTRadialBuild(om.Group):
         config = self.options['config']
 
         self.add_subsystem('props', RadialBuildProperties(config=config))
+        self.add_subsystem("ib_blanket",
+                           MenardInboardBlanketFit(config=config),
+                           promotes_inputs=["A"])
+        self.add_subsystem("ib_shield",
+                           MenardInboardShieldFit(config=config),
+                           promotes_inputs=["A"])
         self.add_subsystem('ib',
                            MenardSTInboardRadialBuild(config=config),
                            promotes_inputs=["plasma R_min", "CS R_max"],
@@ -139,9 +138,8 @@ class MenardSTRadialBuild(om.Group):
         # connect inputs
         self.connect('props.Ib SOL width', ['ib.SOL width'])
         self.connect('props.Ib FW thickness', ['ib.FW thickness'])
-        self.connect('props.Ib blanket thickness', ['ib.blanket thickness'])
-        self.connect('props.Ib WC shield thickness',
-                     ['ib.WC shield thickness'])
+        self.connect('ib_blanket.blanket_thickness', ['ib.blanket thickness'])
+        self.connect('ib_shield.shield_thickness', ['ib.WC shield thickness'])
         self.connect('props.Ib WC VV shield thickness',
                      ['ib.WC VV shield thickness'])
 
@@ -160,6 +158,8 @@ class MenardSTInboardRadialBuild(om.ExplicitComponent):
 
     Inputs
     ------
+    A : float
+        Plasma aspect ratio
     plasma R_min : float
         m, Inner radius of plasma at midplane
     SOL width : float
@@ -433,3 +433,8 @@ if __name__ == "__main__":
     uc = UserConfigurator()
 
     prob.model = MenardSTRadialBuild(config=uc)
+    prob.setup()
+    prob.set_val("A", 2.6)
+    prob.run_driver()
+    all_inputs = prob.model.list_inputs(values=True, units=True)
+    all_outputs = prob.model.list_outputs(values=True, units=True)

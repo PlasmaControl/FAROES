@@ -35,7 +35,7 @@ class TotalRadialBuild(om.Group):
         self.add_subsystem(
             "radial_build",
             MenardSTRadialBuild(config=config),
-            promotes_inputs=['CS R_max', "plasma R_max", "plasma R_min"])
+            promotes_inputs=['CS R_max', "plasma R_max", "plasma R_min", "A"])
 
         self.add_subsystem(
             "magnets",
@@ -53,9 +53,9 @@ class TotalRadialBuild(om.Group):
         self.add_subsystem(
             "blanket_sh",
             MenardSTBlanketAndShieldMagnetProtection(config=config))
-        self.connect("radial_build.props.Ib blanket thickness",
+        self.connect("radial_build.ib_blanket.blanket_thickness",
                      "blanket_sh.Ib blanket thickness")
-        self.connect("radial_build.props.Ib WC shield thickness",
+        self.connect("radial_build.ib_shield.shield_thickness",
                      "blanket_sh.Ib WC shield thickness")
         self.connect("radial_build.props.Ib WC VV shield thickness",
                      "blanket_sh.Ib WC VV shield thickness")
@@ -100,7 +100,7 @@ class Machine(om.Group):
 
         self.add_subsystem("totalbuild",
                            TotalRadialBuild(config=config),
-                           promotes_inputs=["R0", "κ"])
+                           promotes_inputs=["R0", "κ", ("A", "aspect_ratio")])
 
         self.connect('plasmageom.R_max', ['totalbuild.plasma R_max'])
         self.connect('plasmageom.R_min', ['totalbuild.plasma R_min'])
@@ -174,10 +174,10 @@ if __name__ == "__main__":
     ivc.add_output("aspect_ratio", 2.00)
     prob.model.add_subsystem("P", ivc, promotes_outputs=["*"])
 
-    prob.driver = om.ScipyOptimizeDriver()
-    prob.driver.options['disp'] = True
-    # prob.driver = om.pyOptSparseDriver()
-    # prob.driver.options['print_results'] = True
+    # prob.driver = om.ScipyOptimizeDriver()
+    # prob.driver.options['disp'] = True
+    prob.driver = om.pyOptSparseDriver()
+    prob.driver.options['print_results'] = True
 
     prob.driver.options['optimizer'] = 'SLSQP'
 
@@ -244,9 +244,10 @@ if __name__ == "__main__":
     newton.options['maxiter'] = 30
     mpl.linear_solver = om.DirectSolver()
     newton.linesearch = om.ArmijoGoldsteinLS(retry_on_analysis_error=True,
-            rho=0.65, c=0.1, method="Armijo", bound_enforcement="vector")
+            rho=0.8, c=0.1, method="Armijo", bound_enforcement="vector")
     newton.linesearch.options["maxiter"] = 30
     newton.linesearch.options["iprint"] = 2
+    newton.linesearch.options["print_bound_enforce"] = False
 
     pplant = prob.model.pplant
     newton = pplant.nonlinear_solver = om.NewtonSolver(solve_subsystems=True)
@@ -261,6 +262,6 @@ if __name__ == "__main__":
     # all_inputs = prob.model.list_inputs(values=True,
     #                                     print_arrays=True,
     #                                     units=True)
-    # all_outputs = prob.model.list_outputs(values=True,
-    #                                       print_arrays=True,
-    #                                       units=True)
+    all_outputs = prob.model.list_outputs(values=True,
+                                          print_arrays=True,
+                                          units=True)

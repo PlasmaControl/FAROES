@@ -13,7 +13,14 @@ from plasmapy.particles import atomic_number, isotopic_abundance
 
 
 class DoubleSmoothShiftedReLu(om.Group):
-    r"""
+    r"""Three sloped regions, with smooth transitions.
+
+    The left region has value and slope of 0,
+    The center region has one slope,
+    and the right region has another slope.
+
+    .. image :: images/smooth_shifted_double_relu.png
+
     Inputs
     ------
     x : float
@@ -59,8 +66,9 @@ class DoubleSmoothShiftedReLu(om.Group):
                            promotes_outputs=[("y", "oney")])
         self.add_subsystem("two", two, promotes_inputs=["x"],
                            promotes_outputs=[("y", "twoy")])
-        self.add_subsystem("out", om.ExecComp(f"y = {s1} * oney + {diff} * twoy",
-                                              y={"units": u_o}),
+        self.add_subsystem("out",
+                           om.ExecComp(f"y = {s1} * oney + {diff} * twoy",
+                                       y={"units": u_o}),
                            promotes_inputs=["*"],
                            promotes_outputs=["y"])
 

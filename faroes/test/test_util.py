@@ -32,6 +32,7 @@ class TestDoubleSmoothShiftedReLu(unittest.TestCase):
         y = prob.get_val("y", units="m")
         assert_near_equal(y, expected, tolerance=1e-5)
 
+
 class TestDoubleSmoothShiftedReLuNoUnits(unittest.TestCase):
     def setUp(self):
         dssrl = util.DoubleSmoothShiftedReLu(sharpness=25, x0=1.8, x1=2.25,
@@ -54,6 +55,7 @@ class TestDoubleSmoothShiftedReLuNoUnits(unittest.TestCase):
         expected = 0.3
         y = prob.get_val("y")
         assert_near_equal(y, expected, tolerance=1e-5)
+
 
 class TestPolarAngleAndDistanceFromPoint(unittest.TestCase):
     def setUp(self):
