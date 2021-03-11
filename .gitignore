@@ -4,6 +4,7 @@ n2.html
 openmdao_checks.out
 examples/*.html
 examples/*.out
+faroes/*.out
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
