@@ -59,7 +59,7 @@ class RadialBuildProperties(om.Group):
                        component_name="Ob shield thickness",
                        units="m")
         acc.set_output(ivc, f, "TF-cryostat thickness", units="m")
-        self.add_subsystem("ivc", ivc, promotes=["*"])
+        self.add_subsystem("ivc", ivc, promotes_outputs=["*"])
 
 
 class MenardSTOuterMachineRadialBuild(om.ExplicitComponent):
