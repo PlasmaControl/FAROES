@@ -174,16 +174,16 @@ if __name__ == "__main__":
     ivc.add_output("aspect_ratio", 2.00)
     prob.model.add_subsystem("P", ivc, promotes_outputs=["*"])
 
-    # prob.driver = om.ScipyOptimizeDriver()
-    # prob.driver.options['disp'] = True
-    prob.driver = om.pyOptSparseDriver()
-    prob.driver.options['print_results'] = True
+    prob.driver = om.ScipyOptimizeDriver()
+    prob.driver.options['disp'] = True
+    # prob.driver = om.pyOptSparseDriver()
+    # prob.driver.options['print_results'] = True
 
     prob.driver.options['optimizer'] = 'SLSQP'
 
     prob.model.add_design_var('totalbuild.CS R_max',
                               lower=0.10,
-                              upper=0.350,
+                              upper=0.200,
                               ref=0.10,
                               units='m')
     prob.model.add_design_var('aspect_ratio', lower=1.6, upper=5.00, ref=1.6)
@@ -220,7 +220,7 @@ if __name__ == "__main__":
     # initial values for design variables
     prob.set_val("totalbuild.magnets.f_im", 0.30)
     prob.set_val("totalbuild.magnets.j_HTS", 130, units="MA/m**2")
-    prob.set_val("totalbuild.CS R_max", 0.20, units="m")
+    prob.set_val("totalbuild.CS R_max", 0.15, units="m")
 
     build = prob.model.totalbuild
     newton = build.nonlinear_solver = om.NewtonSolver(solve_subsystems=True)
@@ -230,22 +230,26 @@ if __name__ == "__main__":
     newton.linesearch = om.ArmijoGoldsteinLS(retry_on_analysis_error=True,
             rho=0.5, c=0.10, method="Armijo", bound_enforcement="vector")
     newton.linesearch.options["maxiter"] = 10
-    newton.linesearch.options["iprint"] = 2
+    newton.linesearch.options["iprint"] = 0
 
     # initial inputs for intermediate variables
-    prob.set_val("plasma.Hbalance.H", 1.00)
-    prob.set_val("plasma.Ip", 10., units="MA")
-    prob.set_val("plasma.<n_e>", 1.0 , units="n20")
-    prob.set_val("plasma.radiation.rad.P_loss", 100, units="MW")
+    prob.set_val("plasma.Hbalance.H", 1.30)
+    prob.set_val("plasma.Ip", 12., units="MA")
+    prob.set_val("plasma.<n_e>", 1.2 , units="n20")
+    prob.set_val("plasma.radiation.rad.P_loss", 120, units="MW")
 
     mpl = prob.model.plasma
     newton = mpl.nonlinear_solver = om.NewtonSolver(solve_subsystems=True)
     newton.options['iprint'] = 2
-    newton.options['maxiter'] = 30
+    newton.options['maxiter'] = 300
+    newton.options['rtol'] = 1e-4
+    newton.options['atol'] = 1e-4
+    newton.options['stall_tol'] = 1e-5
+    newton.options['stall_limit'] = 10
     mpl.linear_solver = om.DirectSolver()
     newton.linesearch = om.ArmijoGoldsteinLS(retry_on_analysis_error=True,
-            rho=0.8, c=0.1, method="Armijo", bound_enforcement="vector")
-    newton.linesearch.options["maxiter"] = 30
+            rho=0.7, c=0.04, method="Armijo", bound_enforcement="vector")
+    newton.linesearch.options["maxiter"] = 40
     newton.linesearch.options["iprint"] = 2
     newton.linesearch.options["print_bound_enforce"] = False
 
@@ -255,13 +259,13 @@ if __name__ == "__main__":
     newton.options['maxiter'] = 10
     pplant.linear_solver = om.DirectSolver()
     newton.linesearch = om.BoundsEnforceLS(bound_enforcement="scalar")
-    newton.linesearch.options["iprint"] = 2
+    newton.linesearch.options["iprint"] = 0
 
     prob.run_driver()
 
-    # all_inputs = prob.model.list_inputs(values=True,
-    #                                     print_arrays=True,
-    #                                     units=True)
+    all_inputs = prob.model.list_inputs(values=True,
+                                        print_arrays=True,
+                                        units=True)
     all_outputs = prob.model.list_outputs(values=True,
                                           print_arrays=True,
                                           units=True)
