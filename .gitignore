@@ -5,6 +5,7 @@ openmdao_checks.out
 examples/*.html
 examples/*.out
 faroes/*.out
+*.sql
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
