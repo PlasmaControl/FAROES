@@ -135,10 +135,15 @@ class EllipseLikeGeometry(om.ExplicitComponent):
     where :math:`L_\mathrm{pol}` is the poloidal circumference and :math:`S_c`
     is the poloidal cross-section area.
 
+    Note that R0, a, and A must be consistent with each other. The three are
+    inputs are specified to avoid recomputation and for ease of computation.
+
     Inputs
     ------
     R0 : float
         m, major radius
+    a : float
+        m, minor radius
     A : float
         Aspect ratio
     κ : float
@@ -150,12 +155,6 @@ class EllipseLikeGeometry(om.ExplicitComponent):
 
     Outputs
     -------
-    a : float
-        m, minor radius
-    R_min : float
-        m, innermost plasma radius at midplane
-    R_max : float
-        m, outermost plasma radius at midplane
     b : float
         m, minor radius in vertical direction
     δ : float
@@ -180,10 +179,10 @@ class EllipseLikeGeometry(om.ExplicitComponent):
     def setup(self):
         self.add_input("R0", units='m', desc="Major radius")
         self.add_input("A", desc="Aspect Ratio")
+        self.add_input("a", units='m', desc="Minor radius")
         self.add_input("κ", desc="Elongation")
         self.add_input("κa", desc="Effective elongation")
 
-        self.add_output("a", units='m', desc="Minor radius")
         self.add_output("b", units='m', desc="Minor radius height")
         self.add_output("ε", desc="Inverse aspect ratio")
         self.add_output("δ", desc="Triangularity")
@@ -211,34 +210,36 @@ class EllipseLikeGeometry(om.ExplicitComponent):
                         lower=0,
                         ref=10,
                         desc="Simplified poloidal circumference for testing")
-        self.add_output("R_min",
-                        units='m',
-                        desc="Inner radius of plasma at midplane")
-        self.add_output("R_max",
-                        units='m',
-                        desc="outer radius of plasma at midplane")
+        # turned off because these would be 'recomputations'
+        # self.add_output("R_min",
+        #                 units='m',
+        #                 desc="Inner radius of plasma at midplane")
+        # self.add_output("R_max",
+        #                 units='m',
+        #                 desc="outer radius of plasma at midplane")
 
     def compute(self, inputs, outputs):
         outputs["δ"] = 0  # ellipse-like plasma approximation
         R0 = inputs["R0"]
         A = inputs["A"]
+        a = inputs["a"]
         κ = inputs["κ"]
         κa = inputs["κa"]
-        a = R0 / A
 
         b = κ * a
         L_pol = util.ellipse_perimeter(a[0], b[0])
         L_pol_simple = util.ellipse_perimeter_simple(a[0], b[0])
         sa = 2 * π * R0 * L_pol
 
-        outputs["a"] = a
         outputs["ε"] = 1 / A
         outputs["b"] = b
         outputs["full_plasma_height"] = 2 * b
         outputs["surface area"] = sa
 
-        outputs["R_min"] = R0 - a
-        outputs["R_max"] = R0 + a
+        # turned off because these would be 'recomputations'
+        # outputs["R_min"] = R0 - a
+        # outputs["R_max"] = R0 + a
+
         outputs["L_pol"] = L_pol
         outputs["L_pol_simple"] = L_pol_simple
 
@@ -247,70 +248,53 @@ class EllipseLikeGeometry(om.ExplicitComponent):
         outputs["V"] = V
 
     def setup_partials(self):
-        self.declare_partials("a", ["R0", "A"], method="exact")
-        self.declare_partials('R_min', ['R0', 'A'], method="exact")
-        self.declare_partials('R_max', ['R0', 'A'], method="exact")
+        self.declare_partials("b", ["a", "κ"])
+        self.declare_partials("ε", ["A"])
+        self.declare_partials("full_plasma_height", ["a", "κ"])
+        self.declare_partials("L_pol", ["a", "κ"], method="exact")
+        self.declare_partials("L_pol_simple", ["a", "κ"], method="exact")
+        self.declare_partials("surface area", ["R0", "a", "κ"], method="exact")
 
-        self.declare_partials("b", ["R0", "A", "κ"], method="exact")
-        self.declare_partials("ε", ["A"], method="exact")
-        self.declare_partials("full_plasma_height", ["R0", "A", "κ"],
-                              method="exact")
-        self.declare_partials("L_pol", ["R0", "A", "κ"], method="exact")
-        self.declare_partials("L_pol_simple", ["R0", "A", "κ"], method="exact")
-        self.declare_partials("surface area", ["R0", "A", "κ"], method="exact")
-
-        self.declare_partials("V", ["R0", "A", "κa"], method="exact")
-        self.declare_partials("S_c", ["R0", "A", "κa"], method="exact")
+        self.declare_partials("V", ["R0", "a", "κa"], method="exact")
+        self.declare_partials("S_c", ["a", "κa"], method="exact")
 
     def compute_partials(self, inputs, J):
         A = inputs["A"]
+        a = inputs["a"]
         R0 = inputs["R0"]
         κ = inputs["κ"]
         κa = inputs["κa"]
-        a = R0 / A
         b = κ * a
         L_pol = util.ellipse_perimeter(a[0], b[0])
 
-        J["R_min", "R0"] = 1 - 1 / A
-        J["R_min", "A"] = R0 / A**2
-        J["R_max", "R0"] = 1 + 1 / A
-        J["R_max", "A"] = -R0 / A**2
+        J["b", "a"] = κ
+        J["b", "κ"] = a
+        J["full_plasma_height", "a"] = 2 * κ
+        J["full_plasma_height", "κ"] = 2 * a
 
-        J["a", "R0"] = 1 / A
-        J["a", "A"] = -R0 / A**2
-        J["b", "R0"] = κ / A
-        J["b", "A"] = -κ * R0 / A**2
-        J["b", "κ"] = R0 / A
-        J["full_plasma_height", "R0"] = 2 * J["b", "R0"]
-        J["full_plasma_height", "A"] = 2 * J["b", "A"]
-        J["full_plasma_height", "κ"] = 2 * J["b", "κ"]
         J["ε", "A"] = -1 / A**2
 
         dL_pol = util.ellipse_perimeter_derivatives(a[0], b[0])
         dL_pol_da = dL_pol["a"]
         dL_pol_db = dL_pol["b"]
-        J["L_pol", "A"] = dL_pol_da * J["a", "A"] + dL_pol_db * J["b", "A"]
-        J["L_pol", "R0"] = dL_pol_da * J["a", "R0"] + dL_pol_db * J["b", "R0"]
+        J["L_pol", "a"] = dL_pol_da + dL_pol_db * J["b", "a"]
         J["L_pol", "κ"] = dL_pol_db * J["b", "κ"]
 
         dL_pols = util.ellipse_perimeter_simple_derivatives(a[0], b[0])
         dL_pols_da = dL_pols["a"]
         dL_pols_db = dL_pols["b"]
-        J["L_pol_simple",
-          "A"] = dL_pols_da * J["a", "A"] + dL_pols_db * J["b", "A"]
-        J["L_pol_simple",
-          "R0"] = dL_pols_da * J["a", "R0"] + dL_pols_db * J["b", "R0"]
+        J["L_pol_simple", "a"] = dL_pols_da + dL_pols_db * J["b", "a"]
         J["L_pol_simple", "κ"] = dL_pols_db * J["b", "κ"]
 
-        J["surface area", "A"] = 2 * π * R0 * J["L_pol", "A"]
-        J["surface area", "R0"] = 2 * π * R0 * J["L_pol", "R0"] + 2 * π * L_pol
+        J["surface area", "a"] = 2 * π * R0 * J["L_pol", "a"]
+        J["surface area", "R0"] = 2 * π * L_pol
         J["surface area", "κ"] = 2 * π * R0 * J["L_pol", "κ"]
 
-        J["V", "R0"] = 2 * π**2 * κa * 3 * R0**2 / A**2
-        J["V", "A"] = 2 * π**2 * κa * -2 * R0**3 / A**3
-        J["V", "κa"] = 2 * π**2 * a**2 * R0
-        J["S_c", "R0"] = 2 * π * R0 * κa / A**2
-        J["S_c", "A"] = -2 * π * R0**2 * κa / A**3
+        J["V", "R0"] = 2 * a**2 * π**2 * κa
+        J["V", "a"] = 4 * a * π**2 * R0 * κa
+        J["V", "κa"] = 2 * a**2 * π**2 * R0
+
+        J["S_c", "a"] = π * 2 * a * κa
         J["S_c", "κa"] = π * a**2
 
 
@@ -339,7 +323,7 @@ class EllipticalPlasmaGeometry(om.Group):
 
         self.add_subsystem("geom",
                            EllipseLikeGeometry(),
-                           promotes_inputs=["R0", "A", "κ", "κa"],
+                           promotes_inputs=["R0", "a", "A", "κ", "κa"],
                            promotes_outputs=["*"])
 
 
@@ -363,7 +347,7 @@ class MenardPlasmaGeometry(om.Group):
                            promotes_outputs=["κ", "κa"])
         self.add_subsystem("geom",
                            EllipseLikeGeometry(),
-                           promotes_inputs=["R0", "A", "κ", "κa"],
+                           promotes_inputs=["R0", "a", "A", "κ", "κa"],
                            promotes_outputs=["*"])
 
 
@@ -377,6 +361,7 @@ if __name__ == "__main__":
 
     prob.set_val('R0', 3, 'm')
     prob.set_val('A', 1.6)
+    prob.set_val('a', 1.875)
     prob.set_val('κ', 2.7)
     prob.set_val('κa', 2.7)
 

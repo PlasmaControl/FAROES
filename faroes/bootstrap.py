@@ -63,8 +63,8 @@ class BootstrapMultiplier(om.ExplicitComponent):
         qs = inputs["q_star"]
         qm = inputs["q_min"]
 
-        if qs > 40:
-            raise om.AnalysisError(f"q_star = {qs} > 40")
+        if qs > 80:
+            raise om.AnalysisError(f"q_star = {qs} > 80")
         if qs < 0:
             raise om.AnalysisError(f"q_star = {qs} < 0")
 

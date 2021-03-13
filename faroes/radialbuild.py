@@ -18,8 +18,8 @@ class RadialBuildProperties(om.Group):
         f = acc.accessor(["radial_build", "inboard"])
         acc.set_output(ivc,
                        f,
-                       "SOL width",
-                       component_name="Ib SOL width",
+                       "vv shielding thickness",
+                       component_name="Ib WC VV shield thickness",
                        units="m")
         acc.set_output(ivc,
                        f,
@@ -28,8 +28,8 @@ class RadialBuildProperties(om.Group):
                        units="m")
         acc.set_output(ivc,
                        f,
-                       "vv shielding thickness",
-                       component_name="Ib WC VV shield thickness",
+                       "SOL width",
+                       component_name="Ib SOL width",
                        units="m")
 
         f = acc.accessor(["radial_build", "outboard"])
@@ -420,6 +420,7 @@ class MenardSTOuterMachineRadialBuild(om.ExplicitComponent):
         self.declare_partials("cryostat R_out", "Ob TF R_out", val=1)
         self.declare_partials("cryostat R_out", "TF-cryostat thickness", val=1)
 
+
 class STRadialBuild(om.Group):
     r"""The high-level radial build for the device.
 
@@ -451,7 +452,7 @@ class STRadialBuild(om.Group):
     CS R_max : float
         m, CS outer radius
 
-    TF R_max : float
+    Ib TF R_max : float
         m, Inboard TF leg outer radius
     a : float
         m, Plasma minor radius
@@ -492,6 +493,7 @@ class STRadialBuild(om.Group):
                                             ("TF R_max", "Ib TF R_max")],
                            promotes_outputs=[("TF R_min", "Ib TF R_min"),
                                              "plasma R_max",
+                                             "plasma R_min",
                                              "R0", "A"])
         self.add_subsystem('ob',
                            MenardSTOutboardRadialBuild(config=config),
@@ -519,6 +521,7 @@ class STRadialBuild(om.Group):
         self.connect('props.TF-cryostat thickness',
                      ['om.TF-cryostat thickness'])
 
+
 class MenardSTRadialBuild(om.Group):
     r"""The high-level radial build for the device.
 
@@ -535,7 +538,7 @@ class MenardSTRadialBuild(om.Group):
     def setup(self):
         config = self.options['config']
 
-        self.add_subsystem('strb',
+        self.add_subsystem('ST_radial_build',
                            STRadialBuild(config=config),
                            promotes_inputs=["CS R_max",
                                             "Ib TF R_max",
@@ -550,8 +553,10 @@ class MenardSTRadialBuild(om.Group):
                            MenardInboardShieldFit(config=config),
                            promotes_inputs=["A"])
 
-        self.connect('ib_shield.shield_thickness', ['strb.ib.WC shield thickness'])
-        self.connect('ib_blanket.blanket_thickness', ['strb.ib.blanket thickness'])
+        self.connect('ib_shield.shield_thickness', [
+                     'ST_radial_build.ib.WC shield thickness'])
+        self.connect('ib_blanket.blanket_thickness', [
+                     'ST_radial_build.ib.blanket thickness'])
 
 
 if __name__ == "__main__":
@@ -566,20 +571,10 @@ if __name__ == "__main__":
             config = self.options['config']
             self.add_subsystem("mrb", MenardSTRadialBuild(config=config))
 
-            # balance the desired A and the actual A by changing a
-            #ades = om.ExecComp("Ades = 1.6")
-            #Abal = om.BalanceComp()
-            #Abal.add_balance('a', normalize=True, units="m")
-            #self.add_subsystem("Ades", ades)
-            #self.add_subsystem("Abalance", subsys=Abal)
-            #self.connect("Abalance.a", "mrb.strb.ib.a")
-            #self.connect("Ades.Ades", "Abalance.lhs:a")
-            #self.connect("mrb.A", "Abalance.rhs:a")
-
             # balance the desired R0 and the actual R0 by changing a
-            Rdes = om.ExecComp("Rdes = 3.0")
+            Rdes = om.ExecComp("Rdes = 3.0", Rdes={"units": "m"})
             Rbal = om.BalanceComp()
-            Rbal.add_balance('a', normalize=True, units="m")
+            Rbal.add_balance('a', normalize=True, units="m", eq_units="m")
             self.add_subsystem("Rdes", Rdes)
             self.add_subsystem("Rbalance", subsys=Rbal)
             self.connect("Rbalance.a", "mrb.a")

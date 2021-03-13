@@ -180,6 +180,10 @@ class ConfinementTimeScaling(om.ExplicitComponent):
     def compute(self, inputs, outputs):
         τe = self.constant
 
+        Bt = inputs["Bt"]
+        if Bt < 0:
+            raise om.AnalysisError(f"Magnetic field strength negative, {Bt} T")
+
         Ip = inputs["Ip"]
         if Ip > 1000:
             raise om.AnalysisError(f"Plasma current is too large, {Ip} MA")

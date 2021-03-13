@@ -18,9 +18,10 @@ class TestSimpleTFMagnet(unittest.TestCase):
         prob.driver.options['optimizer'] = 'SLSQP'
         prob.driver.options['disp'] = False
 
-        prob.model.add_design_var('r_is', lower=0.03, upper=0.4, units="m")
-        prob.model.add_design_var('f_im', lower=0.05, upper=0.95)
-        prob.model.add_design_var('j_HTS', lower=0, upper=300, units="MA/m**2")
+        prob.model.add_design_var('r_is', lower=0.10, upper=0.4, units="m")
+        prob.model.add_design_var('Δr_s', lower=0.01, upper=0.95, units="m")
+        prob.model.add_design_var('Δr_m', lower=0.01, upper=0.95, units="m")
+        prob.model.add_design_var('j_HTS', lower=0, upper=250, units="MA/m**2")
 
         prob.model.add_objective('B0', scaler=-1)
 
@@ -28,21 +29,25 @@ class TestSimpleTFMagnet(unittest.TestCase):
         prob.model.add_constraint('constraint_max_stress', lower=0)
         prob.model.add_constraint('constraint_B_on_coil', lower=0)
         prob.model.add_constraint('constraint_wp_current_density', lower=0)
-        prob.model.add_constraint('A_s', lower=0)
+        prob.model.add_constraint('Ib TF R_out', equals=0.405, units="m")
+        prob.model.add_constraint('A_s', lower=0, units='m**2')
 
         prob.setup()
 
-        prob.set_val('R0', 3)
+        prob.set_val('R0', 3, units='m')
+        prob.set_val('r_is', 0.2, units='m')
+        prob.set_val('Δr_s', 0.1, units='m')
+        prob.set_val('Δr_m', 0.1, units='m')
         prob.set_val('n_coil', 18)
-        prob.set_val('r_is', 0.1)
-        prob.set_val('geometry.r_ot', 0.405)
-        prob.set_val('geometry.r_iu', 8.025)
+        prob.set_val('geometry.r_iu', 8.025, units='m')
 
-        prob.set_val('windingpack.max_stress', 525, units="MPa")
-        prob.set_val('windingpack.j_eff_max', 160)
+        prob.set_val('windingpack.max_stress', 525, units='MPa')
+        prob.set_val("windingpack.Young's modulus", 175, units='GPa')
+        prob.set_val('windingpack.max_strain', 0.003)
+        prob.set_val('windingpack.j_eff_max', 160, units='MA/m**2')
         prob.set_val('windingpack.f_HTS', 0.76)
-        prob.set_val('windingpack.B_max', 18, units="T")
-        prob.set_val("magnetstructure_props.Young's modulus", 220)
+        prob.set_val('windingpack.B_max', 18, units='T')
+        prob.set_val("magnetstructure_props.Young's modulus", 220, units='GPa')
 
         prob.run_driver()
 
@@ -89,9 +94,9 @@ class TestMagnetGeometry(unittest.TestCase):
         prob.model = magnet.MagnetGeometry()
         prob.setup(force_alloc_complex=True)
         prob['r_is'] = 0.5 * nprand.random()
-        prob['f_im'] = nprand.random()
+        prob['Δr_m'] = nprand.random()
+        prob['Δr_s'] = nprand.random()
         prob['r_iu'] = 8 + nprand.random()
-        prob['r_ot'] = 1.5 + nprand.random()
         prob['n_coil'] = 18
         self.prob = prob
 

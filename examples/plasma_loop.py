@@ -19,15 +19,15 @@ class Machine(om.Group):
 
         self.add_subsystem("plasmageom",
                            MenardPlasmaGeometry(config=config),
-                           promotes_inputs=["R0", "A"],
+                           promotes_inputs=["R0", "A", "a"],
                            promotes_outputs=["ε", "κa", "V"])
 
         mpl = MenardPlasmaLoop(config=config)
         self.add_subsystem("plasma", mpl,
                            promotes_inputs=["R0", "Bt", "ε",
+                                            ("minor_radius", "a"),
                                             "κa", "V",
                                             ("aspect_ratio", "A")])
-        self.connect("plasmageom.a", "plasma.minor_radius")
         self.connect("plasmageom.L_pol", "plasma.L_pol")
         self.connect("plasmageom.L_pol_simple", "plasma.L_pol_simple")
 
@@ -44,6 +44,7 @@ if __name__ == "__main__":
 
     prob.set_val('R0', 3, units='m')
     prob.set_val('A', 1.6)
+    prob.set_val('a', 1.875)
     prob.set_val('Bt', 2.094, units='T')
 
     # initial inputs

@@ -16,6 +16,7 @@ class TestEllipseLikeGeometry(unittest.TestCase):
 
         prob.setup(force_alloc_complex=True)
         prob.set_val('A', 1.6)
+        prob.set_val('a', 1.875)
         prob.set_val('R0', 3.0)
         prob.set_val('κ', 2.7)
         prob.set_val('κa', 2.7)
@@ -53,6 +54,7 @@ class TestMenardPlasmaGeometry(unittest.TestCase):
 
         prob.setup(force_alloc_complex=True)
         prob.set_val('A', 1.6)
+        prob.set_val('a', 1.875)
         prob.set_val('R0', 3.0)
         self.prob = prob
 
@@ -84,6 +86,7 @@ class TestEllipticalPlasmaGeometry(unittest.TestCase):
 
         prob.setup(force_alloc_complex=True)
         prob.set_val('A', 1.6)
+        prob.set_val('a', 1.875)
         prob.set_val('R0', 3.0)
         self.prob = prob
 
