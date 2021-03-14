@@ -4,7 +4,7 @@ from scipy.constants import pi
 from faroes.configurator import Accessor
 
 
-class TFSetProperties(om.ExplicitComponent):
+class TFSetProperties(om.Group):
     def initialize(self):
         self.options.declare('config', default=None)
 
