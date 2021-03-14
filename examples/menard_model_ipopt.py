@@ -4,9 +4,10 @@
 from faroes.configurator import UserConfigurator
 import faroes.units  # noqa: F401
 
-from faroes.simple_tf_magnet import MagnetRadialBuild
+from faroes.tf_magnet_set import TFMagnetSet
 from faroes.elliptical_plasma import MenardPlasmaGeometry
 from faroes.radialbuild import MenardSTRadialBuild
+
 
 from faroes.menardplasmaloop import MenardPlasmaLoop
 
@@ -39,10 +40,11 @@ class Geometry(om.Group):
                                "plasma R_max", "plasma R_min"])
 
         self.add_subsystem("magnets",
-                           MagnetRadialBuild(config=config),
-                           promotes_inputs=["R0", ("r_is", "Ib TF R_min")],
+                           TFMagnetSet(config=config),
+                           promotes_inputs=[
+                               "R0", ("r_is", "Ib TF R_min"), "κ"],
                            promotes_outputs=[("Ib TF R_out", "Ib TF R_max"),
-                           ("B0", "Bt")])
+                                             ("B0", "Bt")])
 
         self.connect('radial_build.Ob TF R_min', ['magnets.r_iu'])
 

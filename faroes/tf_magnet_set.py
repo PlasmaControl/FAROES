@@ -16,10 +16,12 @@ class TFMagnetSet(om.Group):
 
     Inputs
     ------
-    radial_geometry.r_im : float
-        m, Inboard radius of winding pack. Useful as a decision variable.
+    Δr_s : float
+        m, Thickness of inboard inner structure. Useful as a design variable.
+    Δr_m : float
+        m, Thickness of inboard winding pack. Useful as a design variable.
     j_HTS : float
-        MA/m**2, current density in the HTS cables. Useful as a decision
+        MA/m**2, current density in the HTS cables. Useful as a design
         variable.
 
     R0 : float
@@ -65,6 +67,7 @@ class TFMagnetSet(om.Group):
     -----
     (Additional inputs are specified via the configuration files)
     """
+
     def initialize(self):
         self.options.declare('config', default=None)
 
@@ -72,11 +75,15 @@ class TFMagnetSet(om.Group):
         config = self.options['config']
 
         self.add_subsystem(
-            'radial_geometry',
+            'geometry',
             MagnetGeometry(config=config),
-            promotes_inputs=[('r_ot', "Ib TF R_out"), 'n_coil',
-                             ('r_iu', "Ob TF R_in"), ('r_is', "Ib TF R_in")],
-            promotes_outputs=['r_im_is_constraint', ('r_ov', 'Ob TF R_out')])
+            promotes_inputs=['r_is', 'Δr_s', 'Δr_m',
+                             'r_iu', 'n_coil'],
+            promotes_outputs=[
+                ('r_ot', 'Ib TF R_out'),
+                ('r_ov', 'Ob TF R_out'),
+            ])
+
         self.add_subsystem('windingpack',
                            WindingPackProperties(config=config),
                            promotes=['f_HTS', 'B_max'])
@@ -135,14 +142,14 @@ class TFMagnetSet(om.Group):
 
         self.connect('profile_props.elongation_multiplier',
                      ['profile.elongation_multiplier'])
-        self.connect('radial_geometry.r_om', ['field.r_om'])
-        self.connect('radial_geometry.r1', ['tension.r1', 'profile.r1'])
-        self.connect('radial_geometry.r2', ['tension.r2', 'profile.r2'])
-        self.connect('radial_geometry.A_m',
+        self.connect('geometry.r_om', ['field.r_om'])
+        self.connect('geometry.r1', ['tension.r1', 'profile.r1'])
+        self.connect('geometry.r2', ['tension.r2', 'profile.r2'])
+        self.connect('geometry.A_m',
                      ['strain.A_m', 'current.A_m', 'con_cmp3.A_m'])
-        self.connect('radial_geometry.A_t', ['strain.A_t'])
-        self.connect('radial_geometry.A_s', ['strain.A_s'])
-        self.connect('radial_geometry.approximate cross section',
+        self.connect('geometry.A_t', ['strain.A_t'])
+        self.connect('geometry.A_s', ['strain.A_s'])
+        self.connect('geometry.approximate cross section',
                      ['profile.cross section'])
 
 
@@ -159,8 +166,8 @@ if __name__ == "__main__":
     prob.driver = om.ScipyOptimizeDriver()
     prob.driver.options['optimizer'] = 'SLSQP'
 
-    prob.model.add_design_var('Ib TF R_in', lower=0.03, upper=0.4)
-    prob.model.add_design_var('radial_geometry.r_im', lower=0.05, upper=0.5)
+    prob.model.add_design_var('r_is', lower=0.03, upper=0.4)
+    prob.model.add_design_var('Δr_m', lower=0.05, upper=0.5)
     prob.model.add_design_var('j_HTS', lower=0, upper=300)
 
     prob.model.add_objective('obj')
@@ -169,16 +176,21 @@ if __name__ == "__main__":
     prob.model.add_constraint('constraint_max_stress', lower=0)
     prob.model.add_constraint('constraint_B_on_coil', lower=0)
     prob.model.add_constraint('constraint_wp_current_density', lower=0)
-    prob.model.add_constraint('radial_geometry.A_s', lower=0)
 
     prob.setup()
     # prob.check_config(checks=['unconnected_inputs'])
 
+    # initial values for design variables
+    prob.set_val('r_is', 0.1, 'm')
+    prob.set_val('Δr_m', 0.1, 'm')
+    prob.set_val('j_HTS', 10, 'MA/m**2')
+
     prob.set_val('R0', 3, 'm')
+    prob.set_val('Δr_s', 0.1, 'm')
     prob.set_val('κ', 2.7)
     prob.set_val('n_coil', 18)
     prob.set_val('Ib TF R_out', 0.405, 'm')
-    prob.set_val('Ob TF R_in', 8.025, 'm')
+    prob.set_val('r_iu', 8.025, 'm')
     prob.set_val('windingpack.max_stress', 525, "MPa")
     prob.set_val('windingpack.max_strain', 0.003)
     prob.set_val("windingpack.Young's modulus", 175, "GPa")
