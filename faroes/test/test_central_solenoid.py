@@ -16,7 +16,7 @@ class TestThinSolenoidInductance(unittest.TestCase):
         prob.setup()
         prob.set_val('r', 1.305118)
         prob.set_val('h', 5, 'm')
-        self.prob=prob
+        self.prob = prob
 
     def test_partials(self):
         prob = self.prob
@@ -30,8 +30,6 @@ class TestThinSolenoidInductance(unittest.TestCase):
         expected = 2.72822e-5
         L_line = prob.get_val("L_line", units="H*m**2")
         assert_near_equal(L_line, expected, tolerance=1e-4)
-
-
 
 
 class TestFiniteBuildCentralSolenoid(unittest.TestCase):
