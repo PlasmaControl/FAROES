@@ -135,7 +135,7 @@ class EllipseLikeGeometry(om.ExplicitComponent):
     where :math:`L_\mathrm{pol}` is the poloidal circumference and :math:`S_c`
     is the poloidal cross-section area.
 
-    Note that R0, a, and A must be consistent with each other. The three are
+    Note that R0, a, and A must be consistent with each other. The three
     inputs are specified to avoid recomputation and for ease of computation.
 
     Inputs

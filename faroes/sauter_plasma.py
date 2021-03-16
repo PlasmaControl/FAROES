@@ -68,6 +68,7 @@ class SauterGeometry(om.ExplicitComponent):
         triangularity
     ξ : float
         related to the plasma squareness
+
     θ : array
         poloidal angles at which to evaluate the plasma boundary
 
@@ -196,6 +197,7 @@ class SauterGeometry(om.ExplicitComponent):
             * (1 - 0.49 * δ**2 / 2)
         w07 = wanal_07
 
+        # Sauter equation (25), also (36)
         L_p = (2 * pi * a * (1 + 0.55 * (κ - 1)) * (1 + 0.08 * δ**2) *
                (1 + 0.2 * (w07 - 1)))
 
@@ -216,14 +218,14 @@ class SauterGeometry(om.ExplicitComponent):
         ε = 1 / A
         outputs["ε"] = ε
 
-        # Equation (36)
+        # Equation (26), also (36)
         Ap = (2 * pi * R0) * (1 - 0.32 * δ * ε) * L_p
 
-        # Equation (36); here Sφ is called S_c
+        # Equation (29), also (36); here Sφ is called S_c
         S_c = (pi * a**2 * κ) * (1 + 0.52 * (w07 - 1))
         outputs["κa"] = S_c / (pi * a**2)
 
-        # Equation (36)
+        # Equation (28), also (36)
         V = (2 * pi * R0) * (1 - 0.25 * δ * ε) * S_c
         outputs["S_c"] = S_c
         outputs["S"] = Ap
