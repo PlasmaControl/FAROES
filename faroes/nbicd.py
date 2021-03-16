@@ -1,5 +1,6 @@
 from faroes.configurator import UserConfigurator, Accessor
 from faroes.plasmaformulary import AverageIonMass
+from faroes.trappedparticles import TrappedParticleFractionUpperEst
 import faroes.units  # noqa: F401
 
 import openmdao.api as om
@@ -16,7 +17,6 @@ electron_mass_in_u = physical_constants["electron mass in u"][0]
 class CurrentDriveProperties(om.Group):
     """Helper class to load properties
     """
-
     def initialize(self):
         self.options.declare('config', default=None)
 
@@ -62,7 +62,6 @@ class CurrentDriveBeta1(om.ExplicitComponent):
     in Toroidal Plasmas. Plasma Physics 1980, 22 (4), 303–316.
     https://doi.org/10.1088/0032-1028/22/4/002.
     """
-
     def setup(self):
         self.add_input("Z_eff")
         self.add_input("Ab", units='u')
@@ -110,7 +109,6 @@ class CurrentDriveA(om.ExplicitComponent):
     this is from.
 
     """
-
     def initialize(self):
         self.options.declare("config", default=None)
 
@@ -138,58 +136,6 @@ class CurrentDriveA(om.ExplicitComponent):
         J["A", "vb"] = -self.const * vthe / ((vthe + vb)**2 * zeff)
         J["A", "vth_e"] = self.const * vb / ((vthe + vb)**2 * zeff)
         J["A", "Z_eff"] = -self.const * vthe / ((vthe + vb) * zeff**2)
-
-
-class TrappedParticleFractionUpperEst(om.ExplicitComponent):
-    r"""Upper estimate for the trapped particle fraction on a flux surface
-
-    Notes
-    -----
-    This is derived for "... the case of concentric, elliptical
-    flux surfaces that are adequate to describe low-β,
-    up-down symmetric equilibria"
-
-    This might be enhanced in the future into a 'mid-range'
-    trapped-particle-fraction estimate, by programming in the lower estimate
-    and the suggested interpolation given in the paper.
-
-    Inputs
-    ------
-    ε : float
-        Inverse aspect ratio of flux surface
-
-    Outputs
-    -------
-    ftrap_u : float
-        Upper estimate of the trapped particle fraction on that surface
-
-    References
-    ----------
-    Equation (13) of
-    Lin‐Liu, Y. R.; Miller, R. L. Upper and Lower Bounds
-    of the Effective Trapped Particle Fraction in General Tokamak Equilibria.
-    Physics of Plasmas 1995, 2 (5), 1666–1668.
-    https://doi.org/10.1063/1.871315.
-    """
-
-    def setup(self):
-        self.add_input("ε")
-        self.add_output("ftrap_u", lower=0)
-
-    def compute(self, inputs, outputs):
-        ε = inputs["ε"]
-        ftrap_u = 1 - (1 - ε**2)**(-1 / 2) * (1 - (3 / 2) * ε**(1 / 2) +
-                                              (1 / 2) * ε**(3 / 2))
-        outputs["ftrap_u"] = ftrap_u
-
-    def setup_partials(self):
-        self.declare_partials("ftrap_u", ["ε"])
-
-    def compute_partials(self, inputs, J):
-        ε = inputs["ε"]
-        numer = 3 + ε**(1 / 2) * (3 - ε * (4 + ε**(1 / 2) + ε))
-        denom = 4 * (1 + ε**(1 / 2)) * (1 + ε) * (ε - ε**3)**(1 / 2)
-        J["ftrap_u", "ε"] = numer / denom
 
 
 class CurrentDriveAlphaCubed(om.ExplicitComponent):
@@ -238,7 +184,6 @@ class CurrentDriveAlphaCubed(om.ExplicitComponent):
     This equation is referenced to be from a paper by Cordey and Haas
 
     """
-
     def setup(self):
         self.add_input("v0", units="Mm/s")
         self.add_input("ve", units="Mm/s")
@@ -316,7 +261,6 @@ class CurrentDriveG(om.ExplicitComponent):
     From Menard's spreadsheet cell T129. I don't know where this formula
     originate. It's labeled as G(Z_eff, A) but there are additional inputs...
     """
-
     def setup(self):
         self.add_input("ftrap_u")
         self.add_input("A")
@@ -368,13 +312,12 @@ class CurrentDriveEfficiencyTerm1(om.ExplicitComponent):
 
     References
     ----------
-    [1] Equation (45) of
+    .. [1] Equation (45) of
     Start, D. F. H.; Cordey, J. G.; Jones, E. M.
     The Effect of Trapped Electrons on Beam Driven Currents
     in Toroidal Plasmas. Plasma Physics 1980, 22 (4), 303–316.
     https://doi.org/10.1088/0032-1028/22/4/002.
     """
-
     def setup(self):
         self.add_input("τs", units="s")
         self.add_input("v0", units="Mm/s")
@@ -457,7 +400,6 @@ class CurrentDriveEfficiencyTerm2(om.ExplicitComponent):
     https://doi.org/10.1088/0032-1028/22/4/002.
 
     """
-
     def setup(self):
         self.add_input("α³")
         self.add_input("β1")
@@ -523,7 +465,6 @@ class CurrentDriveEfficiencyTerm3(om.ExplicitComponent):
     The function is fairly smooth so it should be acceptable.
 
     """
-
     def setup(self):
         self.add_input("α³")
         self.add_input("β1")
@@ -591,7 +532,6 @@ class CurrentDriveEfficiencyEquation(om.ExplicitComponent):
     in Toroidal Plasmas. Plasma Physics 1980, 22 (4), 303–316.
     https://doi.org/10.1088/0032-1028/22/4/002.
     """
-
     def setup(self):
         self.add_input("line1", units="A/W")
         self.add_input("line2")
@@ -662,7 +602,6 @@ class CurrentDriveEfficiency(om.Group):
         A/W, Ratio of the net current flowing parallel to the magnetic field
             to the injected neutral beam power
     """
-
     def initialize(self):
         self.options.declare("config", default=None)
 
@@ -744,7 +683,6 @@ class NBICurrent(om.ExplicitComponent):
     I_NBI : float
         MA, total neutral-beam-driven current
     """
-
     def initialize(self):
         self.options.declare("config", default=None)
 

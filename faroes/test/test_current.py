@@ -38,6 +38,7 @@ class TestQCylindrical(unittest.TestCase):
         assert_near_equal(prob["I/aB"], 3.74, tolerance=1e-2)
         assert_near_equal(prob["q_star"], 3.56, tolerance=1e-2)
 
+
 class TestSauterQ95(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
@@ -65,7 +66,6 @@ class TestSauterQ95(unittest.TestCase):
         prob.run_driver()
         assert_near_equal(prob["I/aB"], 2.208, tolerance=1e-2)
         assert_near_equal(prob["q95"], 2.05, tolerance=1e-2)
-
 
 
 class TestLineAveragedDensity(unittest.TestCase):
@@ -143,8 +143,9 @@ class TestCurrentAndSafetyFactor(unittest.TestCase):
 
     def test_partials(self):
         prob = self.prob
-        check = prob.check_partials(
-            out_stream=None, method="cs", excludes="props")
+        check = prob.check_partials(out_stream=None,
+                                    method="cs",
+                                    excludes="props")
         assert_check_partials(check)
 
     def test_values(self):

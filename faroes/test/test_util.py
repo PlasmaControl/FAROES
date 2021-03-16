@@ -11,8 +11,12 @@ import unittest
 
 class TestDoubleSmoothShiftedReLu(unittest.TestCase):
     def setUp(self):
-        dssrl = util.DoubleSmoothShiftedReLu(sharpness=25, x0=1.8, x1=2.25,
-                                             s1=0.5, s2=0.1, units_out="m")
+        dssrl = util.DoubleSmoothShiftedReLu(sharpness=25,
+                                             x0=1.8,
+                                             x1=2.25,
+                                             s1=0.5,
+                                             s2=0.1,
+                                             units_out="m")
         prob = om.Problem()
         prob.model = dssrl
         prob.setup(force_alloc_complex=True)
@@ -35,8 +39,11 @@ class TestDoubleSmoothShiftedReLu(unittest.TestCase):
 
 class TestDoubleSmoothShiftedReLuNoUnits(unittest.TestCase):
     def setUp(self):
-        dssrl = util.DoubleSmoothShiftedReLu(sharpness=25, x0=1.8, x1=2.25,
-                                             s1=0.5, s2=0.1)
+        dssrl = util.DoubleSmoothShiftedReLu(sharpness=25,
+                                             x0=1.8,
+                                             x1=2.25,
+                                             s1=0.5,
+                                             s2=0.1)
         prob = om.Problem()
         prob.model = dssrl
         prob.setup(force_alloc_complex=True)
@@ -144,6 +151,35 @@ class TestSmoothShiftedReLu(unittest.TestCase):
         expected = 0.0346574
         y = prob.get_val("y")
         assert_near_equal(y, expected, tolerance=1e-4)
+
+
+class TestSoftCapUnity(unittest.TestCase):
+    def setUp(self):
+        prob = om.Problem()
+        prob.model = util.SoftCapUnity()
+        prob.setup(force_alloc_complex=True)
+        prob.set_val('x', 1.0)
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+    def test_values(self):
+        prob = self.prob
+        prob.set_val('x', 0.6)
+        prob.run_driver()
+        y = prob.get_val("y")
+        assert_near_equal(y, 0.6, tolerance=1e-4)
+
+    def test_values_2(self):
+        prob = self.prob
+        prob.set_val('x', 1.2)
+        prob.run_driver()
+        y = prob.get_val("y")
+        assert (y < 1.0)
 
 
 if __name__ == "__main__":

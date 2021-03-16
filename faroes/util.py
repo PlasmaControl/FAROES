@@ -42,7 +42,6 @@ class DoubleSmoothShiftedReLu(om.Group):
     s2 : float
        Second slope
     """
-
     def initialize(self):
         self.options.declare("sharpness", default=10)
         self.options.declare("x0", default=0)
@@ -62,9 +61,13 @@ class DoubleSmoothShiftedReLu(om.Group):
 
         one = SmoothShiftedReLu(bignum=b, x0=x0)
         two = SmoothShiftedReLu(bignum=b, x0=x1)
-        self.add_subsystem("one", one, promotes_inputs=["x"],
+        self.add_subsystem("one",
+                           one,
+                           promotes_inputs=["x"],
                            promotes_outputs=[("y", "oney")])
-        self.add_subsystem("two", two, promotes_inputs=["x"],
+        self.add_subsystem("two",
+                           two,
+                           promotes_inputs=["x"],
                            promotes_outputs=[("y", "twoy")])
         self.add_subsystem("out",
                            om.ExecComp(f"y = {s1} * oney + {diff} * twoy",
@@ -91,7 +94,6 @@ class SmoothShiftedReLu(om.ExplicitComponent):
     x0 : float
        Point at which it starts to turn on
     """
-
     def initialize(self):
         self.options.declare('x0', default=0)
         self.options.declare('bignum', default=10)
@@ -106,7 +108,7 @@ class SmoothShiftedReLu(om.ExplicitComponent):
         b = self.b
         x0 = self.x0
         x = inputs["x"]
-        y = (1/b) * np.log(1 + np.exp(b * (x - x0)))
+        y = (1 / b) * np.log(1 + np.exp(b * (x - x0)))
         outputs["y"] = y
 
     def setup_partials(self):
@@ -141,7 +143,6 @@ class PolarAngleAndDistanceFromPoint(om.ExplicitComponent):
         Angle from origin to points (x,y).
            In the range (-pi, pi].
     """
-
     def setup(self):
         self.add_input("x", units="m", shape_by_conn=True)
         self.add_input("y", units="m", shape_by_conn=True, copy_shape="x")
@@ -222,7 +223,6 @@ class OffsetParametricCurvePoints(om.ExplicitComponent):
     [1] https://mathworld.wolfram.com/ParallelCurves.html
     [2] https://en.wikipedia.org/wiki/Parallel_curve
     """
-
     def setup(self):
         self.add_input("x", units="m", shape_by_conn=True)
         self.add_input("y", units="m", copy_shape="x", shape_by_conn=True)
@@ -292,6 +292,48 @@ class OffsetParametricCurvePoints(om.ExplicitComponent):
 
     def plot(self, ax=None, **kwargs):
         ax.plot(self.get_val('x_o'), self.get_val('y_o'), **kwargs)
+
+
+class SoftCapUnity(om.ExplicitComponent):
+    r"""Limits functions that can go a bit over 1 to 1
+
+    .. math::
+
+       1 - \frac{1}{b}\left(\log(1 + \exp(b(1 - x)))\right)
+
+    where :math:`b` is a parameter; typically 20.
+
+    Inputs
+    ------
+    x : float
+        Input; should be 0 to 1.3
+
+    Outputs
+    -------
+    y : float
+        Output; range is 0 to 1
+    """
+    def initialize(self):
+        self.options.declare('b', default=20)
+
+    def setup(self):
+        self.b = self.options['b']
+        self.add_input("x")
+        self.add_output("y", lower=0)
+
+    def compute(self, inputs, outputs):
+        b = self.b
+        x = inputs["x"]
+        y = 1 - (1 / b) * np.log(1 + np.exp(b * (1 - x)))
+        outputs["y"] = y
+
+    def setup_partials(self):
+        self.declare_partials('y', 'x')
+
+    def compute_partials(self, inputs, J):
+        b = self.b
+        x = inputs["x"]
+        J['y', 'x'] = np.exp(b) / (np.exp(b) + np.exp(b * x))
 
 
 def most_common_isotope(sp):
