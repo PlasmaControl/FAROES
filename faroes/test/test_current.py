@@ -38,6 +38,35 @@ class TestQCylindrical(unittest.TestCase):
         assert_near_equal(prob["I/aB"], 3.74, tolerance=1e-2)
         assert_near_equal(prob["q_star"], 3.56, tolerance=1e-2)
 
+class TestSauterQ95(unittest.TestCase):
+    def setUp(self):
+        prob = om.Problem()
+
+        prob.model = current.SauterQ95()
+        prob.setup(force_alloc_complex=True)
+        prob.set_val("Bt", 2.094, units="T")
+        prob.set_val("Ip", 8.67, units="MA")
+        prob.set_val("a", 1.875, units="m")
+        prob.set_val("R0", 3.0, units="m")
+        prob.set_val("κ", 1.5)
+        prob.set_val("δ", 0.2)
+        prob.set_val("ε", 0.625)
+        prob.set_val("w07", 0.1)
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+        check = prob.check_partials(out_stream=None, method="cs")
+        assert_check_partials(check)
+
+    def test_vals(self):
+        prob = self.prob
+
+        prob.run_driver()
+        assert_near_equal(prob["I/aB"], 2.208, tolerance=1e-2)
+        assert_near_equal(prob["q95"], 2.05, tolerance=1e-2)
+
+
 
 class TestLineAveragedDensity(unittest.TestCase):
     def setUp(self):

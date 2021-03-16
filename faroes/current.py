@@ -59,7 +59,6 @@ class QCylindrical(om.ExplicitComponent):
     Physics of Plasmas 2004, 11 (2), 639–646.
     https://doi.org/10.1063/1.1640623.
     """
-
     def setup(self):
         self.add_input("R0", units="m", val=1)
         self.add_input("L_pol", units="m")
@@ -98,6 +97,153 @@ class QCylindrical(om.ExplicitComponent):
         J["I/aB", "Bt"] = -Ip / (a * Bt**2)
 
 
+class SauterQ95(om.ExplicitComponent):
+    r"""Sauter-plasma-shape q95 fit from CHEASE
+
+    Sauter's paper [1]_, equation (36) gives a formula for
+    :math:`q_{95}` which was fit from a collection of CHEASE
+    equilibria of various shapes.
+
+    .. math::
+
+       q_{95} = \frac{4.1 a^2 B_0}{R_0 I_p}
+                \left(1 + 1.2(\kappa-1) + 0.56(\kappa-1)^2\right)
+                \left(1 + 0.09 \delta + 0.16 \delta^2)
+                \frac{1 + 0.45 \delta \epsilon}{1-0.74 \epsilon}
+                \left(1 + 0.55(w_{07}-1)\right)
+
+    Notes
+    -----
+    Sauter shows that this equation is accurate to within 10\% compared with
+    more accurate values from CHEASE equilibria.
+
+    Inputs
+    ------
+    R0 : float
+        m, Major radius
+    a : float
+        m, minor radius
+    κ : float
+        Elongation
+    δ : float
+        Triangularity
+    ε : float
+        Inverse aspect ratio.
+        Must be consistent with :math:`R0` and :math:`a`.
+    w07 : float
+        Sauter 70% width parameter
+    Ip : float
+        MA, Plasma current
+    Bt : float
+        T, Toroidal field
+
+    Outputs
+    -------
+    I/aB: float
+        Factor used in some scaling laws. Incidental output.
+    q95 : float
+        Cylindrical safety factor
+
+    References
+    ----------
+    .. [1] Fusion Engineering and Design 112, 633-645 (2016);
+       http://dx.doi.org/10.1016/j.fusengdes.2016.04.033
+    """
+    def setup(self):
+        self.add_input("R0", units="m")
+        self.add_input("a", units="m")
+        self.add_input("κ")
+        self.add_input("δ")
+        self.add_input("ε")
+        self.add_input("w07")
+        self.add_input("Ip", units="MA")
+        self.add_input("Bt", units="T")
+
+        self.add_output("I/aB", lower=0)
+        self.add_output("q95", lower=0)
+
+        self.c1 = 4.1
+        self.c2 = 1.2
+        self.c3 = 0.56
+        self.c4 = 0.09
+        self.c5 = 0.16
+        self.c6 = 0.45
+        self.c7 = 0.74
+        self.c8 = 0.55
+
+    def compute(self, inputs, outputs):
+        R0 = inputs["R0"]
+        a = inputs["a"]
+        κ = inputs["κ"]
+        δ = inputs["δ"]
+        ε = inputs["ε"]
+        w07 = inputs["w07"]
+        Ip = inputs["Ip"]
+        Bt = inputs["Bt"]
+
+        outputs["I/aB"] = Ip / (a * Bt)
+
+        c1 = self.c1
+        c2 = self.c2
+        c3 = self.c3
+        c4 = self.c4
+        c5 = self.c5
+        c6 = self.c6
+        c7 = self.c7
+        c8 = self.c8
+
+        t1 = c1 * a**2 * Bt / (R0 * Ip)
+        t2 = (1 + c2 * (κ - 1) + c3 * (κ - 1)**2)
+        t3 = (1 + c4 * δ + c5 * δ**2)
+        t4 = (1 + c6 * δ * ε) / (1 - c7 * ε)
+        t5 = (1 + c8 * (w07 - 1))
+        q95 = t1 * t2 * t3 * t4 * t5
+        outputs["q95"] = q95
+
+    def setup_partials(self):
+        self.declare_partials(["I/aB"], ["Ip", "Bt", "a"])
+        self.declare_partials(["q95"],
+                              ["Ip", "Bt", "a", "R0", "ε", "δ", "κ", "w07"])
+
+    def compute_partials(self, inputs, J):
+        R0 = inputs["R0"]
+        a = inputs["a"]
+        κ = inputs["κ"]
+        δ = inputs["δ"]
+        ε = inputs["ε"]
+        w07 = inputs["w07"]
+        Ip = inputs["Ip"]
+        Bt = inputs["Bt"]
+
+        c1 = self.c1
+        c2 = self.c2
+        c3 = self.c3
+        c4 = self.c4
+        c5 = self.c5
+        c6 = self.c6
+        c7 = self.c7
+        c8 = self.c8
+
+        t1 = c1 * a**2 * Bt / (R0 * Ip)
+        t2 = (1 + c2 * (κ - 1) + c3 * (κ - 1)**2)
+        t3 = (1 + c4 * δ + c5 * δ**2)
+        t4 = (1 + c6 * δ * ε) / (1 - c7 * ε)
+        t5 = (1 + c8 * (w07 - 1))
+
+        J["I/aB", "Ip"] = 1 / (a * Bt)
+        J["I/aB", "a"] = -Ip / (a**2 * Bt)
+        J["I/aB", "Bt"] = -Ip / (a * Bt**2)
+        J["q95", "a"] = 2 * c1 * a * Bt / (Ip * R0) * t2 * t3 * t4 * t5
+        J["q95", "Bt"] = c1 * a**2 / (R0 * Ip) * t2 * t3 * t4 * t5
+        J["q95", "R0"] = -c1 * a**2 * Bt / (Ip * R0**2) * t2 * t3 * t4 * t5
+        J["q95", "Ip"] = -c1 * a**2 * Bt / (Ip**2 * R0) * t2 * t3 * t4 * t5
+        J["q95", "κ"] = t1 * (c2 + 2 * c3 * (κ - 1)) * t3 * t4 * t5
+        J["q95", "δ"] = t1 * t2 * ((c4 + 2 * c5 * δ) * t4 + t3 * (c6 * ε) /
+                                   (1 - c7 * ε)) * t5
+        J["q95", "ε"] = (t1 * t2 * t3 * ((c7 + c6 * δ) / (c7 * ε - 1)**2) * t5)
+        J["q95", "w07"] = t1 * t2 * t3 * t4 * c8
+
+
 class LineAveragedDensity(om.ExplicitComponent):
     r"""Line-averaged plasma density.
 
@@ -125,7 +271,6 @@ class LineAveragedDensity(om.ExplicitComponent):
     n_bar : float
         n20, line-averaged electron density
     """
-
     def setup(self):
         self.add_input("Ip", units="MA")
         self.add_input("a", units="m")
@@ -185,7 +330,6 @@ class TotalPlasmaCurrent(om.ExplicitComponent):
     This could be a nice diagnostic in case the bootstrap current computation
     is changed to be more physically-based in the future.
     """
-
     def setup(self):
         self.add_input("I_BS", units="MA", val=5)
         self.add_input("I_NBI", units="MA", val=5)
@@ -255,7 +399,6 @@ class CurrentAndSafetyFactor(om.Group):
     n_bar : float
         n20, line-averaged electron density
     """
-
     def initialize(self):
         self.options.declare('config', default=None)
 
@@ -265,7 +408,8 @@ class CurrentAndSafetyFactor(om.Group):
             "props",
             TokamakMagneticConfigurationLimitProperties(config=config),
             promotes_outputs=["*"])
-        self.add_subsystem("current", TotalPlasmaCurrent(),
+        self.add_subsystem("current",
+                           TotalPlasmaCurrent(),
                            promotes_inputs=["*"],
                            promotes_outputs=["*"])
         self.add_subsystem("qcyl",
