@@ -121,6 +121,7 @@ class SauterGeometry(om.ExplicitComponent):
             self.config = self.options["config"]
 
         self.add_input("R0", units="m", desc="Major radius")
+        self.add_input("a", units="m", desc="Minor radius")
         self.add_input("A", desc="Aspect ratio")
         self.add_input("κ", desc="Elongation")
         self.add_input("δ", desc="Triangularity", val=0)
@@ -142,7 +143,6 @@ class SauterGeometry(om.ExplicitComponent):
                         units="m",
                         val=0,
                         desc="vertical location of magnetic axis")
-        self.add_output("a", units="m", desc="Minor radius")
         self.add_output("b", units="m", desc="Minor radius height")
         self.add_output("ε", desc="Inverse aspect ratio")
         # self.add_output("κa", desc="Effective elongation")
@@ -178,14 +178,13 @@ class SauterGeometry(om.ExplicitComponent):
         outputs["Z0"] = 0
 
         R0 = inputs["R0"]
+        a = inputs["a"]
         A = inputs["A"]
         κ = inputs["κ"]
         δ = inputs["δ"]
         ξ = inputs["ξ"]
 
         θ = inputs["θ"]
-        a = R0 / A
-        outputs["a"] = a
 
         # Sauter equation (C.2)
         # but using the 'alternate expression for a quadratic root'
@@ -244,31 +243,32 @@ class SauterGeometry(om.ExplicitComponent):
     def setup_partials(self):
         size = self._get_var_meta("θ", "size")
         self.declare_partials("ε", ["A"])
-        self.declare_partials("a", ["R0", "A"])
-        self.declare_partials("full_plasma_height", ["R0", "A", "κ"])
-        self.declare_partials("R_in", ["R0", "A"])
-        self.declare_partials("R_out", ["R0", "A"])
+        self.declare_partials("full_plasma_height", ["a", "κ"])
 
-        self.declare_partials("b", ["R0", "A", "κ"])
+        self.declare_partials(["R_in", "R_out"], "R0", val=1)
+        self.declare_partials("R_in", "a", val=-1)
+        self.declare_partials("R_out", "a", val=1)
+
+        self.declare_partials("b", ["a", "κ"])
         self.declare_partials("w07", ["δ", "ξ"])
 
-        self.declare_partials("L_pol", ["R0", "A", "κ", "δ", "ξ"])
-        self.declare_partials("S", ["R0", "A", "κ", "δ", "ξ"])
-        self.declare_partials("S_c", ["R0", "A", "κ", "δ", "ξ"])
-        self.declare_partials("V", ["R0", "A", "κ", "δ", "ξ"])
+        self.declare_partials("L_pol", ["a", "κ", "δ", "ξ"])
+        self.declare_partials("S", ["R0", "A", "a", "κ", "δ", "ξ"])
+        self.declare_partials("S_c", ["a", "κ", "δ", "ξ"])
+        self.declare_partials("V", ["R0", "A", "a", "κ", "δ", "ξ"])
 
-        self.declare_partials("κa", ["R0", "A", "κ", "δ", "ξ"])
+        self.declare_partials("κa", ["a", "κ", "δ", "ξ"])
 
-        self.declare_partials("R", ["R0", "A", "δ", "ξ"])
+        self.declare_partials("R", ["R0", "a", "δ", "ξ"])
         self.declare_partials("R", ["θ"], rows=range(size), cols=range(size))
 
-        self.declare_partials("Z", ["R0", "A", "κ", "ξ"])
+        self.declare_partials("Z", ["a", "κ", "ξ"])
         self.declare_partials("Z", ["θ"], rows=range(size), cols=range(size))
-        self.declare_partials("dR_dθ", ["R0", "A", "ξ", "δ"])
-        self.declare_partials("dZ_dθ", ["R0", "A", "ξ", "κ"])
+        self.declare_partials("dR_dθ", ["a", "ξ", "δ"])
         self.declare_partials("dR_dθ", ["θ"],
                               rows=range(size),
                               cols=range(size))
+        self.declare_partials("dZ_dθ", ["a", "ξ", "κ"])
         self.declare_partials("dZ_dθ", ["θ"],
                               rows=range(size),
                               cols=range(size))
@@ -287,23 +287,14 @@ class SauterGeometry(om.ExplicitComponent):
         θ = inputs["θ"]
 
         a = R0 / A
-        da_dA = -R0 / A**2
-        da_dR0 = 1 / A
         ε = 1 / A
         J["ε", "A"] = -1 / A**2
-        J["a", "R0"] = da_dR0
-        J["a", "A"] = da_dA
-        J["b", "κ"] = a
-        J["b", "R0"] = κ * J["a", "R0"]
-        J["b", "A"] = κ * J["a", "A"]
-        J["full_plasma_height", "κ"] = 2 * J["b", "κ"]
-        J["full_plasma_height", "R0"] = 2 * J["b", "R0"]
-        J["full_plasma_height", "A"] = 2 * J["b", "A"]
 
-        J["R_in", "R0"] = 1 - 1 / A
-        J["R_in", "A"] = R0 / A**2
-        J["R_out", "R0"] = 1 + 1 / A
-        J["R_out", "A"] = -R0 / A**2
+        J["b", "κ"] = a
+        J["b", "a"] = κ
+
+        J["full_plasma_height", "κ"] = 2 * J["b", "κ"]
+        J["full_plasma_height", "a"] = 2 * J["b", "a"]
 
         # Sauter equation (C.2)
         # but using the 'alternate expression for a quadratic root'
@@ -330,10 +321,8 @@ class SauterGeometry(om.ExplicitComponent):
         L_p = (2 * pi * a * (1 + 0.55 * (κ - 1)) * (1 + 0.08 * δ**2) *
                (1 + 0.2 * (w07 - 1)))
         # partials
-        dLp_dR0 = (2 * pi * (1 + 0.55 * (κ - 1)) * (1 + 0.08 * δ**2) *
-                   (1 + 0.2 * (w07 - 1))) / A
-        dLp_dA = -(2 * pi * R0 * (1 + 0.55 * (κ - 1)) * (1 + 0.08 * δ**2) *
-                   (1 + 0.2 * (w07 - 1))) / A**2
+        dLp_da = (2 * pi * (1 + 0.55 * (κ - 1)) * (1 + 0.08 * δ**2) *
+                  (1 + 0.2 * (w07 - 1)))
         dLp_dκ = 11 / 20 * (2 * pi * a * (1 + 0.08 * δ**2) * (1 + 0.2 *
                                                               (w07 - 1)))
         dLp_dδ = 0.16 * δ * (2 * pi * a * (1 + 0.55 * (κ - 1)) * (1 + 0.2 *
@@ -341,8 +330,7 @@ class SauterGeometry(om.ExplicitComponent):
         dLp_dw07 = 0.2 * (2 * pi * a * (1 + 0.08 * δ**2) * (1 + 0.55 *
                                                             (κ - 1)))
 
-        J["L_pol", "A"] = dLp_dA
-        J["L_pol", "R0"] = dLp_dR0
+        J["L_pol", "a"] = dLp_da
         J["L_pol", "κ"] = dLp_dκ
         J["L_pol", "δ"] = dLp_dδ + dLp_dw07 * J["w07", "δ"]
         J["L_pol", "ξ"] = dLp_dw07 * J["w07", "ξ"]
@@ -353,8 +341,9 @@ class SauterGeometry(om.ExplicitComponent):
         dAp_dA = 2 * pi * R0 * (+0.32 * δ * 1 / A**2) * L_p
         dAp_dδ = 2 * pi * R0 * (-0.32 * ε) * L_p
 
-        J["S", "A"] = dAp_dA + dAp_dLp * J["L_pol", "A"]
-        J["S", "R0"] = dAp_dR0 + dAp_dLp * J["L_pol", "R0"]
+        J["S", "A"] = dAp_dA
+        J["S", "R0"] = dAp_dR0
+        J["S", "a"] = dAp_dLp * J["L_pol", "a"]
         J["S", "κ"] = dAp_dLp * J["L_pol", "κ"]
         J["S", "δ"] = dAp_dδ + dAp_dLp * J["L_pol", "δ"]
         J["S", "ξ"] = dAp_dLp * J["L_pol", "ξ"]
@@ -363,16 +352,14 @@ class SauterGeometry(om.ExplicitComponent):
         dSc_dw07 = (pi * a**2 * κ) * 0.52
 
         dSc_da = 2 * pi * a * κ * (1 + 0.52 * (w07 - 1))
-        J["S_c", "A"] = dSc_da * da_dA
-        J["S_c", "R0"] = dSc_da * da_dR0
+        J["S_c", "a"] = dSc_da
         J["S_c", "κ"] = (pi * a**2) * (1 + 0.52 * (w07 - 1))
         J["S_c", "δ"] = dSc_dw07 * J["w07", "δ"]
         J["S_c", "ξ"] = dSc_dw07 * J["w07", "ξ"]
 
         dκa_da = -2 * S_c / (pi * a**3)
         dκa_dSc = 1 / (pi * a**2)
-        J["κa", "A"] = dκa_da * da_dA + dκa_dSc * J["S_c", "A"]
-        J["κa", "R0"] = dκa_da * da_dR0 + dκa_dSc * J["S_c", "R0"]
+        J["κa", "a"] = dκa_da + dκa_dSc * J["S_c", "a"]
         J["κa", "κ"] = dκa_dSc * J["S_c", "κ"]
         J["κa", "δ"] = dκa_dSc * J["S_c", "δ"]
         J["κa", "ξ"] = dκa_dSc * J["S_c", "ξ"]
@@ -381,36 +368,32 @@ class SauterGeometry(om.ExplicitComponent):
         dV_dA = (2 * pi * R0) * (-0.25 * δ * -1 / A**2) * S_c
         dV_dδ = (2 * pi * R0) * (-0.25 * 1 / A) * S_c
         dV_dSc = (2 * pi * R0) * (1 - 0.25 * δ * 1 / A)
-        J["V", "R0"] = dV_dR0 + dV_dSc * J["S_c", "R0"]
-        J["V", "A"] = dV_dA + dV_dSc * J["S_c", "A"]
+        J["V", "R0"] = dV_dR0
+        J["V", "A"] = dV_dA
+        J["V", "a"] = (2 * pi * R0) * (1 - 0.25 * δ * ε) * dSc_da
         J["V", "κ"] = dV_dSc * J["S_c", "κ"]
         J["V", "δ"] = dV_dδ + dV_dSc * J["S_c", "δ"]
         J["V", "ξ"] = dV_dSc * J["S_c", "ξ"]
 
-        J["R", "A"] = -(R0 * cos(θ + δ * sin(θ) - ξ * sin(2 * θ)) / A**2)
-        J["R", "R0"] = 1 + cos(θ + δ * sin(θ) - ξ * sin(2 * θ)) / A
-        J["R", "δ"] = -(R0 * sin(θ) * sin(θ + δ * sin(θ) - ξ * sin(2 * θ))) / A
-        J["R",
-          "ξ"] = R0 * sin(2 * θ) * sin(θ + δ * sin(θ) - ξ * sin(2 * θ)) / A
+        J["R", "a"] = cos(θ + δ * sin(θ) - ξ * sin(2 * θ))
+        J["R", "R0"] = 1
+        J["R", "δ"] = -a * sin(θ) * sin(θ + δ * sin(θ) - ξ * sin(2 * θ))
+        J["R", "ξ"] = a * sin(2 * θ) * sin(θ + δ * sin(θ) - ξ * sin(2 * θ))
 
-        dR_dθ = -a * (1 + δ * cos(θ) - 2 * ξ *
-                      cos(2 * θ)) * sin(θ + δ * sin(θ) - ξ * sin(2 * θ))
+        dR_dθ_da = -1 * (1 + δ * cos(θ) - 2 * ξ *
+                         cos(2 * θ)) * sin(θ + δ * sin(θ) - ξ * sin(2 * θ))
+        dR_dθ = a * dR_dθ_da
 
         J["R", "θ"] = dR_dθ
 
-        J["Z", "A"] = -R0 * κ * sin(θ + ξ * sin(2 * θ)) / A**2
-        J["Z", "R0"] = κ * sin(θ + ξ * sin(2 * θ)) / A
+        J["Z", "a"] = κ * sin(θ + ξ * sin(2 * θ))
         J["Z", "κ"] = a * sin(θ + ξ * sin(2 * θ))
         J["Z", "ξ"] = a * κ * cos(θ + ξ * sin(2 * θ)) * sin(2 * θ)
-        dZ_dθ = a * κ * (1 + 2 * ξ * cos(2 * θ)) * cos(θ + ξ * sin(2 * θ))
+        dZ_dθ_da = κ * (1 + 2 * ξ * cos(2 * θ)) * cos(θ + ξ * sin(2 * θ))
+        dZ_dθ = a * dZ_dθ_da
         J["Z", "θ"] = dZ_dθ
 
-        J["dR_dθ",
-          "A"] = -da_dA * (1 + δ * cos(θ) - 2 * ξ *
-                           cos(2 * θ)) * sin(θ + δ * sin(θ) - ξ * sin(2 * θ))
-        J["dR_dθ",
-          "R0"] = -da_dR0 * (1 + δ * cos(θ) - 2 * ξ *
-                             cos(2 * θ)) * sin(θ + δ * sin(θ) - ξ * sin(2 * θ))
+        J["dR_dθ", "a"] = dR_dθ_da
         J["dR_dθ", "δ"] = -a * (1 + δ * cos(θ) - 2 * ξ * cos(2 * θ)) * cos(
             θ + δ * sin(θ) - ξ * sin(2 * θ)) * sin(θ) - a * cos(θ) * sin(
                 θ + δ * sin(θ) - ξ * sin(2 * θ))
@@ -422,11 +405,7 @@ class SauterGeometry(om.ExplicitComponent):
                 2 * θ)) * sin(θ + (δ - 2 * ξ * cos(θ)) * sin(θ))
         J["dR_dθ", "θ"] = d2R_dθ2
 
-        J["dZ_dθ",
-          "A"] = da_dA * κ * (1 + 2 * ξ * cos(2 * θ)) * cos(θ + ξ * sin(2 * θ))
-        J["dZ_dθ",
-          "R0"] = da_dR0 * κ * (1 + 2 * ξ * cos(2 * θ)) * cos(θ +
-                                                              ξ * sin(2 * θ))
+        J["dZ_dθ", "a"] = dZ_dθ_da
         J["dZ_dθ",
           "κ"] = a * (1 + 2 * ξ * cos(2 * θ)) * cos(θ + ξ * sin(2 * θ))
         J["dZ_dθ", "ξ"] = a * κ * (

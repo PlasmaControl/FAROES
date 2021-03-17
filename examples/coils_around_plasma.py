@@ -1,9 +1,8 @@
 # This is an example of how to join components together
 
 import openmdao.api as om
-from faroes.simple_tf_magnet import MagnetRadialBuild
 from faroes.sauter_plasma import SauterPlasmaGeometry
-from faroes.threearcdeecoil import ThreeArcDeeTFSet
+# from faroes.threearcdeecoil import ThreeArcDeeTFSet
 from faroes.princetondeecoil import PrincetonDeeTFSet
 from faroes.configurator import UserConfigurator
 
@@ -23,29 +22,48 @@ class Machine(om.Group):
         self.add_subsystem("plasma",
                            SauterPlasmaGeometry(config=config),
                            promotes_inputs=["R0", ("θ", "θ_for_d2"), "offset"],
-                           promotes_outputs=["R_max", "R_min"])
-        #self.add_subsystem("coils",
-        #                   ThreeArcDeeTFSet(),
-        #                   promotes_inputs=["R0"],
-        #                   promotes_outputs=["V_enc"])
+                           promotes_outputs=["R_out", "R_in"])
+        # self.add_subsystem("coils",
+        #                    ThreeArcDeeTFSet(),
+        #                    promotes_inputs=["R0"],
+        #                    promotes_outputs=["V_enc"])
         self.add_subsystem("coils",
                            PrincetonDeeTFSet(),
                            promotes_inputs=["R0"],
                            promotes_outputs=["V_enc"])
         self.connect("plasma.blanket envelope θ", "coils.θ")
 
-        self.add_subsystem("margin", om.ExecComp("c = a - b",
-                a={"units":"m**2", "shape_by_conn":True},
-                b={"units":"m**2", "shape_by_conn":True, "copy_shape":"a"},
-                c={"units":"m**2", "copy_shape":"a"},
-                ))
+        self.add_subsystem(
+            "margin",
+            om.ExecComp(
+                "c = a - b",
+                a={
+                    "units": "m**2",
+                    "shape_by_conn": True
+                },
+                b={
+                    "units": "m**2",
+                    "shape_by_conn": True,
+                    "copy_shape": "a"
+                },
+                c={
+                    "units": "m**2",
+                    "copy_shape": "a"
+                },
+            ))
 
         self.connect("coils.d_sq", "margin.a")
         self.connect("plasma.blanket envelope d_sq", "margin.b")
 
         self.add_subsystem(
-            'ks', om.KSComp(width=100, units="m**2", ref=10, lower_flag=True,
-                            rho=10, upper=0, add_constraint=True))
+            'ks',
+            om.KSComp(width=100,
+                      units="m**2",
+                      ref=10,
+                      lower_flag=True,
+                      rho=10,
+                      upper=0,
+                      add_constraint=True))
         self.connect("margin.c", "ks.g")
 
 
@@ -65,18 +83,44 @@ if __name__ == "__main__":
     prob.driver.options["optimizer"] = "SLSQP"
     prob.driver.options["disp"] = True
 
-    # prob.model.add_design_var("coils.Ib TF R_out", lower=1.0, upper=4.5, ref=1.5, units="m")
-    # prob.model.add_design_var("coils.hhs", lower=1.0, upper=10.0, ref=3.0, units="m")
-    # prob.model.add_design_var("coils.e_a", lower=1.0, upper=15.0, ref=3.0, units="m")
-    # prob.model.add_design_var("coils.r_c", lower=1.2, upper=10.0, ref=3.0, units="m")
+    # Design variables for the ThreeArcDee coil
+    # prob.model.add_design_var("coils.Ib TF R_out",
+    #                           lower=1.0,
+    #                           upper=4.5,
+    #                           ref=1.5,
+    #                           units="m")
+    # prob.model.add_design_var("coils.hhs",
+    #                           lower=1.0,
+    #                           upper=10.0,
+    #                           ref=3.0,
+    #                           units="m")
+    # prob.model.add_design_var("coils.e_a",
+    #                           lower=1.0,
+    #                           upper=15.0,
+    #                           ref=3.0,
+    #                           units="m")
+    # prob.model.add_design_var("coils.r_c",
+    #                           lower=1.2,
+    #                           upper=10.0,
+    #                           ref=3.0,
+    #                           units="m")
 
-    prob.model.add_design_var("coils.Ib TF R_out", lower=1.0, upper=4.5, ref=1.5, units="m")
-    prob.model.add_design_var("coils.ΔR", lower=1.2, upper=25.0, ref=3.0, units="m")
+    prob.model.add_design_var("coils.Ib TF R_out",
+                              lower=1.0,
+                              upper=4.5,
+                              ref=1.5,
+                              units="m")
+    prob.model.add_design_var("coils.ΔR",
+                              lower=1.2,
+                              upper=25.0,
+                              ref=3.0,
+                              units="m")
 
     prob.model.add_objective("machine.V_enc")
     #
     # this is not always needed, but helps in some situations.
-    prob.model.add_constraint("machine.coils.constraint_axis_within_coils", lower=1)
+    prob.model.add_constraint("machine.coils.constraint_axis_within_coils",
+                              lower=1)
 
     prob.setup(force_alloc_complex=True)
     #
@@ -121,6 +165,6 @@ if __name__ == "__main__":
     machine.coils.plot(ax)
     ax.plot(coil_R, coil_Z, marker="o")
     ax.plot(blanket_R, blanket_Z, marker="x")
-    ax.set_xlim([-1,8])
+    ax.set_xlim([-1, 8])
     ax.axis('equal')
     plt.show()

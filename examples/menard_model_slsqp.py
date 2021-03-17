@@ -34,16 +34,16 @@ class Geometry(om.Group):
 
         self.add_subsystem("radial_build",
                            MenardSTRadialBuild(config=config),
-                           promotes_inputs=["a", "CS R_max", "Ib TF R_max"],
-                           promotes_outputs=[("A", "aspect_ratio"), "R0", "Ib TF R_min",
-                               "plasma R_max", "plasma R_min"])
+                           promotes_inputs=["a", "CS R_out", "Ib TF R_out"],
+                           promotes_outputs=[("A", "aspect_ratio"), "R0",
+                                             "Ib TF R_in", "plasma R_out",
+                                             "plasma R_in"])
 
         self.add_subsystem("magnets",
                            TFMagnetSet(config=config),
-                           promotes_inputs=[
-                               "R0", ("r_is", "Ib TF R_min"), "κ"],
-                           promotes_outputs=[("Ib TF R_out", "Ib TF R_max"),
-                           ("B0", "Bt")])
+                           promotes_inputs=["R0", ("r_is", "Ib TF R_in"), "κ"],
+                           promotes_outputs=[("Ib TF R_out", "Ib TF R_out"),
+                                             ("B0", "Bt")])
 
         self.connect('radial_build.Ob TF R_min', ['magnets.r_iu'])
 
@@ -65,13 +65,14 @@ class Geometry(om.Group):
                      "blanket_sh.Ib WC VV shield thickness")
 
         # this just needs to be run after the radial build
-        self.add_subsystem("blanketgeom", MenardSTBlanketAndShieldGeometry(),
-                promotes_inputs=["a", "κ"])
+        self.add_subsystem("blanketgeom",
+                           MenardSTBlanketAndShieldGeometry(),
+                           promotes_inputs=["a", "κ"])
         self.connect("radial_build.props.Ob SOL width",
                      "blanketgeom.Ob SOL width")
-        self.connect("radial_build.ib.blanket R_max",
+        self.connect("radial_build.ib.blanket R_out",
                      "blanketgeom.Ib blanket R_out")
-        self.connect("radial_build.ib.blanket R_min",
+        self.connect("radial_build.ib.blanket R_in",
                      "blanketgeom.Ib blanket R_in")
 
         self.connect("radial_build.ob.blanket R_in",
@@ -79,15 +80,14 @@ class Geometry(om.Group):
         self.connect("radial_build.ob.blanket R_out",
                      "blanketgeom.Ob blanket R_out")
 
-        self.connect("radial_build.ib.WC shield R_max",
+        self.connect("radial_build.ib.WC shield R_out",
                      "blanketgeom.Ib WC shield R_out")
-        self.connect("radial_build.ib.WC shield R_min",
+        self.connect("radial_build.ib.WC shield R_in",
                      "blanketgeom.Ib WC shield R_in")
-        self.connect("radial_build.ib.WC VV shield R_max",
+        self.connect("radial_build.ib.WC VV shield R_out",
                      "blanketgeom.Ib WC VV shield R_out")
-        self.connect("radial_build.ib.WC VV shield R_min",
+        self.connect("radial_build.ib.WC VV shield R_in",
                      "blanketgeom.Ib WC VV shield R_in")
-
 
 
 class Machine(om.Group):
@@ -96,7 +96,6 @@ class Machine(om.Group):
 
     def setup(self):
         config = self.options['config']
-
 
         self.add_subsystem("geometry",
                            Geometry(config=config),
@@ -107,8 +106,7 @@ class Machine(om.Group):
         self.add_subsystem(
             "plasma",
             mpl,
-            promotes_inputs=["R0", "ε", "κa", "V",
-            ("minor_radius", "a")],
+            promotes_inputs=["R0", "ε", "κa", "V", ("minor_radius", "a")],
         )
         self.connect("geometry.aspect_ratio", ["plasma.aspect_ratio"])
         self.connect("geometry.plasma.L_pol", "plasma.L_pol")
@@ -116,7 +114,8 @@ class Machine(om.Group):
 
         self.connect("geometry.Bt", ["plasma.Bt", "SOL.Bt"])
 
-        self.connect("geometry.blanket_sh.Eff Sh+Bl n thickness", "magcryo.Δr_sh")
+        self.connect("geometry.blanket_sh.Eff Sh+Bl n thickness",
+                     "magcryo.Δr_sh")
 
         # magnet heating model;
         # total power in blanket
@@ -145,7 +144,7 @@ class Machine(om.Group):
                            InboardMidplaneNeutronFluxFromRing(),
                            promotes_inputs=["R0"])
         self.add_subsystem("q_n", NeutronWallLoading())
-        self.connect("geometry.plasma R_min", "q_n_IB.r_in")
+        self.connect("geometry.plasma R_in", "q_n_IB.r_in")
 
         self.connect("geometry.plasma.surface area", "q_n.SA")
         self.connect("plasma.DTfusion.P_n", ["q_n_IB.P_n", "q_n.P_n"])
@@ -154,7 +153,8 @@ class Machine(om.Group):
 
         self.add_subsystem("maglife", MenardMagnetLifetime(config=config))
         self.connect("q_n_IB.q_n", "maglife.q_n_IB")
-        self.connect("geometry.blanket_sh.Shielding factor", "maglife.Shielding factor")
+        self.connect("geometry.blanket_sh.Shielding factor",
+                     "maglife.Shielding factor")
 
 
 if __name__ == "__main__":
@@ -174,13 +174,19 @@ if __name__ == "__main__":
 
     prob.driver.options['optimizer'] = 'SLSQP'
 
-    prob.model.add_design_var('geometry.CS R_max',
+    prob.model.add_design_var('geometry.CS R_out',
                               lower=0.10,
                               upper=1.000,
                               ref=0.50,
                               units='m')
-    prob.model.add_design_var('geometry.magnets.Δr_s', lower=0.05, upper=1.5, ref=0.3)
-    prob.model.add_design_var('geometry.magnets.Δr_m', lower=0.05, upper=1.5, ref=0.3)
+    prob.model.add_design_var('geometry.magnets.Δr_s',
+                              lower=0.05,
+                              upper=1.5,
+                              ref=0.3)
+    prob.model.add_design_var('geometry.magnets.Δr_m',
+                              lower=0.05,
+                              upper=1.5,
+                              ref=0.3)
     prob.model.add_design_var('a', lower=0.3, upper=3, units='m')
     prob.model.add_design_var('geometry.magnets.j_HTS',
                               lower=10,
@@ -195,10 +201,9 @@ if __name__ == "__main__":
     # set constraints
     prob.model.add_constraint('geometry.magnets.constraint_max_stress',
                               lower=0)
-    prob.model.add_constraint('geometry.magnets.constraint_B_on_coil',
+    prob.model.add_constraint('geometry.magnets.constraint_B_on_coil', lower=0)
+    prob.model.add_constraint('geometry.magnets.constraint_wp_current_density',
                               lower=0)
-    prob.model.add_constraint(
-        'geometry.magnets.constraint_wp_current_density', lower=0)
     prob.model.add_constraint('R0', equals=3.0)
     prob.model.add_constraint('geometry.aspect_ratio', lower=1.6, upper=5)
 
@@ -208,7 +213,7 @@ if __name__ == "__main__":
     prob.set_val('geometry.magnets.n_coil', 18)
 
     # initial values for design variables
-    prob.set_val("geometry.CS R_max", 0.15, units="m")
+    prob.set_val("geometry.CS R_out", 0.15, units="m")
     prob.set_val("geometry.magnets.Δr_s", 0.1, units='m')
     prob.set_val("geometry.magnets.Δr_m", 0.1, units='m')
     prob.set_val('a', 1.5, units="m")
@@ -220,14 +225,17 @@ if __name__ == "__main__":
     newton.options['maxiter'] = 20
     build.linear_solver = om.DirectSolver()
     newton.linesearch = om.ArmijoGoldsteinLS(retry_on_analysis_error=True,
-            rho=0.5, c=0.10, method="Armijo", bound_enforcement="vector")
+                                             rho=0.5,
+                                             c=0.10,
+                                             method="Armijo",
+                                             bound_enforcement="vector")
     newton.linesearch.options["maxiter"] = 10
     newton.linesearch.options["iprint"] = 0
 
     # initial inputs for intermediate variables
     prob.set_val("plasma.Hbalance.H", 1.30)
     prob.set_val("plasma.Ip", 10., units="MA")
-    prob.set_val("plasma.<n_e>", 1.0 , units="n20")
+    prob.set_val("plasma.<n_e>", 1.0, units="n20")
     prob.set_val("plasma.radiation.rad.P_loss", 100, units="MW")
 
     mpl = prob.model.plasma
@@ -240,7 +248,10 @@ if __name__ == "__main__":
     newton.options['stall_limit'] = 10
     mpl.linear_solver = om.DirectSolver()
     newton.linesearch = om.ArmijoGoldsteinLS(retry_on_analysis_error=True,
-            rho=0.5, c=0.03, method="Armijo", bound_enforcement="vector")
+                                             rho=0.5,
+                                             c=0.03,
+                                             method="Armijo",
+                                             bound_enforcement="vector")
     newton.linesearch.options["maxiter"] = 40
     newton.linesearch.options["iprint"] = 2
     newton.linesearch.options["print_bound_enforce"] = False

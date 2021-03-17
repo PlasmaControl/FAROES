@@ -14,21 +14,19 @@ class Machine(om.Group):
     def setup(self):
         config = self.options['config']
 
-
         self.add_subsystem("radial_build",
                            MenardSTRadialBuild(config=config),
-                           promotes_inputs=["a", "CS R_max", "Ib TF R_max"],
-                           promotes_outputs=["A", "R0", "Ib TF R_min"])
+                           promotes_inputs=["a", "CS R_out", "Ib TF R_out"],
+                           promotes_outputs=["A", "R0", "Ib TF R_in"])
 
         self.add_subsystem("magnets",
                            MagnetRadialBuild(config=config),
-                           promotes_inputs=["R0", ("r_is", "Ib TF R_min")],
-                           promotes_outputs=[("Ib TF R_out", "Ib TF R_max")])
+                           promotes_inputs=["R0", ("r_is", "Ib TF R_in")],
+                           promotes_outputs=["Ib TF R_out"])
 
         self.add_subsystem("plasmageom",
                            MenardPlasmaGeometry(config=config),
                            promotes_inputs=["R0", "A", "a"])
-
 
         self.connect('radial_build.Ob TF R_min', ['magnets.r_iu'])
 
@@ -45,9 +43,9 @@ if __name__ == "__main__":
 
     prob.driver = om.ScipyOptimizeDriver()
     prob.driver.options['optimizer'] = 'SLSQP'
-    #prob.driver.options['disp'] = True
+    # prob.driver.options['disp'] = True
 
-    prob.model.add_design_var('CS R_max',
+    prob.model.add_design_var('CS R_out',
                               lower=0.03,
                               upper=2.0,
                               ref=0.2,
@@ -68,7 +66,7 @@ if __name__ == "__main__":
 
     prob.setup()
 
-    prob.set_val("CS R_max", 0.30)
+    prob.set_val("CS R_out", 0.30)
     prob.set_val("magnets.Δr_s", 0.30, units='m')
     prob.set_val("magnets.Δr_m", 0.30, units='m')
     prob.set_val("a", 1.00, units='m')
@@ -86,5 +84,5 @@ if __name__ == "__main__":
 
     prob.run_driver()
 
-    #all_inputs = prob.model.list_inputs(values=True)
-    #all_outputs = prob.model.list_outputs(values=True)
+    # all_inputs = prob.model.list_inputs(values=True)
+    # all_outputs = prob.model.list_outputs(values=True)

@@ -34,7 +34,6 @@ class MenardKappaScaling(om.ExplicitComponent):
     -----
     The fit coefficients are loaded from the configuration tree.
     """
-
     def initialize(self):
         self.options.declare('config', default=None)
 
@@ -174,8 +173,11 @@ class EllipseLikeGeometry(om.ExplicitComponent):
         m**2, Poloidal cross section area
     V : float
         m**3, Plasma volume
+    R_in : float
+        m, Inner major radius
+    R_out : float
+        m, Outer major radius
     """
-
     def setup(self):
         self.add_input("R0", units='m', desc="Major radius")
         self.add_input("A", desc="Aspect Ratio")
@@ -210,13 +212,14 @@ class EllipseLikeGeometry(om.ExplicitComponent):
                         lower=0,
                         ref=10,
                         desc="Simplified poloidal circumference for testing")
-        # turned off because these would be 'recomputations'
-        # self.add_output("R_in",
-        #                 units='m',
-        #                 desc="Inner radius of plasma at midplane")
-        # self.add_output("R_out",
-        #                 units='m',
-        #                 desc="outer radius of plasma at midplane")
+        # These may be 'recomputations' for larger models
+        # but are useful for using this component in a 'standalone' fashion
+        self.add_output("R_in",
+                        units='m',
+                        desc="Inner radius of plasma at midplane")
+        self.add_output("R_out",
+                        units='m',
+                        desc="outer radius of plasma at midplane")
 
     def compute(self, inputs, outputs):
         outputs["δ"] = 0  # ellipse-like plasma approximation
@@ -236,16 +239,15 @@ class EllipseLikeGeometry(om.ExplicitComponent):
         outputs["full_plasma_height"] = 2 * b
         outputs["surface area"] = sa
 
-        # turned off because these would be 'recomputations'
-        # outputs["R_in"] = R0 - a
-        # outputs["R_out"] = R0 + a
-
         outputs["L_pol"] = L_pol
         outputs["L_pol_simple"] = L_pol_simple
 
         outputs["S_c"] = π * a**2 * κa
         V = 2 * π**2 * κa * a**2 * R0
         outputs["V"] = V
+
+        outputs["R_in"] = R0 - a
+        outputs["R_out"] = R0 + a
 
     def setup_partials(self):
         self.declare_partials("b", ["a", "κ"])
@@ -257,6 +259,10 @@ class EllipseLikeGeometry(om.ExplicitComponent):
 
         self.declare_partials("V", ["R0", "a", "κa"], method="exact")
         self.declare_partials("S_c", ["a", "κa"], method="exact")
+
+        self.declare_partials(["R_in", "R_out"], "R0", val=1)
+        self.declare_partials("R_in", "a", val=-1)
+        self.declare_partials("R_out", "a", val=1)
 
     def compute_partials(self, inputs, J):
         A = inputs["A"]
@@ -305,7 +311,6 @@ class EllipticalPlasmaGeometry(om.Group):
 
     Otherwise behaves like :code:`EllipseLikePlasma`.
     """
-
     def initialize(self):
         self.options.declare('config', default=None)
 
@@ -335,7 +340,6 @@ class MenardPlasmaGeometry(om.Group):
 
     Otherwise behaves like :code:`EllipseLikePlasma`.
     """
-
     def initialize(self):
         self.options.declare('config', default=None)
 

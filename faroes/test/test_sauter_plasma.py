@@ -23,8 +23,9 @@ class TestSauterGeometry(unittest.TestCase):
         prob.model.add_subsystem("geom", sg, promotes_inputs=["*"])
 
         prob.setup(force_alloc_complex=True)
-        prob.set_val('R0', 3, 'm')
+        prob.set_val('R0', 3, units='m')
         prob.set_val('A', 1.6)
+        prob.set_val('a', 1.875, units='m')
         prob.set_val('κ', 2.7)
         prob.set_val('δ', 0.5)
         prob.set_val('ξ', 0.3)
