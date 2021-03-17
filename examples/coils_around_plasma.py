@@ -27,11 +27,18 @@ class Machine(om.Group):
         #                    ThreeArcDeeTFSet(),
         #                    promotes_inputs=["R0"],
         #                    promotes_outputs=["V_enc"])
+        self.add_subsystem("ObRin",
+                           om.ExecComp("R_in = R0 + dR",
+                                       dR={'units': 'm'},
+                                       R_in={'units': 'm'},
+                                       R0={'units': 'm'}),
+                           promotes_inputs=["R0"])
         self.add_subsystem("coils",
                            PrincetonDeeTFSet(),
                            promotes_inputs=["R0"],
                            promotes_outputs=["V_enc"])
         self.connect("plasma.blanket envelope θ", "coils.θ")
+        self.connect("ObRin.R_in", "coils.Ob TF R_in")
 
         self.add_subsystem(
             "margin",
@@ -110,8 +117,8 @@ if __name__ == "__main__":
                               upper=4.5,
                               ref=1.5,
                               units="m")
-    prob.model.add_design_var("coils.ΔR",
-                              lower=1.2,
+    prob.model.add_design_var("ObRin.dR",
+                              lower=0.0,
                               upper=25.0,
                               ref=3.0,
                               units="m")
@@ -139,7 +146,7 @@ if __name__ == "__main__":
     # prob.set_val("coils.r_c", 4.0, units="m")
     # prob.set_val("coils.e_a", 10, units="m")
     prob.set_val("coils.Ib TF R_out", 1.0, units="m")
-    prob.set_val("coils.ΔR", 15.0, units="m")
+    prob.set_val("ObRin.dR", 15.0, units="m")
 
     prob.run_driver()
 

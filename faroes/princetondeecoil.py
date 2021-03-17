@@ -14,8 +14,8 @@ class PrincetonDeeTFSet(om.ExplicitComponent):
 
     Notes
     -----
-    Assumes a large number of filamentary currents. There are other solutions
-    for finite numbers of coils but that is not implemented here.
+    Assumes a large number of filamentary currents. There is a more accurate
+    solutions for finite numbers of coils but that is not implemented here.
 
     This is also not strictly correct because this solves for an inner
     perimeter of the constant-tension coil shape. Ideally this shape would be
@@ -23,12 +23,12 @@ class PrincetonDeeTFSet(om.ExplicitComponent):
 
     Inputs
     ------
-    R0 : float
-        m, plasma major radius
     Ib TF R_out : float
         m, inboard leg outer radius
-    ΔR : float
-        Magnet bore width. Must be greater than 0.
+    Ob TF R_in: float
+        m, Outboard TF inner radius
+    R0 : float
+        m, plasma major radius
     θ   : array
         Angles relative to the magnetic axis at which to
            evaluate the distance to the magnet.
@@ -37,8 +37,6 @@ class PrincetonDeeTFSet(om.ExplicitComponent):
     -------
     k : float
         Normalized magnet shape parameter
-    Ob TF R_in : float
-        m, outboard leg inner radius.
     inner leg half-height : float
         m, half-height of the vertical inner leg
     d_sq : float
@@ -67,7 +65,9 @@ class PrincetonDeeTFSet(om.ExplicitComponent):
         self.add_input("Ib TF R_out",
                        units="m",
                        desc="Inboard TF leg outer radius")
-        self.add_input("ΔR", units="m", desc="Magnet bore width")
+        self.add_input("Ob TF R_in",
+                       units="m",
+                       desc="Outboard TF leg inner radius")
         self.add_input("θ", shape_by_conn=True)
 
         self.add_output("k", desc="Normalized magnet shape parameter")
@@ -75,7 +75,6 @@ class PrincetonDeeTFSet(om.ExplicitComponent):
         #                 units="m",
         #                 desc="Inner perimeter of the magnet")
         V_enc_ref = 1e3
-        self.add_output("Ob TF R_in", units="m", ref=10, lower=0)
         self.add_output("constraint_axis_within_coils", units="m", ref=1)
         self.add_output("V_enc",
                         units="m**3",
@@ -140,13 +139,11 @@ class PrincetonDeeTFSet(om.ExplicitComponent):
         # while r_ot refers to the casing
         # radius. They are set to be equal.
         r1 = r_ot
-        ΔR = inputs["ΔR"]
 
         # here r2 refers to the conductor radius,
         # while r_iu refers to the casing
         # radius. They are set to be equal.
-        r_iu = r_ot + ΔR
-        outputs["Ob TF R_in"] = r_iu
+        r_iu = inputs["Ob TF R_in"]
         r2 = r_iu
         r0 = np.sqrt(r1 * r2)
 
@@ -155,7 +152,7 @@ class PrincetonDeeTFSet(om.ExplicitComponent):
 
         r0 = np.sqrt(r1 * r2)
 
-        outputs["constraint_axis_within_coils"] = r_ot + ΔR - R0
+        outputs["constraint_axis_within_coils"] = r_iu - R0
         θ_all = inputs["θ"]
 
         # angle of the transition between the vertical inner leg and the curve
@@ -191,33 +188,32 @@ class PrincetonDeeTFSet(om.ExplicitComponent):
 
     def setup_partials(self):
         size = self._get_var_meta("θ", "size")
-        self.declare_partials("k", ["Ib TF R_out", "ΔR"], method="exact")
+        self.declare_partials("k", ["Ib TF R_out", "Ob TF R_in"],
+                              method="exact")
         self.declare_partials("d_sq", ["Ib TF R_out"], method="fd")
-        self.declare_partials("d_sq", ["R0", "ΔR"], method="fd")
+        self.declare_partials("d_sq", ["R0", "Ob TF R_in"], method="fd")
         self.declare_partials("d_sq", ["θ"],
                               method="exact",
                               rows=range(size),
                               cols=range(size))
-        self.declare_partials("Ob TF R_in", ["ΔR", "Ib TF R_out"], val=1)
-        self.declare_partials("constraint_axis_within_coils",
-                              ["ΔR", "Ib TF R_out"],
+        self.declare_partials("constraint_axis_within_coils", ["Ob TF R_in"],
                               val=1)
         self.declare_partials("constraint_axis_within_coils", ["R0"], val=-1)
-        self.declare_partials("V_enc", ["Ib TF R_out", "ΔR"], method="exact")
-        self.declare_partials("half-height", ["Ib TF R_out", "ΔR"],
+        self.declare_partials("V_enc", ["Ib TF R_out", "Ob TF R_in"],
+                              method="exact")
+        self.declare_partials("half-height", ["Ib TF R_out", "Ob TF R_in"],
                               method="exact")
 
     def compute_partials(self, inputs, J):
         size = self._get_var_meta("θ", "size")
         r_ot = inputs["Ib TF R_out"]
         r1 = r_ot
-        ΔR = inputs["ΔR"]
         R0 = inputs["R0"]
-        r2 = r_ot + ΔR
+        r2 = inputs["Ob TF R_in"]
         k = np.log(r2 / r1) / 2
         r0 = np.sqrt(r1 * r2)
-        J["k", "Ib TF R_out"] = -ΔR / (2 * r_ot * r2)
-        J["k", "ΔR"] = 1 / (2 * r2)
+        J["k", "Ib TF R_out"] = -1 / (2 * r1)
+        J["k", "Ob TF R_in"] = 1 / (2 * r2)
 
         # angle of the transition between the vertical inner leg and the curve
         θ_all = inputs["θ"]
@@ -248,18 +244,20 @@ class PrincetonDeeTFSet(om.ExplicitComponent):
         dV_dr0 = 6 * k * pi**2 * r0**2 * (iv(1, 3 * k) -
                                           np.exp(-2 * k) * iv(1, k))
 
-        dr0_drot = (2 * r_ot + ΔR) / (2 * (r_ot * (r_ot + ΔR))**(1 / 2))
-        dr0_dΔR = r_ot / (2 * (r_ot * (r_ot + ΔR))**(1 / 2))
-        J["V_enc", "ΔR"] = dV_dk * J["k", "ΔR"] + dV_dr0 * dr0_dΔR
+        dr0_dr1 = r2 / (2 * r0)
+        dr0_dr2 = r1 / (2 * r0)
         J["V_enc",
-          "Ib TF R_out"] = dV_dk * J["k", "Ib TF R_out"] + dV_dr0 * dr0_drot
+          "Ib TF R_out"] = dV_dk * J["k", "Ib TF R_out"] + dV_dr0 * dr0_dr1
+        J["V_enc",
+          "Ob TF R_in"] = dV_dk * J["k", "Ob TF R_in"] + dV_dr0 * dr0_dr2
 
         dhh_dr0 = (1 / 2) * pi * k * (iv(1, k) + modstruve(-1, k))
         dhh_dk = ((1 / 2) * pi * k * r0 * (iv(0, k) + modstruve(-2, k)) +
                   pi * r0 * modstruve(-1, k))
-        J["half-height", "ΔR"] = dhh_dk * J["k", "ΔR"] + dhh_dr0 * dr0_dΔR
         J["half-height",
-          "Ib TF R_out"] = dhh_dk * J["k", "Ib TF R_out"] + dhh_dr0 * dr0_drot
+          "Ob TF R_in"] = dhh_dk * J["k", "Ob TF R_in"] + dhh_dr0 * dr0_dr2
+        J["half-height",
+          "Ib TF R_out"] = dhh_dk * J["k", "Ib TF R_out"] + dhh_dr0 * dr0_dr1
 
     def plot(self, ax=None, **kwargs):
         color = "black"
@@ -293,7 +291,7 @@ if __name__ == "__main__":
     # print(sol)
     prob.set_val("Ib TF R_out", 1.0)
     prob.set_val("R0", 1.5)
-    prob.set_val("ΔR", 1)
+    prob.set_val("Ob TF R_in", 3)
     # prob.set_val("θ", [1,2,3])
 
     prob.run_driver()

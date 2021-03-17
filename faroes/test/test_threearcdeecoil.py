@@ -8,6 +8,44 @@ from scipy.constants import pi
 import unittest
 
 
+class TestThreeArcDeeTFSetAdaptorZlarge(unittest.TestCase):
+    def setUp(self):
+        prob = om.Problem()
+        prob.model = coil.ThreeArcDeeTFSetAdaptor()
+        prob.setup(force_alloc_complex=True)
+
+        prob.set_val("Ib TF R_out", 2.0, units="m")
+        prob.set_val("Ob TF R_in", 6.0, units="m")
+        prob.set_val("Z_min", 5.0, units="m")
+        prob.set_val("f_c", 0.5)
+        prob.set_val("Z_1", 0.5)
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+        check = prob.check_partials(out_stream=None, method="cs")
+        assert_check_partials(check)
+
+
+class TestThreeArcDeeTFSetAdaptorZsmall(unittest.TestCase):
+    def setUp(self):
+        prob = om.Problem()
+        prob.model = coil.ThreeArcDeeTFSetAdaptor()
+        prob.setup(force_alloc_complex=True)
+
+        prob.set_val("Ib TF R_out", 2.0, units="m")
+        prob.set_val("Ob TF R_in", 6.0, units="m")
+        prob.set_val("Z_min", 3.0, units="m")
+        prob.set_val("f_c", 0.5)
+        prob.set_val("Z_1", 0.5)
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+        check = prob.check_partials(out_stream=None, method="cs")
+        assert_check_partials(check)
+
+
 class TestThreeArcDeeTFSet(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()

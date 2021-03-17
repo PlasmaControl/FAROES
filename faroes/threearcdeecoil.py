@@ -6,6 +6,105 @@ from scipy.constants import pi
 import numpy as np
 
 
+class ThreeArcDeeTFSetAdaptor(om.ExplicitComponent):
+    r"""Helps generate feasible ThreeArcDee solutions
+
+    Ensures that only ThreeArcDee shapes with peaks at or above
+    a height Z_min are generated.
+
+    Notes
+    -----
+    This does not mean that all magnets generated will fit around a given
+    plasma. It only removes a portion of the non-feasible space.
+
+    Inputs
+    ------
+    Ib TF R_out: float
+        m, Inboard TF outer radius
+    Ob TF R_in: float
+        m, Outboard TF inner radius
+    Z_min : float
+        m, minimum height for inner edge of magnet's crown
+
+    f_c : float
+        Fraction of possible span taken up by the circular arc
+          Good as a design variable, 0.01 < f_c < 0.99
+    Z_1 : float
+        m, Extra height above Z_min for the inner edge of the
+          magnet crown. Good as a design variable, 0 < Z_1 < 5m.
+
+    Outputs
+    -------
+    hhs : float
+        m, half-height of the straight segment
+    e_a : float
+        m, elliptical arc horizontal semi-major axis
+    r_c : float
+        m, circular arc radius
+    """
+    def setup(self):
+        self.add_input("Ib TF R_out", units="m")
+        self.add_input("Ob TF R_in", units="m")
+        self.add_input("Z_min", units="m")
+
+        self.add_input("f_c", val=0.5)
+        self.add_input("Z_1", units="m", val=0.5)
+
+        self.add_output("hhs", units="m", lower=0)
+        self.add_output("r_c", units="m", lower=0)
+        self.add_output("e_a", units="m", lower=0)
+
+    def compute(self, inputs, outputs):
+        f_c = inputs["f_c"]
+        if f_c > 1 or f_c < 0:
+            raise om.AnalysisError(f"f_c = {f_c} not between 0 and 1")
+
+        span = inputs["Ob TF R_in"] - inputs["Ib TF R_out"]
+        r_c = f_c * span
+        e_a = span * (1 - f_c)
+
+        # may want to substitute this for a softmax in the future,
+        # in order to be nicer to the optimizer
+        # https://xkcd.com/292/
+        coil_z_min = max(span, inputs["Z_min"])
+        hhs = coil_z_min + inputs["Z_1"] - r_c
+        outputs["hhs"] = hhs
+        outputs["r_c"] = r_c
+        outputs["e_a"] = e_a
+
+    def setup_partials(self):
+        self.declare_partials("e_a", ["Ob TF R_in", "Ib TF R_out", "f_c"])
+        self.declare_partials("r_c", ["Ob TF R_in", "Ib TF R_out", "f_c"])
+        self.declare_partials("hhs",
+                              ["Ob TF R_in", "Ib TF R_out", "f_c", "Z_min"])
+        self.declare_partials("hhs", ["Z_1"], val=1)
+
+    def compute_partials(self, inputs, J):
+        r_in = inputs["Ib TF R_out"]
+        r_out = inputs["Ob TF R_in"]
+        span = r_out - r_in
+        f_c = inputs["f_c"]
+
+        J["r_c", "f_c"] = span
+        J["r_c", "Ib TF R_out"] = -f_c
+        J["r_c", "Ob TF R_in"] = f_c
+
+        J["e_a", "f_c"] = -span
+        J["e_a", "Ib TF R_out"] = -(1 - f_c)
+        J["e_a", "Ob TF R_in"] = (1 - f_c)
+
+        J["hhs", "Z_1"] = 1
+        J["hhs", "f_c"] = -span
+        if span > inputs["Z_min"]:
+            J["hhs", "Z_min"] = 0
+            J["hhs", "Ob TF R_in"] = 1 - f_c
+            J["hhs", "Ib TF R_out"] = -1 + f_c
+        else:
+            J["hhs", "Z_min"] = 1
+            J["hhs", "Ob TF R_in"] = -f_c
+            J["hhs", "Ib TF R_out"] = f_c
+
+
 class ThreeArcDeeTFSet(om.ExplicitComponent):
     r"""Three-arc Dee magnet set
 
@@ -15,8 +114,6 @@ class ThreeArcDeeTFSet(om.ExplicitComponent):
 
     Inputs
     ------
-    R0 : float
-        m, plasma major radius
     Ib TF R_out : float
         m, inboard leg outer radius
     hhs : float
@@ -25,6 +122,8 @@ class ThreeArcDeeTFSet(om.ExplicitComponent):
         m, elliptical arc horizontal semi-major axis
     r_c : float
         m, circular arc radius
+    R0 : float
+        m, plasma major radius
     θ   : array
         Angles relative to the magnetic axis at which to
            evaluate the distance to the magnet.
@@ -73,7 +172,8 @@ class ThreeArcDeeTFSet(om.ExplicitComponent):
                         desc="magnetized volume enclosed by the set")
         self.add_output("d_sq", units="m**2", copy_shape="θ")
         self.add_output("half-height",
-                        units="m", lower=0,
+                        units="m",
+                        lower=0,
                         desc="Average semi-major axis of the magnet")
 
     def compute(self, inputs, outputs):

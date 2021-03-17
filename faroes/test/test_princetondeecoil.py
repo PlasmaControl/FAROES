@@ -27,7 +27,7 @@ class TestPrincetonDeeTFSet(unittest.TestCase):
 
         prob.set_val("R0", 2)
         prob.set_val("Ib TF R_out", 1)
-        prob.set_val("ΔR", 2)
+        prob.set_val("Ob TF R_in", 3)
         prob.set_val("θ", θ)
 
         self.prob = prob
@@ -42,7 +42,7 @@ class TestPrincetonDeeTFSet(unittest.TestCase):
 
         prob.set_val("R0", 1)
         prob.set_val("Ib TF R_out", np.exp(-1))
-        prob.set_val("ΔR", np.exp(1.0) - np.exp(-1.0))
+        prob.set_val("Ob TF R_in", np.exp(1))
 
         prob.run_driver()
 
@@ -55,7 +55,7 @@ class TestPrincetonDeeTFSet(unittest.TestCase):
 
         prob.set_val("R0", 1)
         prob.set_val("Ib TF R_out", np.exp(-1))
-        prob.set_val("ΔR", np.exp(1.0) - np.exp(-1.0))
+        prob.set_val("Ob TF R_in", np.exp(1))
 
         prob.run_driver()
 
