@@ -25,11 +25,11 @@ class SauterGeometry(om.ExplicitComponent):
 
     .. math::
 
-        R_0 &= \frac{R_\mathrm{max} + R_\mathrm{min}}{2} \\
-        a &= \frac{R_\mathrm{max} - R_\mathrm{min}}{2} \\
+        R_0 &= \frac{R_\mathrm{out} + R_\mathrm{in}}{2} \\
+        a &= \frac{R_\mathrm{out} - R_\mathrm{in}}{2} \\
         \epsilon &= a / R_0 \\
-        \kappa &= \frac{Z_\mathrm{max} - Z_\mathrm{min}}{R_\mathrm{max} -
-        R_\mathrm{min}}. \\
+        \kappa &= \frac{Z_\mathrm{top} - Z_\mathrm{bot}}{R_\mathrm{out} -
+        R_\mathrm{in}}. \\
 
     Because the exact cross-sectional area :math:`S_c`, poloidal circumference
     :math:`L_\mathrm{pol}`, surface area :math:`A_p` and volume :math:`V`
@@ -96,9 +96,9 @@ class SauterGeometry(om.ExplicitComponent):
         m**2, Swept-LCFS surface area
     V : float
         m**3, Plasma volume
-    R_min : float
+    R_in : float
         m, innermost plasma radius at midplane
-    R_max : float
+    R_out : float
         m, outermost plasma radius at midplane
     L_pol : float
         m, Poloidal circumference
@@ -161,11 +161,11 @@ class SauterGeometry(om.ExplicitComponent):
                         desc="Poloidal circumference",
                         lower=0,
                         ref=10)
-        self.add_output("R_min",
+        self.add_output("R_in",
                         units="m",
                         lower=0,
                         desc="Inner radius of plasma at midplane")
-        self.add_output("R_max",
+        self.add_output("R_out",
                         units="m",
                         lower=0,
                         desc="outer radius of plasma at midplane")
@@ -231,8 +231,8 @@ class SauterGeometry(om.ExplicitComponent):
         outputs["S"] = Ap
         outputs["V"] = V
 
-        outputs["R_min"] = R0 - a
-        outputs["R_max"] = R0 + a
+        outputs["R_in"] = R0 - a
+        outputs["R_out"] = R0 + a
         outputs["w07"] = w07
 
         dR_dθ = -a * (1 + δ * cos(θ) - 2 * ξ *
@@ -246,8 +246,8 @@ class SauterGeometry(om.ExplicitComponent):
         self.declare_partials("ε", ["A"])
         self.declare_partials("a", ["R0", "A"])
         self.declare_partials("full_plasma_height", ["R0", "A", "κ"])
-        self.declare_partials("R_min", ["R0", "A"])
-        self.declare_partials("R_max", ["R0", "A"])
+        self.declare_partials("R_in", ["R0", "A"])
+        self.declare_partials("R_out", ["R0", "A"])
 
         self.declare_partials("b", ["R0", "A", "κ"])
         self.declare_partials("w07", ["δ", "ξ"])
@@ -300,10 +300,10 @@ class SauterGeometry(om.ExplicitComponent):
         J["full_plasma_height", "R0"] = 2 * J["b", "R0"]
         J["full_plasma_height", "A"] = 2 * J["b", "A"]
 
-        J["R_min", "R0"] = 1 - 1 / A
-        J["R_min", "A"] = R0 / A**2
-        J["R_max", "R0"] = 1 + 1 / A
-        J["R_max", "A"] = -R0 / A**2
+        J["R_in", "R0"] = 1 - 1 / A
+        J["R_in", "A"] = R0 / A**2
+        J["R_out", "R0"] = 1 + 1 / A
+        J["R_out", "A"] = -R0 / A**2
 
         # Sauter equation (C.2)
         # but using the 'alternate expression for a quadratic root'
@@ -453,7 +453,7 @@ class SauterPlasmaGeometry(om.Group):
         self.add_subsystem("geom",
                            SauterGeometry(),
                            promotes_inputs=["R0", "A", "κ", "δ", "ξ", "θ"],
-                           promotes_outputs=["R_max", "R_min", "κa"])
+                           promotes_outputs=["R_out", "R_in", "κa"])
         self.add_subsystem("bl_pts",
                            util.OffsetParametricCurvePoints(),
                            promotes_inputs=[("s", "offset")])
@@ -489,7 +489,7 @@ class SauterPlasmaGeometryMarginalKappa(om.Group):
         self.add_subsystem("geom",
                            SauterGeometry(),
                            promotes_inputs=["R0", "A", "κ", "δ", "ξ", "θ"],
-                           promotes_outputs=["R_max", "R_min", "κa"])
+                           promotes_outputs=["R_out", "R_in", "κa"])
         self.add_subsystem("bl_pts",
                            util.OffsetParametricCurvePoints(),
                            promotes_inputs=[("s", "offset")])

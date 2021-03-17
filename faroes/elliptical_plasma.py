@@ -127,8 +127,8 @@ class EllipseLikeGeometry(om.ExplicitComponent):
         \textrm{full plasma height} &= 2 b \\
         L_\mathrm{pol} &= \textrm{ellipse_perimeter(a, b)} \\
         \textrm{surface area} &= 2 \pi R * \textrm{ellipse_perimeter(a, b)} \\
-        R_\mathrm{min} &= R - a \\
-        R_\mathrm{max} &= R + a \\
+        R_\mathrm{in} &= R - a \\
+        R_\mathrm{out} &= R + a \\
         V &= 2 \pi R * \pi a^2 \kappa_a \\
         S_c &= \pi a^2 \kappa_a .
 
@@ -211,10 +211,10 @@ class EllipseLikeGeometry(om.ExplicitComponent):
                         ref=10,
                         desc="Simplified poloidal circumference for testing")
         # turned off because these would be 'recomputations'
-        # self.add_output("R_min",
+        # self.add_output("R_in",
         #                 units='m',
         #                 desc="Inner radius of plasma at midplane")
-        # self.add_output("R_max",
+        # self.add_output("R_out",
         #                 units='m',
         #                 desc="outer radius of plasma at midplane")
 
@@ -237,8 +237,8 @@ class EllipseLikeGeometry(om.ExplicitComponent):
         outputs["surface area"] = sa
 
         # turned off because these would be 'recomputations'
-        # outputs["R_min"] = R0 - a
-        # outputs["R_max"] = R0 + a
+        # outputs["R_in"] = R0 - a
+        # outputs["R_out"] = R0 + a
 
         outputs["L_pol"] = L_pol
         outputs["L_pol_simple"] = L_pol_simple

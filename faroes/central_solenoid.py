@@ -131,20 +131,21 @@ class FiniteBuildCentralSolenoid(om.ExplicitComponent):
     ------
     j : float
         MA/m**2, smeared solenoid current density
+    j_max : float
+        MA/m**2, maximum smeared solenoid current density
     R_in : float
         m, solenoid inner radius
     R_out : float
         m, solenoid outer radius
     h : float
         m, height
+    B_max_conductor : float
+        T, maximum B on conductor
 
     """
     def setup(self):
         self.add_input("R_out", units='m', desc="outer casing radius")
         self.add_input("R_in", units='m', desc="inner casing radius")
-        self.add_input("R_in_min",
-                       units='m',
-                       desc="inner casing minimum allowed radius")
         self.add_input("B_max_conductor",
                        units='T',
                        desc="Maximum field on conductor")

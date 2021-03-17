@@ -28,8 +28,8 @@ class TestMenardSTInboardRadialBuild(unittest.TestCase):
 
         prob.setup(force_alloc_complex=True)
 
-        prob.set_val('CS R_max', 0.2)
-        prob.set_val('TF R_min', 1.0)
+        prob.set_val('CS R_out', 0.2)
+        prob.set_val('TF R_in', 1.0)
 
         prob.run_driver()
         check = prob.check_partials(out_stream=None, method='cs')
@@ -46,7 +46,7 @@ class TestMenardSTOutboardRadialBuild(unittest.TestCase):
 
         prob.setup(force_alloc_complex=True)
 
-        prob.set_val('plasma R_max', 4.4)
+        prob.set_val('plasma R_out', 4.4)
 
         prob.run_driver()
         check = prob.check_partials(out_stream=None, method='cs')
