@@ -6,8 +6,7 @@ from faroes.util import DoubleSmoothShiftedReLu
 
 
 class MenardInboardBlanketFit(om.Group):
-    r"""
-    Blanket thickness as a function of A
+    r"""Blanket thickness, optionally as a function of A.
 
     Inputs
     ------
@@ -36,6 +35,14 @@ class MenardInboardBlanketFit(om.Group):
     This group needs to always be given "A" as an input, even when it's not
     used. This is architectural decision made so that this is the only place
     where there is an "if" statement related to the choice of options.
+
+    References
+    ----------
+    .. [1] Menard, J. E. et al.
+       Fusion Nuclear Science Facilities and Pilot Plants Based on
+       the Spherical Tokamak. Nuclear Fusion 2016, 56 (10), 106023.
+       https://doi.org/10.1088/0029-5515/56/10/106023.
+       See Figure 47.
     """
     BAD_BL_MODEL = "Blanket thickness model %s not supported"
 
@@ -77,8 +84,7 @@ class MenardInboardBlanketFit(om.Group):
 
 
 class MenardInboardShieldFit(om.Group):
-    r"""
-    Inboard WC shield thickness as a function of A
+    r"""WC Shield thickness, optionally as a function of A.
 
     Inputs
     ------
@@ -108,6 +114,13 @@ class MenardInboardShieldFit(om.Group):
     This group needs to always be given "A" as an input, even when it's not
     used. This is architectural decision made so that this is the only place
     where there is an "if" statement related to the choice of options.
+
+    References
+    ----------
+    .. [1] Menard, J. E. et al.
+       Fusion Nuclear Science Facilities and Pilot Plants Based on
+       the Spherical Tokamak. Nuclear Fusion 2016, 56 (10), 106023.
+       https://doi.org/10.1088/0029-5515/56/10/106023.
     """
     BAD_SH_MODEL = "Shield thickness model %s not supported"
 

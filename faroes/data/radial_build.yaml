@@ -20,6 +20,12 @@ inboard:
       slope1: 0.5
       x1: 2.25
       slope2: 0.1
+      reference: >
+        Menard, J. E. Fusion Nuclear Science Facilities and
+        Pilot Plants Based on the Spherical Tokamak.
+        Nuclear Fusion 2016, 56 (10), 106023.
+        https://doi.org/10.1088/0029-5515/56/10/106023.
+        See Figure 47.
 
   # vacuum vessel true position tolerance
   vv tpt: &vvtpt {value: 5, units: mm}
@@ -39,6 +45,12 @@ inboard:
       slope1: -0.25
       x1: 2.25
       slope2: -0.05
+      reference: >
+        Menard, J. E. Fusion Nuclear Science Facilities and
+        Pilot Plants Based on the Spherical Tokamak.
+        Nuclear Fusion 2016, 56 (10), 106023.
+        https://doi.org/10.1088/0029-5515/56/10/106023.
+        See Figure 47.
 
   # vacuum vessel shield thickness
   vv shell thickness: {value: 12, units: mm}
