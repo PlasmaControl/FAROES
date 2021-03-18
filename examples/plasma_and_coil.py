@@ -38,12 +38,6 @@ class Machine(om.Group):
                            promotes_outputs=["R_out"])
         self.connect('aspect.A', 'plasma.A')
 
-        self.add_subsystem('connector_ob',
-                           om.ExecComp('r_iu = 2.5 + R_out',
-                                       r_iu={'units': 'm'},
-                                       R_out={'units': 'm'}),
-                           promotes=['r_iu', 'R_out'])
-
 
 if __name__ == "__main__":
     prob = om.Problem()
@@ -70,6 +64,7 @@ if __name__ == "__main__":
     prob.model.add_constraint('magnets.constraint_B_on_coil', lower=0)
     prob.model.add_constraint('magnets.constraint_wp_current_density', lower=0)
     prob.model.add_constraint('aspect.A', equals=2.0)
+    prob.model.add_constraint('R0', equals=3.5)
 
     prob.setup()
     prob.check_config(checks=['unconnected_inputs'])
@@ -77,6 +72,7 @@ if __name__ == "__main__":
     prob.set_val("magnets.r_is", 0.2, units="m")
     prob.set_val("magnets.Δr_s", 0.2, units="m")
     prob.set_val("magnets.Δr_m", 0.2, units="m")
+    prob.set_val("magnets.ob_gap.r_min", 8.045, units="m")
     prob.set_val("plasma.a", 0.5, units="m")
     prob.set_val("aspect.A", 2.0)
     prob.set_val('magnets.n_coil', 18)

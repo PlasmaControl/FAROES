@@ -7,47 +7,44 @@ from faroes.configurator import UserConfigurator
 import unittest
 
 
-class TestMenardSTOuterMachineRadialBuild(unittest.TestCase):
+class TestMenardSTInboard(unittest.TestCase):
     def test_partials(self):
         prob = om.Problem()
-        prob.model = rb.MenardSTOuterMachineRadialBuild()
+
+        uc = UserConfigurator()
+
+        prob.model = rb.MenardSTInboard(config=uc)
+
+        prob.setup(force_alloc_complex=True)
+
+        prob.set_val('TF R_out', 1.0)
+
+        prob.run_driver()
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+
+class TestMenardSTOutboard(unittest.TestCase):
+    def test_partials(self):
+        prob = om.Problem()
+
+        prob.model = rb.MenardSTOutboard()
+
+        prob.setup(force_alloc_complex=True)
+
+        prob.set_val('Ob FW R_in', 4.4)
+
+        prob.run_driver()
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+
+class TestMenardSTOuterMachine(unittest.TestCase):
+    def test_partials(self):
+        prob = om.Problem()
+        prob.model = rb.MenardSTOuterMachine()
         prob.setup(force_alloc_complex=True)
         prob.set_val('TF-cryostat thickness', 2.0)
-        prob.run_driver()
-        check = prob.check_partials(out_stream=None, method='cs')
-        assert_check_partials(check)
-
-
-class TestMenardSTInboardRadialBuild(unittest.TestCase):
-    def test_partials(self):
-        prob = om.Problem()
-
-        uc = UserConfigurator()
-
-        prob.model = rb.MenardSTInboardRadialBuild(config=uc)
-
-        prob.setup(force_alloc_complex=True)
-
-        prob.set_val('CS R_out', 0.2)
-        prob.set_val('TF R_in', 1.0)
-
-        prob.run_driver()
-        check = prob.check_partials(out_stream=None, method='cs')
-        assert_check_partials(check)
-
-
-class TestMenardSTOutboardRadialBuild(unittest.TestCase):
-    def test_partials(self):
-        prob = om.Problem()
-
-        uc = UserConfigurator()
-
-        prob.model = rb.MenardSTOutboardRadialBuild(config=uc)
-
-        prob.setup(force_alloc_complex=True)
-
-        prob.set_val('plasma R_out', 4.4)
-
         prob.run_driver()
         check = prob.check_partials(out_stream=None, method='cs')
         assert_check_partials(check)

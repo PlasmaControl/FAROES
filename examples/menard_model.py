@@ -4,11 +4,14 @@
 from faroes.configurator import UserConfigurator
 import faroes.units  # noqa: F401
 
-from faroes.tf_magnet_set import TFMagnetSet
+from faroes.simple_tf_magnet import SimpleMagnetEngineering
 from faroes.elliptical_plasma import MenardPlasmaGeometry
-from faroes.radialbuild import MenardSTRadialBuild
+from faroes.radialbuild import STRadialBuild
 
 from faroes.menardplasmaloop import MenardPlasmaLoop
+
+from faroes.blanket import MenardInboardBlanketFit
+from faroes.blanket import MenardInboardShieldFit
 
 from faroes.blanket import MenardSTBlanketAndShieldGeometry
 from faroes.blanket import MenardSTBlanketAndShieldMagnetProtection
@@ -33,21 +36,23 @@ class Geometry(om.Group):
         config = self.options['config']
 
         self.add_subsystem("radial_build",
-                           MenardSTRadialBuild(config=config),
-                           promotes_inputs=["a", "CS R_out", "Ib TF R_out"],
+                           STRadialBuild(config=config),
+                           promotes_inputs=["a"],
                            promotes_outputs=[("A", "aspect_ratio"), "R0",
                                              "Ib TF R_in", "plasma R_out",
                                              "plasma R_in"])
 
-        self.add_subsystem("magnets",
-                           TFMagnetSet(config=config),
-                           promotes_inputs=["R0", ("r_is", "Ib TF R_in"), "κ"],
-                           promotes_outputs=[("Ib TF R_out", "Ib TF R_out"),
-                                             ("B0", "Bt")])
+        self.add_subsystem("ib_shield",
+                           MenardInboardShieldFit(config=config),
+                           promotes_inputs=[("A", "aspect_ratio")])
+        self.add_subsystem("ib_blanket",
+                           MenardInboardBlanketFit(config=config),
+                           promotes_inputs=[("A", "aspect_ratio")])
 
-        self.connect('radial_build.Ob TF R_min', ['magnets.r_iu'])
-
-        self.connect('magnets.Ob TF R_out', ['radial_build.Ob TF R_out'])
+        self.connect('ib_shield.shield_thickness',
+                     ['radial_build.ib.WC shield thickness'])
+        self.connect('ib_blanket.blanket_thickness',
+                     ['radial_build.ib.blanket thickness'])
 
         self.add_subsystem("plasma",
                            MenardPlasmaGeometry(config=config),
@@ -57,9 +62,9 @@ class Geometry(om.Group):
         self.add_subsystem(
             "blanket_sh",
             MenardSTBlanketAndShieldMagnetProtection(config=config))
-        self.connect("radial_build.ib_blanket.blanket_thickness",
+        self.connect("ib_blanket.blanket_thickness",
                      "blanket_sh.Ib blanket thickness")
-        self.connect("radial_build.ib_shield.shield_thickness",
+        self.connect("ib_shield.shield_thickness",
                      "blanket_sh.Ib WC shield thickness")
         self.connect("radial_build.props.Ib WC VV shield thickness",
                      "blanket_sh.Ib WC VV shield thickness")
@@ -102,6 +107,18 @@ class Machine(om.Group):
                            promotes_inputs=["a"],
                            promotes_outputs=["R0", "κ", "κa", "ε"])
 
+        self.add_subsystem("magnets",
+                           SimpleMagnetEngineering(config=config),
+                           promotes_inputs=["R0"])
+
+        self.connect('geometry.radial_build.ib_tf.r1', ['magnets.r1'])
+        self.connect('geometry.radial_build.ob_tf.r2', ['magnets.r2'])
+        self.connect('geometry.radial_build.ib_tf.A_s', ['magnets.A_s'])
+        self.connect('geometry.radial_build.ib_tf.A_m', ['magnets.A_m'])
+        self.connect('geometry.radial_build.ib_tf.A_t', ['magnets.A_t'])
+        self.connect('geometry.radial_build.ib_tf.r_om',
+                     ['magnets.Ib winding pack R_out'])
+
         mpl = MenardPlasmaLoop(config=config)
         self.add_subsystem(
             "plasma",
@@ -113,14 +130,13 @@ class Machine(om.Group):
         self.connect("geometry.plasma.L_pol", "plasma.L_pol")
         self.connect("geometry.plasma.L_pol_simple", "plasma.L_pol_simple")
 
-        self.connect("geometry.Bt", ["plasma.Bt", "SOL.Bt"])
-
-        self.connect("geometry.blanket_sh.Eff Sh+Bl n thickness",
-                     "magcryo.Δr_sh")
+        self.connect("magnets.B0", ["plasma.Bt"])
 
         # magnet heating model;
         # total power in blanket
         self.add_subsystem("magcryo", MagnetCryoCoolingPower(config=config))
+        self.connect("geometry.blanket_sh.Eff Sh+Bl n thickness",
+                     "magcryo.Δr_sh")
         self.add_subsystem("blanket_P", SimpleBlanketPower(config=config))
         self.connect("plasma.DTfusion.P_n", ["magcryo.P_n", "blanket_P.P_n"])
 
@@ -139,6 +155,7 @@ class Machine(om.Group):
         self.connect("plasma.P_heat.P_heat", "SOL.P_heat")
         self.connect("plasma.Ip", "SOL.Ip")
         self.connect("plasma.current.q_star", "SOL.q_star")
+        self.connect("magnets.B0", ["SOL.Bt"])
 
         # Neutron wall flux models. Useful for constraints.
         self.add_subsystem("q_n_IB",
@@ -175,50 +192,56 @@ if __name__ == "__main__":
     prob.driver.options['optimizer'] = 'IPOPT'
     prob.driver.options['user_terminate_signal'] = True
 
-    prob.model.add_design_var('geometry.CS R_out',
+    prob.model.add_design_var('geometry.radial_build.CS ΔR',
                               lower=0.10,
                               upper=1.0,
                               ref=0.50,
                               units='m')
-    prob.model.add_design_var('geometry.magnets.Δr_s',
+    prob.model.add_design_var('geometry.radial_build.ib_tf.Δr_s',
                               lower=0.05,
                               upper=1.0,
                               ref=0.3,
                               units='m')
-    prob.model.add_design_var('geometry.magnets.Δr_m',
+    prob.model.add_design_var('geometry.radial_build.ib_tf.Δr_m',
                               lower=0.05,
                               upper=1.0,
                               ref=0.3,
                               units='m')
-    prob.model.add_design_var('a', lower=1.0, upper=3, units='m')
-    prob.model.add_design_var('geometry.magnets.j_HTS',
+    prob.model.add_design_var('a', lower=0.9, upper=3, units='m')
+    prob.model.add_design_var('geometry.radial_build.ob.gap thickness',
+                              lower=0.00,
+                              upper=5.0,
+                              ref=0.3,
+                              units='m')
+    prob.model.add_design_var('magnets.j_HTS',
                               lower=10,
                               upper=250,
                               ref=100,
                               units="MA/m**2")
 
     prob.model.add_objective('pplant.overall.P_net', scaler=-1)
+    # prob.model.add_objective('magnets.B0', scaler=-1)
+    # prob.model.add_objective('geometry.radial_build.cryostat R_out',
+    #                           scaler=-1)
 
     # set constraints
-    prob.model.add_constraint('geometry.magnets.constraint_max_stress',
-                              lower=0)
-    prob.model.add_constraint('geometry.magnets.constraint_B_on_coil', lower=0)
-    prob.model.add_constraint('geometry.magnets.constraint_wp_current_density',
-                              lower=0)
+    prob.model.add_constraint('magnets.constraint_max_stress', lower=0)
+    prob.model.add_constraint('magnets.constraint_B_on_coil', lower=0)
+    prob.model.add_constraint('magnets.constraint_wp_current_density', lower=0)
     prob.model.add_constraint('R0', equals=3.0)
     prob.model.add_constraint('geometry.aspect_ratio', lower=1.6, upper=5)
 
     prob.setup()
     prob.check_config(checks=['unconnected_inputs'])
 
-    prob.set_val('geometry.magnets.n_coil', 18)
+    prob.set_val('geometry.radial_build.ib_tf.n_coil', 18)
 
     # initial values for design variables
-    prob.set_val("geometry.CS R_out", 0.15, units="m")
-    prob.set_val("geometry.magnets.Δr_s", 0.1, units='m')
-    prob.set_val("geometry.magnets.Δr_m", 0.1, units='m')
+    prob.set_val("geometry.radial_build.CS ΔR", 0.15, units="m")
+    prob.set_val("geometry.radial_build.ib_tf.Δr_s", 0.1, units='m')
+    prob.set_val("geometry.radial_build.ib_tf.Δr_m", 0.1, units='m')
     prob.set_val('a', 1.5, units="m")
-    prob.set_val("geometry.magnets.j_HTS", 20, units="MA/m**2")
+    prob.set_val("magnets.j_HTS", 20, units="MA/m**2")
 
     build = prob.model.geometry
     newton = build.nonlinear_solver = om.NewtonSolver(solve_subsystems=True)
@@ -227,7 +250,7 @@ if __name__ == "__main__":
     build.linear_solver = om.DirectSolver()
 
     # initial inputs for intermediate variables
-    prob.set_val("plasma.Hbalance.H", 1.30)
+    prob.set_val("plasma.Hbalance.H", 1.10)
     prob.set_val("plasma.Ip", 10., units="MA")
     prob.set_val("plasma.<n_e>", 1.0, units="n20")
     prob.set_val("plasma.radiation.rad.P_loss", 100, units="MW")
