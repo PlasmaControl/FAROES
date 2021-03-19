@@ -113,7 +113,7 @@ class TestHybridConfinementTime(unittest.TestCase):
         prob.set_val('κa', 2.19)
         prob.set_val('M', 2.5)
         prob.run_driver()
-        assert_near_equal(prob.get_val('τ'), 1.6, tolerance=0.01)
+        assert_near_equal(prob.get_val('τe'), 1.6, tolerance=0.01)
 
 
 if __name__ == '__main__':

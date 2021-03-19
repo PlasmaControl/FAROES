@@ -48,3 +48,6 @@ no-wall β_N scaling with ε:
       https://doi.org/10.1063/1.2961043.
   User:
     value: {}
+  # This is a 'special key' that chooses the Menard Hybrid scaling.
+  MenardHybrid:
+    value: {}
