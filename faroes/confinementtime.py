@@ -41,7 +41,6 @@ class ConfinementTime(om.Group):
         s, confinement time
 
     """
-
     def initialize(self):
         self.options.declare('config', default=None)
         self.options.declare("scaling", default=None)
@@ -49,10 +48,17 @@ class ConfinementTime(om.Group):
     def setup(self):
         config = self.options['config']
         scaling = self.options['scaling']
-        self.add_subsystem("law",
-                           ConfinementTimeScaling(config=config,
-                                                  scaling=scaling),
-                           promotes_inputs=["*"])
+
+        # a bit of a special case; could be done better perhaps
+        if scaling == "MenardHybrid":
+            self.add_subsystem("law",
+                               MenardHybridScaling(config=config),
+                               promotes_inputs=["*"])
+        else:
+            self.add_subsystem("law",
+                               ConfinementTimeScaling(config=config,
+                                                      scaling=scaling),
+                               promotes_inputs=["*"])
         self.add_subsystem("withH",
                            ConfinementTimeMultiplication(),
                            promotes_inputs=["H"],
@@ -80,7 +86,6 @@ class ConfinementTimeMultiplication(om.ExplicitComponent):
     This is a component in order to allow use of greek variables; otherwise it
     would be fine as an ExecComp.
     """
-
     def setup(self):
         self.add_input("τe_law",
                        units="s",
@@ -174,7 +179,9 @@ class ConfinementTimeScaling(om.ExplicitComponent):
         self.add_input("κa", desc="Effective elongation, S_c / πa²")
         self.add_input("M", units="u", desc="Ion mass number")
 
-        self.add_output("τe", units="s", lower=1e-3,
+        self.add_output("τe",
+                        units="s",
+                        lower=1e-3,
                         desc="Energy confinement time")
 
     def compute(self, inputs, outputs):
@@ -244,7 +251,7 @@ class MenardHybridScaling(om.Group):
                                        tau={"units": "s"},
                                        tau_N={"units": "s"},
                                        tau_P={"units": "s"}),
-                           promotes=[("tau", "τ"), "tau_N", "tau_P"])
+                           promotes=[("tau", "τe"), "tau_N", "tau_P"])
         self.connect("frac.f", "tau.f")
 
 

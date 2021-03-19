@@ -66,8 +66,12 @@ class MenardPlasmaLoop(om.Group):
 
     def setup(self):
         config = self.options['config']
+
+        acc = self.options["config"].accessor(["fits", "τe"])
+        scaling = acc(["default"])
+
         self.add_subsystem("confinementtime",
-                           ConfinementTime(config=config, scaling="default"),
+                           ConfinementTime(config=config, scaling=scaling),
                            promotes_inputs=[("R", "R0"), "ε", "κa", "Bt",
                                             ("n19", "<n_e>"), "Ip"])
 
