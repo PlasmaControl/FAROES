@@ -1,14 +1,16 @@
 import openmdao.api as om
 from faroes.configurator import UserConfigurator, Accessor
 
+from faroes.simple_tf_magnet import InboardMagnetGeometry
+from faroes.simple_tf_magnet import OutboardMagnetGeometry
+
 from faroes.blanket import MenardInboardBlanketFit
 from faroes.blanket import MenardInboardShieldFit
 
 
-class RadialBuildProperties(om.Group):
+class Properties(om.Group):
     r"""Helper for the Menard ST radial build
     """
-
     def initialize(self):
         self.options.declare('config', default=None)
 
@@ -62,14 +64,69 @@ class RadialBuildProperties(om.Group):
         self.add_subsystem("ivc", ivc, promotes_outputs=["*"])
 
 
-class MenardSTInboardRadialBuild(om.ExplicitComponent):
-    r"""Inboard radial build, to plasma outboard
+class CSToTF(om.ExplicitComponent):
+    r"""Radial build out to the inside of the TF
 
     Inputs
     ------
-    CS R_out : float
-        m, CS outer radius
+    Plug R_out : float
+        m, outer radius of a central plug
+    CS ΔR : float
+        m, thickness of CS
 
+    Outputs
+    -------
+    CS R_in : float
+        m, Inner radius of CS
+    CS R_out : float
+        m, Inner radius of CS
+    TF R_in : float
+        m, Inboard TF leg inner radius
+
+    Notes
+    -----
+    Loads the cs-to-tf gap from the configuration tree.
+    """
+    def initialize(self):
+        self.options.declare('config', default=None)
+
+    def setup(self):
+        if self.options['config'] is not None:
+            self.config = self.options['config']
+            ac = self.config.accessor(['radial_build', 'inboard'])
+            self.cs_tf_gap = ac(["oh-tf gap thickness"], units="m")
+        else:
+            self.cs_tf_gap = 0
+
+        self.add_input("Plug R_out", units='m', val=0)
+        self.add_input("CS ΔR", units='m', val=0)
+        self.add_output("CS R_in", units='m', lower=0)
+        self.add_output("CS R_out", units='m', lower=0)
+        self.add_output("TF R_in",
+                        units="m",
+                        desc="Inboard TF leg inner radius",
+                        lower=0)
+
+    def compute(self, inputs, outputs):
+        plug_r_out = inputs["Plug R_out"]
+        cs_r_in = plug_r_out
+        outputs["CS R_in"] = cs_r_in
+        cs_Δr = inputs["CS ΔR"]
+        cs_r_out = cs_r_in + cs_Δr
+        outputs["CS R_out"] = cs_r_out
+        outputs["TF R_in"] = cs_r_out + self.cs_tf_gap
+
+    def setup_partials(self):
+        self.declare_partials("CS R_in", "Plug R_out", val=1)
+        self.declare_partials(["CS R_out", "TF R_in"], ["CS ΔR", "Plug R_out"],
+                              val=1)
+
+
+class MenardSTInboard(om.ExplicitComponent):
+    r"""From outside of the TF to the first wall
+
+    Inputs
+    ------
     TF R_out : float
         m, Inboard TF leg outer radius
     WC VV shield thickness : float
@@ -80,16 +137,9 @@ class MenardSTInboardRadialBuild(om.ExplicitComponent):
         m, Inboard blanket thickness
     FW thickness : float
         m, First wall thickness
-    SOL width : float
-        m, Scrape-off-layer width
-    a : float
-        m, Plasma minor radius
 
     Outputs
     -------
-    TF R_in : float
-        m, Inboard TF leg inner radius
-
     VV R_in : float
         m, Inboard VV inner radius
     VV 2nd shell R_out : float
@@ -114,16 +164,7 @@ class MenardSTInboardRadialBuild(om.ExplicitComponent):
         m, First wall inner radius
     FW R_out : float
         m, First wall outer radius
-    plasma R_in : float
-        m, Inner radius of plasma at midplane
-    R0 : float
-    plasma R_out : float
-        m, Outer radius of plasma at midplane
-
-    A : float
-        Plasma aspect ratio
     """
-
     def initialize(self):
         self.options.declare('config', default=None)
 
@@ -131,7 +172,6 @@ class MenardSTInboardRadialBuild(om.ExplicitComponent):
         if self.options['config'] is not None:
             self.config = self.options['config']
             ac = self.config.accessor(['radial_build', 'inboard'])
-            self.cs_tf_gap = ac(["oh-tf gap thickness"], units="m")
             self.tf_tpt = ac(["tf tpt"], units="m")
             self.vv_tpt = ac(["vv tpt"], units="m")
             self.wedge_assy_fitup_thickness = ac(
@@ -141,8 +181,6 @@ class MenardSTInboardRadialBuild(om.ExplicitComponent):
             self.vv_tf_gap = ac(["vv tf gap thickness"], units="m")
             self.vv_shell_thickness = ac(["vv shell thickness"], units="m")
             self.vv_tpt = ac(["vv tpt"], units="m")
-
-        self.add_input("CS R_out", units="m", desc="CS outer radius")
 
         self.add_input("TF R_out",
                        units='m',
@@ -158,11 +196,7 @@ class MenardSTInboardRadialBuild(om.ExplicitComponent):
                        units="m",
                        desc="Inboard blanket thickness")
         self.add_input("FW thickness", units="m", desc="first wall thickness")
-        self.add_input("SOL width", units="m", desc="scrape-off-layer width")
-        self.add_input("a", units="m", desc="Plasma minor radius")
 
-        self.add_output("TF R_in", units="m",
-                        desc="Inboard TF leg inner radius")
         # vacuum vessel inner extent
         self.add_output("VV R_in", units='m', desc="Inboard VV inner radius")
         self.add_output("VV 2nd shell R_out",
@@ -189,49 +223,36 @@ class MenardSTInboardRadialBuild(om.ExplicitComponent):
                         units='m',
                         desc="WC shield outer radius")
 
-        self.add_output("blanket R_in",
-                        units='m',
-                        desc="blanket inner radius")
+        self.add_output("blanket R_in", units='m', desc="blanket inner radius")
         self.add_output("blanket R_out",
                         units='m',
                         desc="blanket outer radius")
 
         self.add_output("FW R_in", units='m', desc="first wall inner radius")
         self.add_output("FW R_out", units='m', desc="first wall outer radius")
-        self.add_output("plasma R_in", ref=3,
-                        units="m",
-                        desc="Inner radius of plasma at midplane")
-        self.add_output("R0", units="m", ref=4, desc="Plasma major radius")
-        self.add_output("plasma R_out", units="m", ref=5,
-                        desc="Outer radius of plasma at midplane")
-        self.add_output("A", desc="Plasma aspect ratio", ref=3)
 
     def setup_partials(self):
         outs = [
-            "VV R_in", "VV 2nd shell R_out",
-            "WC VV shield R_in", "WC VV shield R_out", "VV 1st shell R_in",
-            "VV R_out", "WC shield R_in", "WC shield R_out",
-            "blanket R_in", "blanket R_out", "FW R_in", "FW R_out",
-            "plasma R_in", "R0",
+            "VV R_in",
+            "VV 2nd shell R_out",
+            "WC VV shield R_in",
+            "WC VV shield R_out",
+            "VV 1st shell R_in",
+            "VV R_out",
+            "WC shield R_in",
+            "WC shield R_out",
+            "blanket R_in",
+            "blanket R_out",
+            "FW R_in",
+            "FW R_out",
         ]
         self.declare_partials(outs[:], "TF R_out", val=1)
         self.declare_partials(outs[3:], "WC VV shield thickness", val=1)
         self.declare_partials(outs[7:], "WC shield thickness", val=1)
         self.declare_partials(outs[9:], "blanket thickness", val=1)
         self.declare_partials(outs[11:], "FW thickness", val=1)
-        self.declare_partials(outs[12:], "SOL width", val=1)
-        self.declare_partials(outs[13:], "a", val=1)
-        ins = ["TF R_out", "WC VV shield thickness",
-               "WC shield thickness", "blanket thickness",
-               "FW thickness", "SOL width", "a"]
-        self.declare_partials("plasma R_out", ins[:-1], val=1)
-        self.declare_partials("plasma R_out", ins[-1], val=2)
-        self.declare_partials("A", ins)
-
-        self.declare_partials("TF R_in", "CS R_out", val=1)
 
     def compute(self, inputs, outputs):
-        outputs["TF R_in"] = inputs["CS R_out"] + self.cs_tf_gap
 
         tf_r_out = inputs["TF R_out"]
         vv_r_in = tf_r_out + self.tf_tpt + self.vv_tpt + \
@@ -259,51 +280,108 @@ class MenardSTInboardRadialBuild(om.ExplicitComponent):
         outputs["FW R_in"] = bb_r_out  # same
         fw_r_out = bb_r_out + inputs["FW thickness"]
         outputs["FW R_out"] = fw_r_out
-        plasma_r_in = fw_r_out + inputs["SOL width"]
-        outputs["plasma R_in"] = plasma_r_in
 
-        R0 = plasma_r_in + inputs["a"]
+
+class Plasma(om.ExplicitComponent):
+    r"""From inboard FW to outboard FW
+
+    Inputs
+    ------
+    Ib FW R_out : float
+        m, Outer radius of inboard first wall
+    Ib SOL width : float
+        m, Inboard scrape-off-layer width
+    a : float
+        m, Plasma minor radius
+    Ob SOL width : float
+        m, Outboard scrape-off-layer width
+
+    Outputs
+    -------
+    R_in : float
+        m, Inner radius of LCFS at midplane
+    R0 : float
+        m, Plasma major radius
+    R_out : float
+        m, Outer radius of LCFS at midplane
+    Ob FW R_in : float
+        m, Inner radius of the outboard first wall
+
+    A : float
+        Plasma aspect ratio
+
+    """
+    def setup(self):
+        self.add_input("Ib FW R_out", units="m")
+        self.add_input("Ib SOL width",
+                       units="m",
+                       desc="Inboard scrape-off-layer width")
+        self.add_input("a", units="m", desc="Plasma minor radius")
+        self.add_input("Ob SOL width",
+                       units="m",
+                       desc="Outboard scrape-off-layer width")
+
+        self.add_output("R_in",
+                        ref=3,
+                        units="m",
+                        desc="Inner radius of plasma at midplane")
+        self.add_output("R0",
+                        units="m",
+                        ref=4,
+                        desc="Plasma major radius",
+                        lower=0)
+        self.add_output("R_out",
+                        units="m",
+                        ref=5,
+                        desc="Outer radius of plasma at midplane",
+                        lower=0)
+        self.add_output("Ob FW R_in",
+                        units="m",
+                        desc="Inner radius of the outboard first wall",
+                        ref=5)
+        self.add_output("A", desc="Plasma aspect ratio", ref=3, lower=0)
+
+    def compute(self, inputs, outputs):
+        fw_r_out = inputs["Ib FW R_out"]
+        plasma_r_in = fw_r_out + inputs["Ib SOL width"]
+        outputs["R_in"] = plasma_r_in
+        a = inputs["a"]
+
+        R0 = plasma_r_in + a
         outputs["R0"] = R0
-        outputs["plasma R_out"] = plasma_r_in + 2 * inputs["a"]
-        outputs["A"] = R0 / inputs["a"]
+        plasma_r_out = plasma_r_in + 2 * a
+        outputs["R_out"] = plasma_r_out
+        outputs["Ob FW R_in"] = plasma_r_out + inputs["Ob SOL width"]
+
+        outputs["A"] = R0 / a
+
+    def setup_partials(self):
+        self.declare_partials("R_in", ["Ib FW R_out", "Ib SOL width"], val=1)
+        self.declare_partials("R0", ["Ib FW R_out", "Ib SOL width", "a"],
+                              val=1)
+        self.declare_partials("R_out", ["Ib FW R_out", "Ib SOL width"], val=1)
+        self.declare_partials("R_out", ["a"], val=2)
+        self.declare_partials("Ob FW R_in", ["Ib FW R_out", "Ib SOL width"],
+                              val=1)
+        self.declare_partials("Ob FW R_in", ["a"], val=2)
+        self.declare_partials("A", ["Ib FW R_out", "Ib SOL width", "a"])
 
     def compute_partials(self, inputs, J):
+        fw_r_out = inputs["Ib FW R_out"]
+        ib_sol = inputs["Ib SOL width"]
         a = inputs["a"]
-        J["A", "TF R_out"] = 1/a
-        J["A", "WC VV shield thickness"] = 1/a
-        J["A", "WC shield thickness"] = 1/a
-        J["A", "blanket thickness"] = 1/a
-        J["A", "FW thickness"] = 1/a
-        J["A", "SOL width"] = 1/a
-
-        # essentially, recompute R0
-        tf_r_out = inputs["TF R_out"]
-        vv_r_in = tf_r_out + self.tf_tpt + self.vv_tpt + \
-            self.wedge_assy_fitup_thickness + \
-            self.thermal_shield_thickness + self.vv_tf_gap
-        wc_vv_shield_r_in = vv_r_in + self.vv_shell_thickness
-        wc_vv_ΔR = inputs["WC VV shield thickness"]
-        wc_vv_shield_r_out = wc_vv_shield_r_in + wc_vv_ΔR
-        vv_r_out = wc_vv_shield_r_out + self.vv_shell_thickness
-        wc_shield_ΔR = inputs["WC shield thickness"]
-        wc_r_out = vv_r_out + wc_shield_ΔR
-        bb_r_in = wc_r_out + self.vv_tpt
-        bb_r_out = bb_r_in + inputs["blanket thickness"]
-        fw_r_out = bb_r_out + inputs["FW thickness"]
-        plasma_r_in = fw_r_out + inputs["SOL width"]
-        # - (R0 - a) / a**2
-        J["A", "a"] = - (plasma_r_in)/a**2
+        J["A", "Ib FW R_out"] = 1 / a
+        J["A", "Ib SOL width"] = 1 / a
+        J["A", "a"] = -(fw_r_out + ib_sol) / a**2
 
 
-class MenardSTOutboardRadialBuild(om.ExplicitComponent):
+class MenardSTOutboard(om.ExplicitComponent):
     r"""Outboard radial build
 
     Inputs
     ------
-    plasma R_out : float
-        m, Outer radius of the core plasma at midplane
-    SOL width : float
-        m, low field side scrape-off-layer width
+    Ob FW R_in : float
+        m, Outer radius of the first wall at midplane
     blanket thickness : float
         m, Thickness of FW and blanket
     access thickness : float
@@ -312,6 +390,8 @@ class MenardSTOutboardRadialBuild(om.ExplicitComponent):
         m, thickness of vacuum vessel
     shield thickness : float
         m, thickness of neutron shield
+    gap thickness : float
+        m, thickness of extra gap in front of TF
 
     Outputs
     -------
@@ -321,69 +401,74 @@ class MenardSTOutboardRadialBuild(om.ExplicitComponent):
         m, outer radius of outboard blanket at midplane
     TF R_min : float
         m, minimum radius of inner part of TF outboard leg
+    TF R_in : float
+        m, inner radius of inner part of TF outboard leg
     """
-
-    def initialize(self):
-        self.options.declare('config', default=None)
-
     def setup(self):
-        if self.options['config'] is not None:
-            self.config = self.options['config']
 
         # outboard build
-        self.add_input("plasma R_out",
+        self.add_input("Ob FW R_in",
                        units="m",
                        desc="outer radius of core at midplane")
-        self.add_input("SOL width",
-                       units="m",
-                       desc="low field side scrape-off-layer width")
         self.add_input("blanket thickness", units="m")
 
         # I think this is where the PF coils go?
         self.add_input("access thickness", units="m", desc="Access thickness")
         self.add_input("VV thickness", units="m", desc="Vacuum vessel")
         self.add_input("shield thickness", units="m", desc="Neutron shield")
+        self.add_input("gap thickness",
+                       units="m",
+                       val=0,
+                       desc="Extra gap in front of the TF")
 
         self.add_output("blanket R_in", units='m', lower=0)
         self.add_output("blanket R_out", units='m', lower=0)
         self.add_output("TF R_min",
                         units='m',
                         desc="TF leg casing minimum radius")
+        self.add_output("TF R_in",
+                        units='m',
+                        desc="TF leg casing inner radius")
 
     def setup_partials(self):
-        self.declare_partials("TF R_min", "plasma R_out", val=1)
-        self.declare_partials("TF R_min", "SOL width", val=1)
+        self.declare_partials("TF R_min", "Ob FW R_in", val=1)
         self.declare_partials("TF R_min", "blanket thickness", val=1)
         self.declare_partials("TF R_min", "access thickness", val=1)
         self.declare_partials("TF R_min", "VV thickness", val=1)
         self.declare_partials("TF R_min", "shield thickness", val=1)
 
-        self.declare_partials("blanket R_in", ["plasma R_out", "SOL width"],
+        self.declare_partials("TF R_in", "Ob FW R_in", val=1)
+        self.declare_partials("TF R_in", "blanket thickness", val=1)
+        self.declare_partials("TF R_in", "access thickness", val=1)
+        self.declare_partials("TF R_in", "VV thickness", val=1)
+        self.declare_partials("TF R_in", "shield thickness", val=1)
+        self.declare_partials("TF R_in", "gap thickness", val=1)
+
+        self.declare_partials("blanket R_in", ["Ob FW R_in"], val=1)
+        self.declare_partials("blanket R_out",
+                              ["Ob FW R_in", "blanket thickness"],
                               val=1)
-        self.declare_partials("blanket R_out", ["plasma R_out", "SOL width",
-                                                "blanket thickness"], val=1)
 
     def compute(self, inputs, outputs):
-        # outboard build
-        plasma_r_out = inputs["plasma R_out"]
-        lfs_sol_width = inputs["SOL width"]
+        ob_fw = inputs["Ob FW R_in"]
         ob_blanket_thickness = inputs["blanket thickness"]
         ob_access_thickness = inputs["access thickness"]
         ob_vv_thickness = inputs["VV thickness"]
         ob_shield_thickness = inputs["shield thickness"]
 
-        outputs["blanket R_in"] = plasma_r_out + lfs_sol_width
-        outputs["blanket R_out"] = (
-            outputs["blanket R_in"] + ob_blanket_thickness)
+        outputs["blanket R_in"] = ob_fw
+        outputs["blanket R_out"] = (outputs["blanket R_in"] +
+                                    ob_blanket_thickness)
 
         ob_build = [
-            plasma_r_out, lfs_sol_width, ob_blanket_thickness,
-            ob_access_thickness, ob_vv_thickness, ob_shield_thickness
+            ob_fw, ob_blanket_thickness, ob_access_thickness, ob_vv_thickness,
+            ob_shield_thickness
         ]
         outputs["TF R_min"] = sum(ob_build)
+        outputs["TF R_in"] = outputs["TF R_min"] + inputs["gap thickness"]
 
 
-class MenardSTOuterMachineRadialBuild(om.ExplicitComponent):
+class MenardSTOuterMachine(om.ExplicitComponent):
     r"""Radial build outside the TF coils
 
     Inputs
@@ -398,7 +483,6 @@ class MenardSTOuterMachineRadialBuild(om.ExplicitComponent):
     cryostat R_out: float
         m, Outer radius of the cryostat
     """
-
     def setup(self):
         self.add_input("Ob TF R_out",
                        units="m",
@@ -424,44 +508,39 @@ class MenardSTOuterMachineRadialBuild(om.ExplicitComponent):
 class STRadialBuild(om.Group):
     r"""The high-level radial build for the device.
 
-    The model is broken into a few parts.
-    The Inboard subsystem builds the device outward from the center.
-    The first input is 'CS R_out', and it yields 'TF R_in'.
+    The device is built outward from the center. This group is designed so that
+    all the inputs are positive widths, to ensure that the resulting device is
+    always physically reasonable.
 
-    The TF thickness is *not* an input to this component, since it will be
-    decided independently by the Inboard TF component. This is important for
-    ensuring positivity.
-
-    The second key input is 'TF R_out'. This forms the base of the 'stack' of
-    components outside the TF: the vacuum vessel, shields, blanket, first wall,
-    SOL, and the plasma itself. The 'inboard' stack actually goes out to
-    'plasma R_out', the outer radius of the plasma at midplane.
-
-    The Outboard subsystem 'ob' is less complex. It builds from 'plasma R_out'
-    to the 'Ob TF R_min', the minimum radius for the outboard TF.
-    Note that this may not be the actual TF radius of the start of the TF;
-    it may be larger for certain coil shapes.
-
-    The Outer Machine subsystem 'ob', builds the machine outside the
-    outer leg of the TF, to the cryostat.
+    The first component, CSToTF, builds the space for the CS out to the TF.
+    Then, the InboardMagnetGeometry component specifies the build of the TF.
+    The MenardSTInboard component finishes the inboard build out to the FW.
+    The Plasma component determines the width to the outboard FW.
+    The MenardSTOutboard component builds from the outboard FW to
+      a minimum radius for the outboard TF leg.
+    There is then an optional gap, in case the TF leg needs to be placed
+    further out.
+    The OutboardMagnetGeometry builds the outboard TF, and finally
+    the MenardSTOuterMachine component builds the space out to the edge of the
+    cryostat.
 
     Below are listed particularly interesting inputs and outputs.
 
     Inputs
     ------
-    CS R_out : float
-        m, CS outer radius
-
-    Ib TF R_out : float
-        m, Inboard TF leg outer radius
+    Plug R_out : float
+        m, Central plug outer radius.
+    CS ΔR : float
+        m, CS thickness
+    ib_tf.Δr_s : float
+        m, Inboard TF inner structure thickness
+    ib_tf.Δr_m : float
+        m, Inboard TF winding pack thickness
     a : float
         m, Plasma minor radius
 
-    Ob TF R_out : float
-        m, Outboard radius of the outboard leg
-
-    Additional inputs to the 'ib', 'ob', and 'om' components are provided
-    by the configuration file :code:`radial_build.yaml`.
+    Additional inputs to the 'ib', 'plasma', 'ob', and 'om' components
+    are provided by the configuration file :code:`radial_build.yaml`.
 
     Outputs
     -------
@@ -479,45 +558,59 @@ class STRadialBuild(om.Group):
     cryostat R_out : float
         m, Outer radius of the cryostat
     """
-
     def initialize(self):
         self.options.declare('config', default=None)
 
     def setup(self):
         config = self.options['config']
 
-        self.add_subsystem('props', RadialBuildProperties(config=config))
+        self.add_subsystem('props', Properties(config=config))
+        self.add_subsystem('cs',
+                           CSToTF(config=config),
+                           promotes_inputs=["CS ΔR"],
+                           promotes_outputs=[("TF R_in", "Ib TF R_in")])
+        self.add_subsystem('ib_tf',
+                           InboardMagnetGeometry(config=config),
+                           promotes_inputs=[("r_is", "Ib TF R_in"), "n_coil"],
+                           promotes_outputs=[("r_ot", "Ib TF R_out")])
         self.add_subsystem('ib',
-                           MenardSTInboardRadialBuild(config=config),
-                           promotes_inputs=["CS R_out", "a",
-                                            ("TF R_out", "Ib TF R_out")],
-                           promotes_outputs=[("TF R_in", "Ib TF R_in"),
-                                             "plasma R_out",
-                                             "plasma R_in",
-                                             "R0", "A"])
-        self.add_subsystem('ob',
-                           MenardSTOutboardRadialBuild(config=config),
-                           promotes_inputs=["plasma R_out"],
-                           promotes_outputs=[("TF R_min", "Ob TF R_min")])
+                           MenardSTInboard(config=config),
+                           promotes_inputs=[("TF R_out", "Ib TF R_out")])
 
-        # to be computed after TF thickness is determined
-        self.add_subsystem('om',
-                           MenardSTOuterMachineRadialBuild(),
-                           promotes_inputs=["Ob TF R_out"],
-                           promotes_outputs=["cryostat R_out"])
-
-        # connect inputs
         self.connect('props.Ib WC VV shield thickness',
                      ['ib.WC VV shield thickness'])
         self.connect('props.Ib FW thickness', ['ib.FW thickness'])
-        self.connect('props.Ib SOL width', ['ib.SOL width'])
 
-        self.connect('props.Ob SOL width', ['ob.SOL width'])
+        self.add_subsystem('plasma',
+                           Plasma(),
+                           promotes_inputs=["a"],
+                           promotes_outputs=[("R_in", "plasma R_in"),
+                                             ("R_out", "plasma R_out"), "R0",
+                                             "A"])
+        self.connect('props.Ib SOL width', ['plasma.Ib SOL width'])
+        self.connect('props.Ob SOL width', ['plasma.Ob SOL width'])
+        self.connect('ib.FW R_out', ['plasma.Ib FW R_out'])
+
+        self.add_subsystem('ob',
+                           MenardSTOutboard(),
+                           promotes_outputs=[("TF R_min", "Ob TF R_min")])
         self.connect('props.Ob blanket thickness', ['ob.blanket thickness'])
         self.connect('props.Ob access thickness', ['ob.access thickness'])
         self.connect('props.Ob vv thickness', ['ob.VV thickness'])
         self.connect('props.Ob shield thickness', ['ob.shield thickness'])
+        self.connect('plasma.Ob FW R_in', 'ob.Ob FW R_in')
 
+        self.add_subsystem('ob_tf',
+                           OutboardMagnetGeometry(),
+                           promotes_outputs=[("r_ov", "Ob TF R_out")])
+        self.connect('ib_tf.Δr', 'ob_tf.Ib TF Δr')
+        self.connect('ob.TF R_in', 'ob_tf.r_iu')
+
+        # to be computed after TF thickness is determined
+        self.add_subsystem('om',
+                           MenardSTOuterMachine(),
+                           promotes_inputs=["Ob TF R_out"],
+                           promotes_outputs=["cryostat R_out"])
         self.connect('props.TF-cryostat thickness',
                      ['om.TF-cryostat thickness'])
 
@@ -531,19 +624,15 @@ class MenardSTRadialBuild(om.Group):
 
     A nonlinear solver needs to be attached to this component.
     """
-
     def initialize(self):
         self.options.declare('config', default=None)
 
     def setup(self):
         config = self.options['config']
 
-        self.add_subsystem('ST_radial_build',
+        self.add_subsystem('radial_build',
                            STRadialBuild(config=config),
-                           promotes_inputs=["CS R_out",
-                                            "Ib TF R_out",
-                                            "a",
-                                            "Ob TF R_out"],
+                           promotes_inputs=["a"],
                            promotes_outputs=["*"])
 
         self.add_subsystem("ib_blanket",
@@ -553,17 +642,16 @@ class MenardSTRadialBuild(om.Group):
                            MenardInboardShieldFit(config=config),
                            promotes_inputs=["A"])
 
-        self.connect('ib_shield.shield_thickness', [
-                     'ST_radial_build.ib.WC shield thickness'])
-        self.connect('ib_blanket.blanket_thickness', [
-                     'ST_radial_build.ib.blanket thickness'])
+        self.connect('ib_shield.shield_thickness',
+                     ['radial_build.ib.WC shield thickness'])
+        self.connect('ib_blanket.blanket_thickness',
+                     ['radial_build.ib.blanket thickness'])
 
 
 if __name__ == "__main__":
 
     # test building a tokamak with A=1.6
     class MyRadialBuild(om.Group):
-
         def initialize(self):
             self.options.declare('config', default=None)
 
@@ -586,8 +674,10 @@ if __name__ == "__main__":
 
     prob.model = MyRadialBuild(config=uc)
     prob.setup()
-    prob.set_val("mrb.Ib TF R_out", 0.405)
-    prob.set_val("mrb.CS R_out", 0.105)
+    prob.set_val("mrb.radial_build.CS ΔR", 0.105)
+    prob.set_val("mrb.radial_build.ib_tf.Δr_s", 0.120)
+    prob.set_val("mrb.radial_build.ib_tf.Δr_m", 0.100)
+    prob.set_val("mrb.radial_build.ob.gap thickness", 0.100)
 
     model = prob.model
     newton = model.nonlinear_solver = om.NewtonSolver(solve_subsystems=True)

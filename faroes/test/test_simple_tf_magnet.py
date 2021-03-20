@@ -22,6 +22,7 @@ class TestSimpleTFMagnet(unittest.TestCase):
         prob.model.add_design_var('Δr_s', lower=0.01, upper=0.95, units="m")
         prob.model.add_design_var('Δr_m', lower=0.01, upper=0.95, units="m")
         prob.model.add_design_var('j_HTS', lower=0, upper=250, units="MA/m**2")
+        prob.model.add_design_var('dR', lower=0, upper=1, units="m")
 
         prob.model.add_objective('B0', scaler=-1)
 
@@ -39,7 +40,8 @@ class TestSimpleTFMagnet(unittest.TestCase):
         prob.set_val('Δr_s', 0.1, units='m')
         prob.set_val('Δr_m', 0.1, units='m')
         prob.set_val('n_coil', 18)
-        prob.set_val('geometry.r_iu', 8.025, units='m')
+        prob.set_val('ob_gap.r_min', 8.025, 'm')
+        prob.set_val('dR', 1.000, 'm')
 
         prob.set_val('windingpack.max_stress', 525, units='MPa')
         prob.set_val("windingpack.Young's modulus", 175, units='GPa')
@@ -62,7 +64,8 @@ class TestSimpleTFMagnet(unittest.TestCase):
         self.assertTrue(prob['geometry.r1'][0] < prob['geometry.r_om'][0])
         self.assertTrue(prob['geometry.r_om'][0] < prob['geometry.r_it'][0])
         self.assertTrue(prob['geometry.r_im'][0] < prob['geometry.r_ot'][0])
-        self.assertTrue(prob['geometry.r_iu'][0] < prob['geometry.r2'][0])
+        self.assertTrue(
+            prob['ob_geometry.r_iu'][0] < prob['ob_geometry.r2'][0])
 
         self.assertTrue(prob['T1'][0] > 0)
         self.assertTrue(prob['I_leg'][0] > 0)
@@ -87,17 +90,33 @@ class TestFieldAtRadius(unittest.TestCase):
         assert_check_partials(check)
 
 
-class TestMagnetGeometry(unittest.TestCase):
+class TestInboardMagnetGeometry(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
 
-        prob.model = magnet.MagnetGeometry()
+        prob.model = magnet.InboardMagnetGeometry()
         prob.setup(force_alloc_complex=True)
         prob['r_is'] = 0.5 * nprand.random()
         prob['Δr_m'] = nprand.random()
         prob['Δr_s'] = nprand.random()
-        prob['r_iu'] = 8 + nprand.random()
         prob['n_coil'] = 18
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+
+class TestOutboardMagnetGeometry(unittest.TestCase):
+    def setUp(self):
+        prob = om.Problem()
+
+        prob.model = magnet.OutboardMagnetGeometry()
+        prob.setup(force_alloc_complex=True)
+        prob['Ib TF Δr'] = 1 + 0.5 * nprand.random()
+        prob['r_iu'] = 4 + 0.5 * nprand.random()
         self.prob = prob
 
     def test_partials(self):

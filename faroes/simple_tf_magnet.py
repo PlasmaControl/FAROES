@@ -86,7 +86,6 @@ class InnerTFCoilTension(om.ExplicitComponent):
         N, tension in the inner coil leg
 
     """
-
     def setup(self):
         self.add_input('I_leg', units='MA', desc='Current in one leg')
         self.add_input('B0', units='T', desc='Field on axis')
@@ -97,8 +96,10 @@ class InnerTFCoilTension(om.ExplicitComponent):
         self.add_input('r2',
                        units='m',
                        desc='avg radius of conductor outer leg, at midplane')
-        self.add_output('T1', units='MN',
-                        desc='Tension on the inner leg', lower=0)
+        self.add_output('T1',
+                        units='MN',
+                        desc='Tension on the inner leg',
+                        lower=0)
 
     def setup_partials(self):
         self.declare_partials('T1', ['I_leg', 'B0', 'R0', 'r1', 'r2'])
@@ -162,7 +163,6 @@ class FieldAtRadius(om.ExplicitComponent):
     B_on_coil : float
         T, maximum toroidal field on the TF coil conductor
     """
-
     def setup(self):
         self.add_input('I_leg', units='MA')
         self.add_input('r_om', units='m')
@@ -257,7 +257,6 @@ class InnerTFCoilStrain(om.ExplicitComponent):
     constraint_max_stress: float
         fraction of the maximum allowed stress on the HTS material
     """
-
     def setup(self):
         self.add_input('T1', units='MN', desc='Tension on the inner leg')
         self.add_input('A_s',
@@ -346,8 +345,8 @@ class InnerTFCoilStrain(om.ExplicitComponent):
               hts_E_y**2 * denom**2 * σ_hts_max)
 
 
-class MagnetGeometry(om.ExplicitComponent):
-    r"""Footprint of the inner and outer TF coil legs
+class InboardMagnetGeometry(om.ExplicitComponent):
+    r"""Footprint of the inner TF coil legs
 
     This closely follows Menard's spreadsheet model, though it may not
     be exactly identical. The TF coil inboard leg is a trapezoidal wedge shape.
@@ -386,8 +385,6 @@ class MagnetGeometry(om.ExplicitComponent):
 
     n_coil : int
         m, Number of TF coils
-    r_iu : float
-        m, Inner radius of the inner structure of the outboard leg.
 
     Outputs
     -------
@@ -399,10 +396,6 @@ class MagnetGeometry(om.ExplicitComponent):
         m^2, Cross-sectional area of the inboard leg outer structure.
     r1 : float
         m, Average radius of the winding pack of the inboard leg.
-    r2 : float
-        m, Average radius of the winding pack of the outer leg.
-    r_ov : float,
-        m, Outer radius of the outboard leg.
     approximate cross section : float
         m**2, Approximate magnet cross section; expands the trapezoid to a full
            rectangle
@@ -417,6 +410,8 @@ class MagnetGeometry(om.ExplicitComponent):
         m, Inner radius of the outer structure of the inboard leg.
     r_ot : float
         m, Outer radius of the outer structure of the inboard leg.
+    Δr : float
+        m, thickness of the inboard magnets
 
     w_is: float
         m, Inner 'width' of the inner structure of the inboard leg.
@@ -445,7 +440,6 @@ class MagnetGeometry(om.ExplicitComponent):
         m, Outer 'length' of the outer structure of the inboard leg.
 
     """
-
     def initialize(self):
         self.options.declare('config', default=None)
 
@@ -473,15 +467,12 @@ class MagnetGeometry(om.ExplicitComponent):
         self.add_input('Δr_m', units='m')
         self.add_input('n_coil', val=18, desc='number of coils')
 
-        self.add_input('r_iu',
-                       units='m',
-                       desc='Inner radius of outboard TF leg')
-
         self.add_output('r_os', units='m')
         self.add_output('r_im', units='m')
         self.add_output('r_om', units='m')
         self.add_output('r_it', units='m')
         self.add_output('r_ot', units='m')
+        self.add_output('Δr', units='m')
 
         # turned off because they are not used at the moment
         # self.add_output('w_is', units='m')
@@ -499,12 +490,10 @@ class MagnetGeometry(om.ExplicitComponent):
         # self.add_output('l_ot', units='m')
 
         self.add_output('A_s', units='m**2')
-        self.add_output('A_t', units='m**2')
         self.add_output('A_m', units='m**2')
+        self.add_output('A_t', units='m**2')
 
         self.add_output('r1', units='m')
-        self.add_output('r2', units='m')
-        self.add_output('r_ov', units='m')
 
         self.add_output('approximate cross section', units='m**2')
 
@@ -524,7 +513,6 @@ class MagnetGeometry(om.ExplicitComponent):
         r_it = r_om + e_gap
         r_ot = r_it + Δr_t
 
-        r_iu = inputs['r_iu']
         n_coil = inputs['n_coil']
 
         outputs['r_os'] = r_os
@@ -569,36 +557,87 @@ class MagnetGeometry(om.ExplicitComponent):
         outputs['A_t'] = (w_ot - w_it) * (l_ot + l_it) / 2
 
         outputs['r1'] = r_im + Δr_m / 2
-        outputs['r2'] = r_iu + (r_ot - r_is) / 2
-        outputs['r_ov'] = r_iu + (r_ot - r_is)
+        outputs["Δr"] = r_ot - r_is
 
         outputs['approximate cross section'] = (r_ot - r_is) * l_ot
 
     def setup_partials(self):
         self.declare_partials(['r_os', 'r_im'], ['r_is', 'Δr_s'], val=1)
         self.declare_partials(['r_om', 'r_it', 'r_ot'],
-                              ['r_is', 'Δr_s', 'Δr_m'], val=1)
+                              ['r_is', 'Δr_s', 'Δr_m'],
+                              val=1)
 
         self.declare_partials('A_s', ['r_is', 'Δr_s'], method="cs")
-        self.declare_partials(
-            ['A_m', 'A_t'], ['r_is', 'Δr_s', 'Δr_m'], method="cs")
-        self.declare_partials(["A_m", "A_t", "A_s",
-                               "approximate cross section"], ["n_coil"],
+        self.declare_partials(['A_m', 'A_t'], ['r_is', 'Δr_s', 'Δr_m'],
                               method="cs")
+        self.declare_partials(
+            ["A_m", "A_t", "A_s", "approximate cross section"], ["n_coil"],
+            method="cs")
 
         self.declare_partials('r1', ['r_is', 'Δr_s'], val=1)
-        self.declare_partials('r1', ['Δr_m'], val=1/2)
+        self.declare_partials('r1', ['Δr_m'], val=1 / 2)
 
-        self.declare_partials('r2', ['Δr_s', 'Δr_m'], val=1/2)
-        self.declare_partials('r2', 'r_iu', val=1)
+        self.declare_partials('Δr', ['Δr_s', 'Δr_m'], val=1)
 
-        self.declare_partials(
-            'r_ov', ['r_is', 'r_iu', 'Δr_s', 'Δr_m'], method="cs")
         self.declare_partials('approximate cross section',
-                              ['Δr_s', 'Δr_m', 'r_is'], method="cs")
+                              ['Δr_s', 'Δr_m', 'r_is'],
+                              method="cs")
 
     def compute_partials(self, inputs, J):
         pass
+
+
+class OutboardMagnetGeometry(om.ExplicitComponent):
+    r"""Footprint of the outer TF coil legs
+
+    r1 and r2 are important for the magnetic force calculations. They
+    represent average locations of the current in the winding packs
+    of the inboard and outboard legs, respectively.
+
+    The geometry of the outboard leg is less well-defined in this model.
+    It is assumed that the distance from the outermost part of the inboard
+    leg outer structure to r1 is the same as the distance from the innermost
+    part of the outboard leg inner structure to r2. The circumferential width
+    "l" of the outboard leg is not described here. For the outboard leg,
+    the distinction between 'r' and 'w' measurements is dropped.
+
+    .. image:: images/magnet_cross_section_map.png
+
+    Inputs
+    ------
+    r_iu : float
+        m, Inner radius of the inner structure of the outboard leg.
+    Ib TF Δr : float
+        m, thickness of the inboard tf magnet
+
+    Outputs
+    -------
+    r2 : float
+        m, Average radius of the winding pack of the outer leg.
+    r_ov : float,
+        m, Outer radius of the outboard leg.
+    """
+    def setup(self):
+        self.add_input('r_iu',
+                       units='m',
+                       desc='Inner radius of outboard TF leg')
+        self.add_input('Ib TF Δr', units='m')
+
+        self.add_output('r2', units='m', lower=0)
+        self.add_output('r_ov', units='m', lower=0)
+
+    def compute(self, inputs, outputs):
+        r_iu = inputs['r_iu']
+        Δr_ib_tf = inputs['Ib TF Δr']
+
+        outputs['r2'] = r_iu + (Δr_ib_tf) / 2
+        outputs['r_ov'] = r_iu + Δr_ib_tf
+
+    def setup_partials(self):
+        self.declare_partials('r2', 'r_iu', val=1)
+        self.declare_partials('r2', ['Ib TF Δr'], val=1 / 2)
+
+        self.declare_partials('r_ov', ['r_iu', 'Ib TF Δr'], val=1)
 
 
 class MagnetCurrent(om.ExplicitComponent):
@@ -624,7 +663,6 @@ class MagnetCurrent(om.ExplicitComponent):
         MA/m^2 : maximum current density in the superconducting cable
 
     """
-
     def setup(self):
         self.add_input('A_m', units='m**2')
         self.add_input('f_HTS')
@@ -650,22 +688,173 @@ class MagnetCurrent(om.ExplicitComponent):
         J['I_leg', 'j_HTS'] = A_m * f_HTS
 
 
-class MagnetRadialBuild(om.Group):
+class SimpleMagnetEngineering(om.Group):
+    r"""Determines magnetic field strength & constraint values
+
+    Selected inputs and outputs are listed below
+
+    Inputs
+    ------
+    A_s : float
+        m**2, Inboard leg inner structure area
+    A_m : float
+        m**2, Inboard leg winding pack area
+    A_t : float
+        m**2, Inboard leg outer structure area
+
+    Ib winding pack R_out : float
+        m, Inboard winding pack outer radius
+
+    r1 : float
+        m, Inboard leg average current radius
+    r2 : float
+        m, Outboard leg average current radius
+
+    R0 : float
+        m, Plasma major radius
+
+    n_coil : float
+        Number of TF coils
+
+    Outputs
+    -------
+    B0 : float
+        T, Vacuum toroidal magnetic field strength on axis
+
+    Notes
+    -----
+    Various properties are loaded from the configuration tree.
+    """
     def initialize(self):
         self.options.declare('config', default=None)
 
     def setup(self):
         config = self.options['config']
 
+        self.add_subsystem('windingpack',
+                           WindingPackProperties(config=config),
+                           promotes_outputs=['f_HTS', 'B_max'])
+        self.add_subsystem('magnetstructure_props',
+                           MagnetStructureProperties(config=config))
+        self.add_subsystem('current',
+                           MagnetCurrent(),
+                           promotes_inputs=['A_m', 'f_HTS', 'j_HTS'],
+                           promotes_outputs=['I_leg'])
+        self.add_subsystem('field',
+                           FieldAtRadius(),
+                           promotes_inputs=[
+                               'I_leg', ('r_om', "Ib winding pack R_out"),
+                               'R0', 'n_coil'
+                           ],
+                           promotes_outputs=['B_on_coil', 'B0'])
         self.add_subsystem(
-            'geometry',
-            MagnetGeometry(config=config),
-            promotes_inputs=['r_is', 'Δr_s', 'Δr_m', 'r_iu', 'n_coil'],
-            promotes_outputs=[
-                'A_s', 'A_t', 'A_m', 'r1', 'r2', 'r_om',
-                ('r_ot', 'Ib TF R_out'),
-                ('r_ov', 'Ob TF R_out'), 'approximate cross section'
-            ])
+            'tension',
+            InnerTFCoilTension(),
+            promotes_inputs=['I_leg', 'r1', 'r2', 'R0', 'B0'],
+        )
+        self.add_subsystem('strain',
+                           InnerTFCoilStrain(),
+                           promotes_inputs=['A_m', 'A_t', 'A_s', 'f_HTS'],
+                           promotes_outputs=['s_HTS', 'constraint_max_stress'])
+        self.connect('tension.T1', 'strain.T1')
+
+        self.connect("magnetstructure_props.Young's modulus",
+                     ['strain.struct_E_young'])
+        self.connect('windingpack.max_stress', ['strain.hts_max_stress'])
+        self.connect("windingpack.Young's modulus", ['strain.hts_E_young'])
+
+        self.add_subsystem(
+            'con_cmp2',
+            om.ExecComp('constraint_B_on_coil = B_max - B_on_coil',
+                        B_on_coil={'units': 'T'},
+                        B_max={'units': 'T'}),
+            promotes=['constraint_B_on_coil', 'B_on_coil', 'B_max'])
+        self.add_subsystem(
+            'con_cmp3',
+            om.ExecComp(
+                'constraint_wp_current_density = A_m * j_eff_wp_max - I_leg',
+                A_m={'units': 'm**2'},
+                j_eff_wp_max={'units': 'MA/m**2'},
+                I_leg={'units': 'MA'}),
+            promotes=['constraint_wp_current_density', 'A_m', 'I_leg'])
+        self.connect('windingpack.j_eff_max', ['con_cmp3.j_eff_wp_max'])
+
+
+class ExampleMagnetRadialBuild(om.Group):
+    r"""This is a class for testing and demonstration.
+    """
+    def initialize(self):
+        self.options.declare('config', default=None)
+
+    def setup(self):
+        config = self.options['config']
+
+        self.add_subsystem('geometry',
+                           InboardMagnetGeometry(config=config),
+                           promotes_inputs=['r_is', 'Δr_s', 'Δr_m', 'n_coil'],
+                           promotes_outputs=[
+                               'A_s', 'A_t', 'A_m', 'r1',
+                               ('r_om', 'Ib winding pack R_out'),
+                               ('r_ot', 'Ib TF R_out')
+                           ])
+        self.add_subsystem("ob_gap",
+                           om.ExecComp("r_iu = r_min + dR",
+                                       dR={
+                                           'units': 'm',
+                                           'value': 0
+                                       },
+                                       r_min={'units': 'm'},
+                                       r_iu={'units': 'm'}),
+                           promotes_inputs=['dR'],
+                           promotes_outputs=["r_iu"])
+
+        self.add_subsystem('ob_geometry',
+                           OutboardMagnetGeometry(),
+                           promotes_inputs=['r_iu'],
+                           promotes_outputs=['r2'])
+        self.connect('geometry.Δr', 'ob_geometry.Ib TF Δr')
+        self.add_subsystem("eng",
+                           SimpleMagnetEngineering(config=config),
+                           promotes_inputs=[
+                               'n_coil', 'A_s', 'A_m', 'A_t', 'r1', 'r2', 'R0',
+                               'Ib winding pack R_out'
+                           ],
+                           promotes_outputs=['B0'])
+
+
+class MagnetRadialBuild(om.Group):
+    r"""This is a class for testing and demonstration.
+    """
+    def initialize(self):
+        self.options.declare('config', default=None)
+
+    def setup(self):
+        config = self.options['config']
+
+        self.add_subsystem('geometry',
+                           InboardMagnetGeometry(config=config),
+                           promotes_inputs=['r_is', 'Δr_s', 'Δr_m', 'n_coil'],
+                           promotes_outputs=[
+                               'A_s', 'A_t', 'A_m', 'r1', 'r_om',
+                               ('r_ot', 'Ib TF R_out'),
+                               'approximate cross section'
+                           ])
+        self.add_subsystem("ob_gap",
+                           om.ExecComp("r_iu = r_min + dR",
+                                       dR={
+                                           'units': 'm',
+                                           'value': 0
+                                       },
+                                       r_min={'units': 'm'},
+                                       r_iu={'units': 'm'}),
+                           promotes_inputs=['dR'],
+                           promotes_outputs=["r_iu"])
+
+        self.add_subsystem('ob_geometry',
+                           OutboardMagnetGeometry(),
+                           promotes_inputs=['r_iu'],
+                           promotes_outputs=['r2', ('r_ov', 'Ob TF R_out')])
+        self.connect('geometry.Δr', 'ob_geometry.Ib TF Δr')
         self.add_subsystem('windingpack',
                            WindingPackProperties(config=config),
                            promotes=['f_HTS', 'B_max'])
@@ -718,7 +907,7 @@ if __name__ == "__main__":
                         'config_menard_spreadsheet.yaml') as path:
         uc = UserConfigurator(path)
 
-    prob.model = MagnetRadialBuild(config=uc)
+    prob.model = ExampleMagnetRadialBuild(config=uc)
 
     prob.driver = om.ScipyOptimizeDriver()
     prob.driver.options['optimizer'] = 'SLSQP'
@@ -726,30 +915,32 @@ if __name__ == "__main__":
     prob.model.add_design_var('r_is', lower=0.10, upper=1.4, units="m")
     prob.model.add_design_var('Δr_s', lower=0.01, upper=0.95)
     prob.model.add_design_var('Δr_m', lower=0.01, upper=0.95)
-    prob.model.add_design_var('j_HTS', lower=0, upper=250, units="MA/m**2")
+    prob.model.add_design_var('dR', lower=0.00, upper=0.95)
+    prob.model.add_design_var('eng.j_HTS', lower=0, upper=250, units="MA/m**2")
 
     prob.model.add_objective('B0', scaler=-1)
 
     # set constraints
-    prob.model.add_constraint('constraint_max_stress', lower=0)
-    prob.model.add_constraint('constraint_B_on_coil', lower=0)
-    prob.model.add_constraint('constraint_wp_current_density', lower=0)
+    prob.model.add_constraint('eng.constraint_max_stress', lower=0)
+    prob.model.add_constraint('eng.constraint_B_on_coil', lower=0)
+    prob.model.add_constraint('eng.constraint_wp_current_density', lower=0)
     prob.model.add_constraint('Ib TF R_out', equals=0.405)
 
     prob.setup()
+    prob.check_config(checks=['unconnected_inputs'])
 
     prob.set_val('r_is', 0.2, units='m')
     prob.set_val('Δr_m', 0.1, units='m')
     prob.set_val('Δr_s', 0.1, units='m')
     prob.set_val('R0', 3, 'm')
     prob.set_val('n_coil', 18)
-    prob.set_val('geometry.r_iu', 8.025, 'm')
+    prob.set_val('ob_gap.r_min', 8.025, 'm')
 
-    prob.set_val('windingpack.max_stress', 525, "MPa")
-    prob.set_val('windingpack.max_strain', 0.003)
-    prob.set_val("windingpack.Young's modulus", 175, units='GPa')
-    prob.set_val('windingpack.j_eff_max', 160, "MA/m**2")
-    prob.set_val('windingpack.f_HTS', 0.76)
+    prob.set_val('eng.windingpack.max_stress', 525, "MPa")
+    prob.set_val('eng.windingpack.max_strain', 0.003)
+    prob.set_val("eng.windingpack.Young's modulus", 175, units='GPa')
+    prob.set_val('eng.windingpack.j_eff_max', 160, "MA/m**2")
+    prob.set_val('eng.windingpack.f_HTS', 0.76)
 
     prob.run_driver()
 
