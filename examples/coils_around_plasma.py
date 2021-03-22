@@ -2,8 +2,8 @@
 
 import openmdao.api as om
 from faroes.sauter_plasma import SauterPlasmaGeometry
-# from faroes.threearcdeecoil import ThreeArcDeeTFSet
-from faroes.princetondeecoil import PrincetonDeeTFSet
+from faroes.threearcdeecoil import ThreeArcDeeTFSet, ThreeArcDeeTFSetAdaptor
+# from faroes.princetondeecoil import PrincetonDeeTFSet
 from faroes.configurator import UserConfigurator
 
 import numpy as np
@@ -23,22 +23,35 @@ class Machine(om.Group):
                            SauterPlasmaGeometry(config=config),
                            promotes_inputs=["R0", ("θ", "θ_for_d2"), "offset"],
                            promotes_outputs=["R_out", "R_in"])
-        # self.add_subsystem("coils",
-        #                    ThreeArcDeeTFSet(),
-        #                    promotes_inputs=["R0"],
-        #                    promotes_outputs=["V_enc"])
         self.add_subsystem("ObRin",
                            om.ExecComp("R_in = R0 + dR",
                                        dR={'units': 'm'},
                                        R_in={'units': 'm'},
                                        R0={'units': 'm'}),
                            promotes_inputs=["R0"])
+
+        self.add_subsystem("adaptor",
+                           ThreeArcDeeTFSetAdaptor(),
+                           promotes_inputs=["Ib TF R_out"])
         self.add_subsystem("coils",
-                           PrincetonDeeTFSet(),
-                           promotes_inputs=["R0"],
+                           ThreeArcDeeTFSet(),
+                           promotes_inputs=["R0", "Ib TF R_out"],
                            promotes_outputs=["V_enc"])
+
+        # I really should connect a value representing the minimum height of
+        # the offset shape, but it should be alright this way too.
+        self.connect("plasma.geom.b", "adaptor.Z_min")
+        self.connect("adaptor.hhs", "coils.hhs")
+        self.connect("adaptor.e_a", "coils.e_a")
+        self.connect("adaptor.r_c", "coils.r_c")
+
+        # self.add_subsystem("coils",
+        #                   PrincetonDeeTFSet(),
+        #                   promotes_inputs=["R0"],
+        #                   promotes_outputs=["V_enc"])
+
         self.connect("plasma.blanket envelope θ", "coils.θ")
-        self.connect("ObRin.R_in", "coils.Ob TF R_in")
+        self.connect("ObRin.R_in", "adaptor.Ob TF R_in")
 
         self.add_subsystem(
             "margin",
@@ -91,48 +104,29 @@ if __name__ == "__main__":
     prob.driver.options["disp"] = True
 
     # Design variables for the ThreeArcDee coil
+    prob.model.add_design_var("Ib TF R_out", lower=1.0, upper=4.5, units="m")
+    prob.model.add_design_var("adaptor.f_c", lower=0.01, upper=0.99)
+    prob.model.add_design_var("adaptor.Z_1", lower=0.0, upper=5.0, units="m")
+
     # prob.model.add_design_var("coils.Ib TF R_out",
     #                           lower=1.0,
     #                           upper=4.5,
     #                           ref=1.5,
     #                           units="m")
-    # prob.model.add_design_var("coils.hhs",
-    #                           lower=1.0,
-    #                           upper=10.0,
-    #                           ref=3.0,
-    #                           units="m")
-    # prob.model.add_design_var("coils.e_a",
-    #                           lower=1.0,
-    #                           upper=15.0,
-    #                           ref=3.0,
-    #                           units="m")
-    # prob.model.add_design_var("coils.r_c",
-    #                           lower=1.2,
-    #                           upper=10.0,
-    #                           ref=3.0,
-    #                           units="m")
-
-    prob.model.add_design_var("coils.Ib TF R_out",
-                              lower=1.0,
-                              upper=4.5,
-                              ref=1.5,
-                              units="m")
     prob.model.add_design_var("ObRin.dR",
-                              lower=0.0,
+                              lower=0.5,
                               upper=25.0,
                               ref=3.0,
                               units="m")
 
     prob.model.add_objective("machine.V_enc")
-    #
-    # this is not always needed, but helps in some situations.
-    prob.model.add_constraint("machine.coils.constraint_axis_within_coils",
-                              lower=1)
 
     prob.setup(force_alloc_complex=True)
-    #
+
+    # set the plasma shape
     prob.set_val("R0", 6.0, units="m")
     prob.set_val("plasma.A", 2.4)
+    prob.set_val("plasma.geom.a", 2.5)
     prob.set_val("plasma.κ", 2.5)
     prob.set_val("plasma.δ", -0.4)
     prob.set_val("plasma.ξ", 0.05)
@@ -142,16 +136,14 @@ if __name__ == "__main__":
     # since we are 'shrink-wrapping' the coils, it's good to initially make
     # them very large.
 
-    # prob.set_val("coils.hhs", 5.0, units="m")
-    # prob.set_val("coils.r_c", 4.0, units="m")
-    # prob.set_val("coils.e_a", 10, units="m")
-    prob.set_val("coils.Ib TF R_out", 1.0, units="m")
+    prob.set_val('adaptor.f_c', 0.4)
+    prob.set_val('adaptor.Z_1', 5.0, units='m')
     prob.set_val("ObRin.dR", 15.0, units="m")
 
     prob.run_driver()
 
-    # all_inputs = prob.model.list_inputs(values=True, print_arrays=True)
-    # all_outputs = prob.model.list_outputs(values=True, print_arrays=True)
+    all_inputs = prob.model.list_inputs(values=True, print_arrays=True)
+    all_outputs = prob.model.list_outputs(values=True, print_arrays=True)
 
     # plot resulting points
     coil_d_sq = prob.get_val("machine.coils.d_sq")
