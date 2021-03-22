@@ -146,7 +146,7 @@ class PolarAngleAndDistanceFromPoint(om.ExplicitComponent):
     def setup(self):
         self.add_input("x", units="m", shape_by_conn=True)
         self.add_input("y", units="m", shape_by_conn=True, copy_shape="x")
-        self.add_input("X0", units="m", val=0)
+        self.add_input("X0", units="m")
         self.add_input("Y0", units="m", val=0)
 
         self.add_output("d_sq",
@@ -292,6 +292,48 @@ class OffsetParametricCurvePoints(om.ExplicitComponent):
 
     def plot(self, ax=None, **kwargs):
         ax.plot(self.get_val('x_o'), self.get_val('y_o'), **kwargs)
+
+
+class PolarParallelCurve(om.Group):
+    r"""Builds a parallel curve of constant width
+    and returns the polar locations of points on the curve
+
+    Inputs
+    ------
+    R : array
+       m, Radial location of initial curve points
+    Z : array
+       m, Z location of initial curve points
+    dR_dθ : array
+       m, dependence of R points on curve parameter θ
+    dR_dZ : array
+       m, dependence of Z points on curve parameter θ
+    s : float
+       m, Parallel offset distance
+    R0 : float
+       m, Radial coordinate of polar origin
+    Z0 : float
+       m, Z coordinate of polar origin
+
+    Outputs
+    -------
+    d_sq : array
+       m**2, squared distances to points on the parallel curve
+    θ_parall : array
+       Angles to points on the parallel curve
+    """
+    def setup(self):
+        self.add_subsystem("pts",
+                           OffsetParametricCurvePoints(),
+                           promotes_inputs=[("x", "R"), ("y", "Z"), "s",
+                                            ("dx_dt", "dR_dθ"),
+                                            ("dy_dt", "dZ_dθ")])
+        self.add_subsystem("d_sq_theta",
+                           PolarAngleAndDistanceFromPoint(),
+                           promotes_inputs=[("X0", "R0"), ("Y0", "Z0")],
+                           promotes_outputs=["d_sq", ("θ", "θ_parall")])
+        self.connect("pts.x_o", "d_sq_theta.x")
+        self.connect("pts.y_o", "d_sq_theta.y")
 
 
 class SoftCapUnity(om.ExplicitComponent):

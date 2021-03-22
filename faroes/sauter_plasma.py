@@ -1,9 +1,11 @@
 from faroes.configurator import UserConfigurator
 from faroes.elliptical_plasma import MenardKappaScaling
+
 import openmdao.api as om
-import faroes.util as util
-import numpy as np
+
 from scipy.constants import pi
+
+import numpy as np
 from numpy import sin, cos
 
 
@@ -421,36 +423,6 @@ class SauterGeometry(om.ExplicitComponent):
         ax.plot(self.get_val('R'), self.get_val('Z'), **kwargs)
 
 
-class SauterPlasmaGeometry(om.Group):
-    r"""Sauter's general plasma shape plus constant-width blanket
-
-    """
-    def initialize(self):
-        self.options.declare('config', default=None)
-
-    def setup(self):
-        self.add_subsystem("geom",
-                           SauterGeometry(),
-                           promotes_inputs=["R0", "A", "κ", "δ", "ξ", "θ"],
-                           promotes_outputs=["R_out", "R_in", "κa"])
-        self.add_subsystem("bl_pts",
-                           util.OffsetParametricCurvePoints(),
-                           promotes_inputs=[("s", "offset")])
-        self.connect("geom.R", "bl_pts.x")
-        self.connect("geom.Z", "bl_pts.y")
-        self.connect("geom.dR_dθ", "bl_pts.dx_dt")
-        self.connect("geom.dZ_dθ", "bl_pts.dy_dt")
-
-        self.add_subsystem("dtheta",
-                           util.PolarAngleAndDistanceFromPoint(),
-                           promotes_inputs=[("X0", "R0"), ("Y0", "Z0")],
-                           promotes_outputs=[("d_sq", "blanket envelope d_sq"),
-                                             ("θ", "blanket envelope θ")])
-        self.connect("bl_pts.x_o", "dtheta.x")
-        self.connect("bl_pts.y_o", "dtheta.y")
-        self.set_input_defaults("R0", val=3, units="m")
-
-
 class SauterPlasmaGeometryMarginalKappa(om.Group):
     r"""Sauter's general plasma shape and blanket with automatic elongation.
 
@@ -465,26 +437,11 @@ class SauterPlasmaGeometryMarginalKappa(om.Group):
                            MenardKappaScaling(config=config),
                            promotes_inputs=["A"],
                            promotes_outputs=["κ"])
-        self.add_subsystem("geom",
-                           SauterGeometry(),
-                           promotes_inputs=["R0", "A", "κ", "δ", "ξ", "θ"],
-                           promotes_outputs=["R_out", "R_in", "κa"])
-        self.add_subsystem("bl_pts",
-                           util.OffsetParametricCurvePoints(),
-                           promotes_inputs=[("s", "offset")])
-        self.connect("geom.R", "bl_pts.x")
-        self.connect("geom.Z", "bl_pts.y")
-        self.connect("geom.dR_dθ", "bl_pts.dx_dt")
-        self.connect("geom.dZ_dθ", "bl_pts.dy_dt")
-
-        self.add_subsystem("dtheta",
-                           util.PolarAngleAndDistanceFromPoint(),
-                           promotes_inputs=[("X0", "R0"), ("Y0", "Z0")],
-                           promotes_outputs=[("d_sq", "blanket envelope d_sq"),
-                                             ("θ", "blanket envelope θ")])
-        self.connect("bl_pts.x_o", "dtheta.x")
-        self.connect("bl_pts.y_o", "dtheta.y")
-        self.set_input_defaults("R0", val=3, units="m")
+        self.add_subsystem(
+            "geom",
+            SauterGeometry(),
+            promotes_inputs=["R0", "a", "A", "κ", "δ", "ξ", "θ"],
+            promotes_outputs=["R_out", "R_in", "κa"])
 
 
 if __name__ == "__main__":
@@ -504,11 +461,11 @@ if __name__ == "__main__":
 
     prob.set_val('R0', 3, 'm')
     prob.set_val('A', 1.6)
+    prob.set_val('a', 1.875)
     prob.set_val('κ', 2.7)
     prob.set_val('δ', 0.5)
     prob.set_val('ξ', 0.1)
 
-    prob.set_val("spg.offset", 1.0)
-
     prob.run_driver()
+    prob.model.list_inputs(print_arrays=True)
     prob.model.list_outputs(print_arrays=True)

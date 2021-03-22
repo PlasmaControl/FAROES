@@ -1,10 +1,12 @@
 # This is an example of how to join components together
 
 import openmdao.api as om
-from faroes.sauter_plasma import SauterPlasmaGeometry
+from faroes.sauter_plasma import SauterGeometry
 from faroes.threearcdeecoil import ThreeArcDeeTFSet, ThreeArcDeeTFSetAdaptor
 # from faroes.princetondeecoil import PrincetonDeeTFSet
 from faroes.configurator import UserConfigurator
+
+from faroes.util import PolarParallelCurve
 
 import numpy as np
 from scipy.constants import pi
@@ -20,9 +22,18 @@ class Machine(om.Group):
         config = self.options["config"]
 
         self.add_subsystem("plasma",
-                           SauterPlasmaGeometry(config=config),
-                           promotes_inputs=["R0", ("θ", "θ_for_d2"), "offset"],
+                           SauterGeometry(config=config),
+                           promotes_inputs=["R0", ("θ", "θ_for_d2")],
                            promotes_outputs=["R_out", "R_in"])
+
+        self.add_subsystem("exclusion_zone",
+                           PolarParallelCurve(),
+                           promotes_inputs=["R0", ("s", "offset")])
+        self.connect("plasma.R", "exclusion_zone.R")
+        self.connect("plasma.Z", "exclusion_zone.Z")
+        self.connect("plasma.dR_dθ", "exclusion_zone.dR_dθ")
+        self.connect("plasma.dZ_dθ", "exclusion_zone.dZ_dθ")
+
         self.add_subsystem("ObRin",
                            om.ExecComp("R_in = R0 + dR",
                                        dR={'units': 'm'},
@@ -40,7 +51,7 @@ class Machine(om.Group):
 
         # I really should connect a value representing the minimum height of
         # the offset shape, but it should be alright this way too.
-        self.connect("plasma.geom.b", "adaptor.Z_min")
+        self.connect("plasma.b", "adaptor.Z_min")
         self.connect("adaptor.hhs", "coils.hhs")
         self.connect("adaptor.e_a", "coils.e_a")
         self.connect("adaptor.r_c", "coils.r_c")
@@ -50,7 +61,7 @@ class Machine(om.Group):
         #                   promotes_inputs=["R0"],
         #                   promotes_outputs=["V_enc"])
 
-        self.connect("plasma.blanket envelope θ", "coils.θ")
+        self.connect("exclusion_zone.θ_parall", "coils.θ")
         self.connect("ObRin.R_in", "adaptor.Ob TF R_in")
 
         self.add_subsystem(
@@ -73,7 +84,7 @@ class Machine(om.Group):
             ))
 
         self.connect("coils.d_sq", "margin.a")
-        self.connect("plasma.blanket envelope d_sq", "margin.b")
+        self.connect("exclusion_zone.d_sq", "margin.b")
 
         self.add_subsystem(
             'ks',
@@ -126,7 +137,7 @@ if __name__ == "__main__":
     # set the plasma shape
     prob.set_val("R0", 6.0, units="m")
     prob.set_val("plasma.A", 2.4)
-    prob.set_val("plasma.geom.a", 2.5)
+    prob.set_val("plasma.a", 2.5)
     prob.set_val("plasma.κ", 2.5)
     prob.set_val("plasma.δ", -0.4)
     prob.set_val("plasma.ξ", 0.05)
@@ -145,24 +156,15 @@ if __name__ == "__main__":
     all_inputs = prob.model.list_inputs(values=True, print_arrays=True)
     all_outputs = prob.model.list_outputs(values=True, print_arrays=True)
 
-    # plot resulting points
-    coil_d_sq = prob.get_val("machine.coils.d_sq")
-    coil_theta = prob.get_val("machine.coils.θ")
-    coil_d = np.sqrt(coil_d_sq)
-    coil_R = prob.get_val("R0") + coil_d * np.cos(coil_theta)
-    coil_Z = coil_d * np.sin(coil_theta)
-
-    blanket_d_sq = prob.get_val("machine.plasma.blanket envelope d_sq")
-    blanket_theta = prob.get_val("machine.plasma.blanket envelope θ")
+    blanket_d_sq = prob.get_val("machine.exclusion_zone.d_sq")
+    blanket_theta = prob.get_val("machine.exclusion_zone.θ_parall")
     blanket_d = np.sqrt(blanket_d_sq)
     blanket_R = prob.get_val("R0") + blanket_d * np.cos(blanket_theta)
     blanket_Z = blanket_d * np.sin(blanket_theta)
 
     fig, ax = plt.subplots()
-    machine.plasma.geom.plot(ax)
-    machine.plasma.bl_pts.plot(ax)
+    machine.plasma.plot(ax)
     machine.coils.plot(ax)
-    ax.plot(coil_R, coil_Z, marker="o")
     ax.plot(blanket_R, blanket_Z, marker="x")
     ax.set_xlim([-1, 8])
     ax.axis('equal')
