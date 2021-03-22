@@ -1,7 +1,7 @@
 # This is an example of how to join components together
 
 import openmdao.api as om
-from faroes.simple_tf_magnet import MagnetRadialBuild
+from faroes.simple_tf_magnet import ExampleMagnetRadialBuild
 from faroes.elliptical_plasma import MenardPlasmaGeometry
 from faroes.configurator import UserConfigurator
 
@@ -20,7 +20,7 @@ class Machine(om.Group):
                            promotes_inputs=['R0', 'a'])
 
         self.add_subsystem("magnets",
-                           MagnetRadialBuild(config=config),
+                           ExampleMagnetRadialBuild(config=config),
                            promotes_inputs=['r_iu', 'R0'])
 
         self.add_subsystem('connector_ib',
@@ -55,14 +55,18 @@ if __name__ == "__main__":
     prob.model.add_design_var('magnets.r_is', lower=0.03, upper=0.3, ref=0.3)
     prob.model.add_design_var('magnets.Δr_s', lower=0.05, upper=0.95, ref=0.5)
     prob.model.add_design_var('magnets.Δr_m', lower=0.05, upper=0.95, ref=0.5)
-    prob.model.add_design_var('magnets.j_HTS', lower=10, upper=300, ref=100)
+    prob.model.add_design_var('magnets.eng.j_HTS',
+                              lower=10,
+                              upper=300,
+                              ref=100)
 
     prob.model.add_objective('magnets.B0', scaler=-1)
 
     # set constraints
-    prob.model.add_constraint('magnets.constraint_max_stress', lower=0)
-    prob.model.add_constraint('magnets.constraint_B_on_coil', lower=0)
-    prob.model.add_constraint('magnets.constraint_wp_current_density', lower=0)
+    prob.model.add_constraint('magnets.eng.constraint_max_stress', lower=0)
+    prob.model.add_constraint('magnets.eng.constraint_B_on_coil', lower=0)
+    prob.model.add_constraint('magnets.eng.constraint_wp_current_density',
+                              lower=0)
     prob.model.add_constraint('aspect.A', equals=2.0)
     prob.model.add_constraint('R0', equals=3.5)
 
@@ -76,9 +80,9 @@ if __name__ == "__main__":
     prob.set_val("plasma.a", 0.5, units="m")
     prob.set_val("aspect.A", 2.0)
     prob.set_val('magnets.n_coil', 18)
-    prob.set_val('magnets.windingpack.j_eff_max', 160)
-    prob.set_val('magnets.windingpack.f_HTS', 0.76)
-    prob.set_val("magnets.magnetstructure_props.Young's modulus", 220)
+    prob.set_val('magnets.eng.windingpack.j_eff_max', 160)
+    prob.set_val('magnets.eng.windingpack.f_HTS', 0.76)
+    prob.set_val("magnets.eng.magnetstructure_props.Young's modulus", 220)
 
     model = prob.model
     newton = model.nonlinear_solver = om.NewtonSolver(solve_subsystems=True)

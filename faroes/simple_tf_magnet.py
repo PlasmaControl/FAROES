@@ -720,6 +720,19 @@ class SimpleMagnetEngineering(om.Group):
     -------
     B0 : float
         T, Vacuum toroidal magnetic field strength on axis
+    I_leg : float
+        MA, Current per magnet leg
+           As if the magnet is a 'single-turn' coil
+
+    con_cmp2.constraint_B_on_coil: float
+        A value which is positive when the B on coil is lower than the
+           maximum B on coil. The magnitude is as if it were specified in
+           Teslas, though the quantity is unitless.
+
+    con_cmp3.constraint_wp_current_density : float
+        A value which is positive when the winding pack current density is
+        lower than the limit. The magnitude is as if it were specified in MA,
+        but the quantity is unitless.
 
     Notes
     -----
@@ -763,6 +776,7 @@ class SimpleMagnetEngineering(om.Group):
         self.connect('windingpack.max_stress', ['strain.hts_max_stress'])
         self.connect("windingpack.Young's modulus", ['strain.hts_E_young'])
 
+        # Subsystems with outputs that can be used as constraints
         self.add_subsystem(
             'con_cmp2',
             om.ExecComp('constraint_B_on_coil = B_max - B_on_coil',
@@ -820,83 +834,6 @@ class ExampleMagnetRadialBuild(om.Group):
                                'Ib winding pack R_out'
                            ],
                            promotes_outputs=['B0'])
-
-
-class MagnetRadialBuild(om.Group):
-    r"""This is a class for testing and demonstration.
-    """
-    def initialize(self):
-        self.options.declare('config', default=None)
-
-    def setup(self):
-        config = self.options['config']
-
-        self.add_subsystem('geometry',
-                           InboardMagnetGeometry(config=config),
-                           promotes_inputs=['r_is', 'Δr_s', 'Δr_m', 'n_coil'],
-                           promotes_outputs=[
-                               'A_s', 'A_t', 'A_m', 'r1', 'r_om',
-                               ('r_ot', 'Ib TF R_out'),
-                               'approximate cross section'
-                           ])
-        self.add_subsystem("ob_gap",
-                           om.ExecComp("r_iu = r_min + dR",
-                                       dR={
-                                           'units': 'm',
-                                           'value': 0
-                                       },
-                                       r_min={'units': 'm'},
-                                       r_iu={'units': 'm'}),
-                           promotes_inputs=['dR'],
-                           promotes_outputs=["r_iu"])
-
-        self.add_subsystem('ob_geometry',
-                           OutboardMagnetGeometry(),
-                           promotes_inputs=['r_iu'],
-                           promotes_outputs=['r2', ('r_ov', 'Ob TF R_out')])
-        self.connect('geometry.Δr', 'ob_geometry.Ib TF Δr')
-        self.add_subsystem('windingpack',
-                           WindingPackProperties(config=config),
-                           promotes=['f_HTS', 'B_max'])
-        self.add_subsystem('magnetstructure_props',
-                           MagnetStructureProperties(config=config))
-        self.add_subsystem('current',
-                           MagnetCurrent(),
-                           promotes_inputs=['A_m', 'f_HTS', 'j_HTS'],
-                           promotes_outputs=['I_leg'])
-        self.add_subsystem('field',
-                           FieldAtRadius(),
-                           promotes_inputs=['I_leg', 'r_om', 'R0', 'n_coil'],
-                           promotes_outputs=['B_on_coil', 'B0'])
-        self.add_subsystem('tension',
-                           InnerTFCoilTension(),
-                           promotes_inputs=['I_leg', 'r1', 'r2', 'R0', 'B0'],
-                           promotes_outputs=['T1'])
-        self.add_subsystem(
-            'strain',
-            InnerTFCoilStrain(),
-            promotes_inputs=['T1', 'A_m', 'A_t', 'A_s', 'f_HTS'],
-            promotes_outputs=['s_HTS', 'constraint_max_stress'])
-        self.connect("magnetstructure_props.Young's modulus",
-                     ['strain.struct_E_young'])
-        self.connect('windingpack.max_stress', ['strain.hts_max_stress'])
-        self.connect("windingpack.Young's modulus", ['strain.hts_E_young'])
-
-        self.add_subsystem(
-            'con_cmp2',
-            om.ExecComp('constraint_B_on_coil = B_max - B_on_coil',
-                        B_on_coil={'units': 'T'},
-                        B_max={'units': 'T'}),
-            promotes=['constraint_B_on_coil', 'B_on_coil', 'B_max'])
-        self.add_subsystem(
-            'con_cmp3',
-            om.ExecComp(
-                'constraint_wp_current_density = A_m * j_eff_wp_max - I_leg',
-                A_m={'units': 'm**2'},
-                j_eff_wp_max={'units': 'MA/m**2'},
-                I_leg={'units': 'MA'}),
-            promotes=['constraint_wp_current_density', 'A_m', 'I_leg'])
-        self.connect('windingpack.j_eff_max', ['con_cmp3.j_eff_wp_max'])
 
 
 if __name__ == "__main__":
