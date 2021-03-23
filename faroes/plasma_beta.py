@@ -197,6 +197,15 @@ class SpecifiedTotalAveragePressure(om.ExplicitComponent):
 class BPoloidal(om.ExplicitComponent):
     r"""Average poloidal field over the LCFS
 
+    The average poloidal field on the LCFS is
+
+    .. math::
+
+       B_p = \frac{\mu_0 I_p}{L_\mathrm{pol}}
+
+    where :math:`I_p` is the plasma current and
+    :math:`L_\mathrm{pol}` is the poloidal LCFS circumference.
+
     Inputs
     ------
     Ip : float
