@@ -264,8 +264,10 @@ class MenardSTInboard(om.ExplicitComponent):
         self.declare_partials(outs[12:], "FW thickness", val=1)
 
         self.declare_partials("Thermal shield to FW", [
-                "WC VV shield thickness", "WC shield thickness",
-                "blanket thickness", "FW thickness"], val=1)
+            "WC VV shield thickness", "WC shield thickness",
+            "blanket thickness", "FW thickness"
+        ],
+                              val=1)
 
     def compute(self, inputs, outputs):
 
@@ -615,7 +617,8 @@ class STRadialBuild(om.Group):
 
         self.add_subsystem('ob',
                            MenardSTOutboard(),
-                           promotes_outputs=[("TF R_min", "Ob TF R_min")])
+                           promotes_outputs=[("TF R_min", "Ob TF R_min"),
+                                             ("TF R_in", "Ob TF R_in")])
         self.connect('props.Ob blanket thickness', ['ob.blanket thickness'])
         self.connect('props.Ob access thickness', ['ob.access thickness'])
         self.connect('props.Ob vv thickness', ['ob.VV thickness'])
@@ -626,7 +629,7 @@ class STRadialBuild(om.Group):
                            OutboardMagnetGeometry(),
                            promotes_outputs=[("r_ov", "Ob TF R_out")])
         self.connect('ib_tf.Δr', 'ob_tf.Ib TF Δr')
-        self.connect('ob.TF R_in', 'ob_tf.r_iu')
+        self.connect('Ob TF R_in', 'ob_tf.r_iu')
 
         # to be computed after TF thickness is determined
         self.add_subsystem('om',

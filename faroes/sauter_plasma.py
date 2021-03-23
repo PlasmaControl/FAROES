@@ -441,7 +441,7 @@ class SauterPlasmaGeometryMarginalKappa(om.Group):
             "geom",
             SauterGeometry(),
             promotes_inputs=["R0", "a", "A", "κ", "δ", "ξ", "θ"],
-            promotes_outputs=["R_out", "R_in", "κa"])
+            promotes_outputs=["*"])
 
 
 if __name__ == "__main__":
