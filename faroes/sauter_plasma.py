@@ -419,8 +419,12 @@ class SauterGeometry(om.ExplicitComponent):
         J["dZ_dθ", "θ"] = d2Z_dθ2
 
     def plot(self, ax=None, **kwargs):
-        ax.plot(self.get_val('R0'), self.get_val('Z0'), marker='x', **kwargs)
-        ax.plot(self.get_val('R'), self.get_val('Z'), **kwargs)
+        ax.plot(self.get_val('R0'), self.get_val('Z0'), marker='.', **kwargs)
+        r = self.get_val('R')
+        z = self.get_val('Z')
+        r = np.append(r, r[0])
+        z = np.append(z, z[0])
+        ax.plot(r, z, **kwargs)
 
 
 class SauterPlasmaGeometryMarginalKappa(om.Group):

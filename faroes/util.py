@@ -291,7 +291,11 @@ class OffsetParametricCurvePoints(om.ExplicitComponent):
         J["y_o", "dx_dt"] = dyo_dxdt
 
     def plot(self, ax=None, **kwargs):
-        ax.plot(self.get_val('x_o'), self.get_val('y_o'), **kwargs)
+        x = self.get_val('x_o')
+        y = self.get_val('y_o')
+        x = np.append(x, x[0])
+        y = np.append(y, y[0])
+        ax.plot(x, y, **kwargs)
 
 
 class PolarParallelCurve(om.Group):
