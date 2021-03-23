@@ -59,50 +59,67 @@ class ThreeArcDeeTFSetAdaptor(om.ExplicitComponent):
         if f_c > 1 or f_c < 0:
             raise om.AnalysisError(f"f_c = {f_c} not between 0 and 1")
 
+        z_min = inputs["Z_min"]
+        z_1 = inputs["Z_1"]
+
         span = inputs["Ob TF R_in"] - inputs["Ib TF R_out"]
-        r_c = f_c * span
-        e_a = span * (1 - f_c)
+        rc_max = min(z_min + z_1, span)
+        r_c = f_c * rc_max
+        e_a = span - r_c
+        hhs = z_min + z_1 - r_c
 
         # may want to substitute this for a softmax in the future,
         # in order to be nicer to the optimizer
         # https://xkcd.com/292/
-        coil_z_min = max(span, inputs["Z_min"])
-        hhs = coil_z_min + inputs["Z_1"] - r_c
-        outputs["hhs"] = hhs
         outputs["r_c"] = r_c
         outputs["e_a"] = e_a
+        outputs["hhs"] = hhs
 
     def setup_partials(self):
-        self.declare_partials("e_a", ["Ob TF R_in", "Ib TF R_out", "f_c"])
-        self.declare_partials("r_c", ["Ob TF R_in", "Ib TF R_out", "f_c"])
-        self.declare_partials("hhs",
-                              ["Ob TF R_in", "Ib TF R_out", "f_c", "Z_min"])
-        self.declare_partials("hhs", ["Z_1"], val=1)
+        self.declare_partials(
+            "e_a", ["Ob TF R_in", "Ib TF R_out", "f_c", "Z_1", "Z_min"])
+        self.declare_partials(
+            "r_c", ["Ob TF R_in", "Ib TF R_out", "f_c", "Z_1", "Z_min"])
+        self.declare_partials(
+            "hhs", ["Ob TF R_in", "Ib TF R_out", "f_c", "Z_min", "Z_1"])
 
     def compute_partials(self, inputs, J):
         r_in = inputs["Ib TF R_out"]
         r_out = inputs["Ob TF R_in"]
         span = r_out - r_in
         f_c = inputs["f_c"]
+        z_1 = inputs["Z_1"]
+        z_min = inputs["Z_min"]
+        rc_max = min(z_min + z_1, span)
 
-        J["r_c", "f_c"] = span
-        J["r_c", "Ib TF R_out"] = -f_c
-        J["r_c", "Ob TF R_in"] = f_c
-
-        J["e_a", "f_c"] = -span
-        J["e_a", "Ib TF R_out"] = -(1 - f_c)
-        J["e_a", "Ob TF R_in"] = (1 - f_c)
-
-        J["hhs", "Z_1"] = 1
-        J["hhs", "f_c"] = -span
-        if span > inputs["Z_min"]:
-            J["hhs", "Z_min"] = 0
-            J["hhs", "Ob TF R_in"] = 1 - f_c
-            J["hhs", "Ib TF R_out"] = -1 + f_c
+        if z_min + z_1 < span:
+            drcmax_dzmin = 1
+            drcmax_dz1 = 1
+            drcmax_drout = 0
+            drcmax_drin = 0
         else:
-            J["hhs", "Z_min"] = 1
-            J["hhs", "Ob TF R_in"] = -f_c
-            J["hhs", "Ib TF R_out"] = f_c
+            drcmax_dzmin = 0
+            drcmax_dz1 = 0
+            drcmax_drout = 1
+            drcmax_drin = -1
+
+        J["r_c", "f_c"] = rc_max
+        J["r_c", "Ob TF R_in"] = f_c * drcmax_drout
+        J["r_c", "Ib TF R_out"] = f_c * drcmax_drin
+        J["r_c", "Z_1"] = f_c * drcmax_dz1
+        J["r_c", "Z_min"] = f_c * drcmax_dzmin
+
+        J["e_a", "f_c"] = -J["r_c", "f_c"]
+        J["e_a", "Ob TF R_in"] = 1 - J["r_c", "Ob TF R_in"]
+        J["e_a", "Ib TF R_out"] = -1 - J["r_c", "Ib TF R_out"]
+        J["e_a", "Z_1"] = -J["r_c", "Z_1"]
+        J["e_a", "Z_min"] = -J["r_c", "Z_min"]
+
+        J["hhs", "f_c"] = -J["r_c", "f_c"]
+        J["hhs", "Ob TF R_in"] = -J["r_c", "Ob TF R_in"]
+        J["hhs", "Ib TF R_out"] = -J["r_c", "Ib TF R_out"]
+        J["hhs", "Z_1"] = 1 - J["r_c", "Z_1"]
+        J["hhs", "Z_min"] = 1 - J["r_c", "Z_min"]
 
 
 class ThreeArcDeeTFSet(om.ExplicitComponent):
