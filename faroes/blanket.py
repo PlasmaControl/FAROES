@@ -79,12 +79,16 @@ class MenardInboardBlanketFit(om.Group):
         elif model == "constant":
             f = config.accessor(
                 ["radial_build", "inboard", "blanket thickness"])
-            thickness = f(["constant"], units="m")
-            self.add_subsystem("bl",
-                               om.ExecComp(f"y = {thickness} + 0 * A",
-                                           y={"units": "m"}),
-                               promotes_inputs=["A"],
-                               promotes_outputs=[("y", "blanket_thickness")])
+            th = f(["constant"], units="m")
+            ivc = om.IndepVarComp()
+            ivc.add_output("blanket_thickness", val=th, units="m")
+            self.add_subsystem("ivc", ivc, promotes_outputs=["*"])
+
+            # stub to have something that inputs A
+            self.add_subsystem("ignore",
+                               om.ExecComp("ignore = 0 * A",
+                                           ignore={"value": 0}),
+                               promotes_inputs=["A"])
         else:
             raise ValueError(self.BAD_BL_MODEL % (model))
 
