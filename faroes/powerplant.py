@@ -218,7 +218,7 @@ class SimpleGeneratedPower(om.ExplicitComponent):
 
     def setup(self):
         self.add_input("P_heat", units="MW")
-        self.add_output("P_el", units="MW")
+        self.add_output("P_el", ref=500, units="MW")
 
         if self.options['config'] is not None:
             self.config = self.options['config']
@@ -265,16 +265,17 @@ class PowerplantQ(om.ExplicitComponent):
         Fraction of generated electric power which is recirculated
     """
     def setup(self):
+        P_ref = 100
         self.add_input("P_gen", units="MW", desc="Power generated")
         self.add_input("P_recirc",
                        units="MW",
                        desc="Recirculating electric power")
         self.add_output("Q_eng",
                         lower=0,
-                        ref=10,
+                        ref=3,
                         desc="Engineering Q of the plant")
         self.add_output("P_net",
-                        units="MW",
+                        units="MW", ref=P_ref,
                         desc="Net electric power generated")
         self.add_output("f_recirc",
                         lower=0,
