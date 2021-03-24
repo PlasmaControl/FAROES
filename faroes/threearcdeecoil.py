@@ -158,6 +158,10 @@ class ThreeArcDeeTFSet(om.ExplicitComponent):
         m**3, magnetized volume enclosed by the set
     half-height : float
         m, half the vertical height of the conductors
+    bore : float
+        m, Horizontal span of the interior bore
+    e_κ : float
+        "Elongation" of the elliptical arc
     """
     def setup(self):
         self.add_input("R0", units="m", desc="Plasma major radius")
@@ -192,6 +196,13 @@ class ThreeArcDeeTFSet(om.ExplicitComponent):
                         units="m",
                         lower=0,
                         desc="Average semi-major axis of the magnet")
+        self.add_output("bore",
+                        units="m",
+                        lower=0,
+                        desc="Horizontal span of the interior bore")
+        self.add_output("e_κ",
+                        lower=0,
+                        desc="Elongation of the elliptical arc")
 
     def compute(self, inputs, outputs):
         size = self._get_var_meta("θ", "size")
@@ -204,6 +215,7 @@ class ThreeArcDeeTFSet(om.ExplicitComponent):
         θ_all = inputs["θ"]
         e_b = hhs + r_c
         outputs["e_b"] = e_b
+        outputs["e_κ"] = e_b / e_a
         outputs["Ob TF R_in"] = r_ot + r_c + e_a
         outputs["constraint_axis_within_coils"] = r_ot + r_c + e_a - R0
 
@@ -217,6 +229,7 @@ class ThreeArcDeeTFSet(om.ExplicitComponent):
         v_2 = util.half_ellipse_torus_volume(R, -r_c, r_c)
         v_3 = pi * 2 * hhs * (R**2 - (R - r_c)**2)
         outputs["V_enc"] = v_1 + v_2 + v_3
+        outputs["bore"] = r_c + e_a
 
         θ1 = cs_safe_arctan2(e_b, R - R0)
         θ2 = cs_safe_arctan2(hhs, r_ot - R0)
@@ -267,6 +280,8 @@ class ThreeArcDeeTFSet(om.ExplicitComponent):
                               ["e_a", "r_c", "Ib TF R_out"],
                               val=1)
         self.declare_partials("constraint_axis_within_coils", ["R0"], val=-1)
+        self.declare_partials("bore", ["r_c", "e_a"], val=1)
+        self.declare_partials("e_κ", ["r_c", "e_a", "hhs"])
 
     def compute_partials(self, inputs, J):
         r_ot = inputs["Ib TF R_out"]
@@ -305,6 +320,9 @@ class ThreeArcDeeTFSet(om.ExplicitComponent):
                     dv2_dR * dR_drc + dv3_drc + dv3_dR * dR_drc)
         J["V_enc", "Ib TF R_out"] = (dv1_dR * dR_drot + dv2_dR * dR_drot +
                                      dv3_dR * dR_drot)
+        J["e_κ", "hhs"] = 1 / e_a
+        J["e_κ", "r_c"] = 1 / e_a
+        J["e_κ", "e_a"] = -(hhs + r_c) / e_a**2
 
     def plot(self, ax=None, **kwargs):
         size = 100
