@@ -36,7 +36,7 @@ class QCylindrical(om.ExplicitComponent):
     a : float
         m, minor radius
     L_pol : float
-        m, toroidal circumference
+        m, poloidal circumference
     Ip : float
         MA, Plasma current
     Bt : float
