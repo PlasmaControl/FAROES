@@ -33,8 +33,8 @@ class TestSauterGeometry(unittest.TestCase):
 
     def test_partials(self):
         prob = self.prob
-        check = prob.check_partials(out_stream=None, method='cs')
-        assert_check_partials(check)
+        check = prob.check_partials(out_stream=None, method='fd')
+        assert_check_partials(check, atol=5e-3, rtol=1e-5)
 
 
 if __name__ == '__main__':

@@ -5,6 +5,8 @@ import openmdao.api as om
 
 from scipy.constants import pi
 
+from scipy.integrate import quad
+
 import numpy as np
 from numpy import sin, cos
 
@@ -55,6 +57,43 @@ class SauterGeometry(om.ExplicitComponent):
        \theta_{07} &= \sin^{-1}(0.7) - (2 \xi) / (1 + (1 + 8 \xi^2)^{1/2}) \\
        w_{07} &= \cos(\theta_{07}- \xi \sin(2 \theta_{07}) / 0.51^{1/2})
             (1 - 0.49 \delta^2/2).
+
+    The value :math:`V_{B0}` is the volume of toroidal magnetic field
+    with the strength of that at R0, which would corresponds to an
+    equivalent vacuum toroidal field magnetic energy to that
+    enclosed by the LCFS. This is a function of the shape.
+
+    If the vacuum toroidal field stored energy within the flux surface is
+
+    .. math::
+
+        W_B = \int \frac{B_t^2}{2 \mu_0} \; dV
+            = \frac{B_0^2}{2 \mu_0} R_0^2 \int \frac{1}{R^2} \; dV
+
+    then :math:`V_{B0}` is
+
+    .. math::
+
+       V_{B02} = R_0^2 \int \frac{1}{R^2} \; dV
+              = R_0^2 \int_0^{2\pi} \frac{Z(\theta)
+                2 \pi R(\theta)}{R^2(\theta)}
+                \left(-\frac{dR(\theta)}{d\theta}\right) \; d\theta
+              = R_0^2 2 \int_0^{\pi} \frac{Z(\theta)
+                2 \pi R(\theta)}{R^2(\theta)}
+                \left(\frac{dR(\theta)}{d\theta}\right) \; d\theta
+
+    where the negative sign appears because :math:`dR/d\theta` is negative. The
+    value :math:`V_{B0,n}` is a normalization such that when
+    :math:`\delta = \xi = 0`, it equals the actual plasma volume.
+
+    .. math::
+       V_{B02,n} = V_{B0} \frac{R_0 + \sqrt{R_0^2 - a^2}}{2 R_0}.
+
+    This may be useful for extending computations with plasma beta,
+    which typically just use B0, to depend on triangularity and squareness.
+
+    The value
+
 
     Inputs
     ------
@@ -109,6 +148,13 @@ class SauterGeometry(om.ExplicitComponent):
         m, Derivative of R points w.r.t. θ
     dZ_dθ : array
         m, Derivative of Z points w.r.t. θ
+
+    <(R0/R)^2> : float
+        Volume average of (R/R0)^2.
+    <(R0/R)^2>n : float
+        Volume average of (R/R0)^2, normalized to unity for an elliptical
+        plasma. Thus this only depends on A, δ, and ξ.
+
 
     References
     ----------
@@ -175,6 +221,24 @@ class SauterGeometry(om.ExplicitComponent):
         self.add_output("κa", lower=0, desc="effective elongation")
         self.add_output("dR_dθ", units="m", copy_shape="θ")
         self.add_output("dZ_dθ", units="m", copy_shape="θ")
+        self.add_output("<(R0/R)^2>")
+        self.add_output("<(R0/R)^2>n")
+
+    def R02_over_R2_normalized_integrand(self, θ, A, δ=0, ξ=0):
+        r"""
+        Equals 2 z(θ) 2 π r(θ)^{-1} dr/dθ
+        """
+        # z / κ a
+        zn = sin(θ + ξ * sin(2 * θ))
+        # rn = r / a
+        rn = A + cos(θ + δ * sin(θ) - ξ * sin(2 * θ))
+        # drn_dθ = dR_dθ / a
+        drn_dθ = -((1 + δ * cos(θ) - 2 * ξ * cos(2 * θ)) *
+                   (sin(θ + δ * sin(θ) - ξ * sin(2 * θ))))
+
+        # integrandn = the usual integrand / 2 π
+        # so in total we've divided by 2 π a³ κ
+        return -2 * A**2 * zn * drn_dθ / rn
 
     def compute(self, inputs, outputs):
         outputs["Z0"] = 0
@@ -194,7 +258,7 @@ class SauterGeometry(om.ExplicitComponent):
         θ07 = np.arcsin(0.7) - (2 * ξ) / (1 + (1 + 8 * ξ**2)**(1 / 2))
 
         # Sauter equation (C.5)
-        wanal_07 = cos(θ07 - ξ * sin(2 * θ07) / (0.51)**(1/2))  \
+        wanal_07 = cos(θ07 - ξ * sin(2 * θ07)) / (0.51)**(1/2)  \
             * (1 - 0.49 * δ**2 / 2)
         w07 = wanal_07
 
@@ -242,6 +306,17 @@ class SauterGeometry(om.ExplicitComponent):
         outputs["dR_dθ"] = dR_dθ
         outputs["dZ_dθ"] = dZ_dθ
 
+        # a normalized volume is V / 2 π a³ κ
+        V_n = pi * A * (1 - δ * ε / 4) * (1 + 0.52 * (w07 - 1))
+
+        R02_over_R, _ = quad(self.R02_over_R2_normalized_integrand,
+                             0,
+                             pi,
+                             args=(A, δ, ξ))
+        R02_over_R_ellipse = (2 * A) / (A + np.sqrt(A**2 - 1))
+        outputs["<(R0/R)^2>"] = R02_over_R / V_n
+        outputs["<(R0/R)^2>n"] = R02_over_R / V_n / R02_over_R_ellipse
+
     def setup_partials(self):
         size = self._get_var_meta("θ", "size")
         self.declare_partials("ε", ["A"])
@@ -274,6 +349,8 @@ class SauterGeometry(om.ExplicitComponent):
         self.declare_partials("dZ_dθ", ["θ"],
                               rows=range(size),
                               cols=range(size))
+        self.declare_partials("<(R0/R)^2>", ["A", "δ", "ξ"], method="fd")
+        self.declare_partials("<(R0/R)^2>n", ["A", "δ", "ξ"], method="fd")
 
     def compute_partials(self, inputs, J):
         A = inputs["A"]
@@ -302,21 +379,24 @@ class SauterGeometry(om.ExplicitComponent):
         # but using the 'alternate expression for a quadratic root'
         # 2c / (-b + √(b² - 4 a c))
         θ07 = np.arcsin(0.7) - (2 * ξ) / (1 + (1 + 8 * ξ**2)**(1 / 2))
+
         # Sauter equation (C.5)
-        wanal_07 = cos(θ07 - ξ * sin(2 * θ07) / (0.51)**(1/2))  \
-            * (1 - 0.49 * δ**2 / 2)
+        cw = np.sqrt(0.51)  # normalizing coefficient for w
+        cδ = 0.49  # coefficient of δ
+
+        wanal_07 = cos(θ07 - ξ * sin(2 * θ07)) / cw  \
+            * (1 - cδ * δ**2 / 2)
         w07 = wanal_07
 
         dθ_dξ = -2 / (1 + 8 * ξ**2 + (1 + 8 * ξ**2)**(1 / 2))
 
-        dw07_dξ = (sin(2 * θ07) * sin(θ07 - ξ * sin(2 * θ07) /
-                                      (0.51)**(1 / 2))) * (
-                                          1 - 0.49 * δ**2 / 2) / 0.51**(1 / 2)
+        dw07_dξ = (sin(2 * θ07) * sin(θ07 - ξ * sin(2 * θ07)) *
+                   (1 - cδ * δ**2 / 2) / cw)
         dw07_dθ07 = -(
-            (1 - 2 * ξ * cos(2 * θ07) / 0.51**(1 / 2)) *
-            sin(θ07 - ξ * sin(2 * θ07) / 0.51**0.5)) * (1 - 0.49 * δ**2 / 2)
+            (1 - 2 * ξ * cos(2 * θ07)) * sin(θ07 - ξ * sin(2 * θ07)) *
+            (1 - cδ * δ**2 / 2) / cw)
 
-        dw07_dδ = -0.49 * δ * cos(θ07 - ξ * sin(2 * θ07) / 0.51**(1 / 2))
+        dw07_dδ = -cδ * δ * cos(θ07 - ξ * sin(2 * θ07)) / cw
         J["w07", "δ"] = dw07_dδ
         J["w07", "ξ"] = dw07_dξ + dw07_dθ07 * dθ_dξ
 
@@ -450,8 +530,8 @@ class SauterPlasmaGeometryMarginalKappa(om.Group):
 
 if __name__ == "__main__":
     prob = om.Problem()
-    uc = UserConfigurator()
 
+    uc = UserConfigurator()
     θ = np.linspace(0, 2 * pi, 10, endpoint=False)
 
     prob.model.add_subsystem("ivc",
@@ -460,16 +540,18 @@ if __name__ == "__main__":
 
     sg = SauterPlasmaGeometryMarginalKappa(config=uc)
     prob.model.add_subsystem("spg", sg, promotes_inputs=["*"])
+    # sg = SauterGeometryAverageB2()
+    # prob.model = sg
 
     prob.setup()
 
-    prob.set_val('R0', 3, 'm')
-    prob.set_val('A', 1.6)
-    prob.set_val('a', 1.875)
-    prob.set_val('κ', 2.7)
-    prob.set_val('δ', 0.5)
-    prob.set_val('ξ', 0.1)
+    prob.set_val('R0', 3.0, units='m')
+    prob.set_val('A', 2.0)
+    prob.set_val('a', 1.5, units='m')
+    prob.set_val('κ', 2.0)
+    prob.set_val('δ', 0.3)
+    prob.set_val('ξ', 0.0)
 
     prob.run_driver()
     prob.model.list_inputs(print_arrays=True)
-    prob.model.list_outputs(print_arrays=True)
+    prob.model.list_outputs(print_arrays=True, units=True)
