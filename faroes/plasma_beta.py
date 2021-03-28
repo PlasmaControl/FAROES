@@ -161,19 +161,31 @@ class SpecifiedTotalAveragePressure(om.ExplicitComponent):
     Inputs
     ------
     Bt : float
-        T, Vacuum toroidal field
+        T, Vacuum toroidal field on axis
     βt : float
         Toroidal beta
+    <(R0/R)^2> : float
+        Geometric shaping factor to convert from the vacuum toroidal field
+        on-axis to the average vacuum toroidal field within the LCFS.
 
     Outputs
     -------
     <p_tot> : float
         kPa, Total specified average pressure
+
+    Notes
+    -----
+    Under the assumption that βt numbers were previously computed using the
+    definition <p>/(Bt^2/2μ0) rather than <p>/<Bt^2/2μ0>, and that it was
+    typically done with plasmas of low triangularity, it may be useful to
+    use a version of <(R0/R)^2> which is normalized to unity for elliptical
+    plasmas.
     """
 
     def setup(self):
         self.add_input("Bt", units="T")
         self.add_input("βt")
+        self.add_input("<(R0/R)^2>", val=1)
 
         p_ref = 10**5
         self.add_output("<p_tot>", units="kPa", ref=p_ref, lower=0)
@@ -181,17 +193,20 @@ class SpecifiedTotalAveragePressure(om.ExplicitComponent):
     def compute(self, inputs, outputs):
         βt = inputs["βt"]
         Bt = inputs["Bt"]
-        p_avg = βt * (Bt**2 / (2 * mu_0))
+        f_shaping = inputs["<(R0/R)^2>"]
+        p_avg = f_shaping * βt * (Bt**2 / (2 * mu_0))
         outputs["<p_tot>"] = p_avg / kilo
 
     def setup_partials(self):
-        self.declare_partials("<p_tot>", ["βt", "Bt"])
+        self.declare_partials("<p_tot>", ["βt", "Bt", "<(R0/R)^2>"])
 
     def compute_partials(self, inputs, J):
         βt = inputs["βt"]
         Bt = inputs["Bt"]
-        J["<p_tot>", "βt"] = (Bt**2 / (2 * mu_0)) / kilo
-        J["<p_tot>", "Bt"] = βt * Bt / (mu_0) / kilo
+        f_shaping = inputs["<(R0/R)^2>"]
+        J["<p_tot>", "βt"] = f_shaping * (Bt**2 / (2 * mu_0)) / kilo
+        J["<p_tot>", "Bt"] = f_shaping * βt * Bt / (mu_0) / kilo
+        J["<p_tot>", "<(R0/R)^2>"] = βt * (Bt**2 / (2 * mu_0)) / kilo
 
 
 class BPoloidal(om.ExplicitComponent):
