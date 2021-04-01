@@ -30,6 +30,17 @@ no-wall β_N scaling with ε:
       Doyle, E. J. et al. Plasma Confinement and Transport.
       Nuclear Fusion 2007, 47 (6), S18–S127.
       https://doi.org/10.1088/0029-5515/47/6/S02.
+  # note: Yushmanov gives a constant of 0.048 but
+  # the original scaling is in terms of n20, not n19.
+  # 0.048 x 1^{0.1} = 0.0381 * 10^{0.1} so this is equivalent.
+  H89P:
+    value: {c0: 0.0381, Ip: 0.85, Bt: 0.20, n19: 0.10,
+            PL: -0.50, R: 1.50, ε: 0.30, κa: 0.50, M: 0.50}
+    reference: >
+      Yushmanov, P. N. et al.
+      Scalings for Tokamak Energy Confinement.
+      Nuclear Fusion 1990, 30 (10), 1999–2006.
+      https://doi.org/10.1088/0029-5515/30/10/001.
   NSTX-MG:
     value: {c0: 0.0950, Ip: 0.57, Bt: 1.08, n19: 0.44,
             PL: -0.73, R: 1.97, ε: 0.58, κa: 0.78, M: 0.19}

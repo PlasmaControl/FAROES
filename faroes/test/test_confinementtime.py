@@ -1,5 +1,5 @@
 import faroes.units  # noqa: F401
-import faroes.confinementtime
+import faroes.confinementtime as ct
 from faroes.configurator import UserConfigurator
 
 import openmdao.api as om
@@ -16,7 +16,7 @@ class TestConfinementTime(unittest.TestCase):
 
         uc = UserConfigurator()
 
-        prob.model = faroes.confinementtime.ConfinementTime(config=uc)
+        prob.model = ct.ConfinementTime(config=uc)
         prob.setup()
         prob.set_val('H', 2.0)
         prob.set_val('Ip', 14.67, units='MA')
@@ -35,13 +35,36 @@ class TestConfinementTime(unittest.TestCase):
         assert_near_equal(prob.get_val('τe'), 2.76, tolerance=1e-2)
 
 
+class TestConfinementTime89P(unittest.TestCase):
+    def setUp(self):
+        prob = om.Problem()
+        uc = UserConfigurator()
+        prob.model = ct.ConfinementTimeScaling(config=uc, scaling='H89P')
+
+        prob.setup(force_alloc_complex=True)
+
+        prob.set_val('R', 1.3)
+        prob.set_val('κa', 2.73977961)
+        prob.set_val('Ip', 14)
+        prob.set_val('ε', 0.2)
+        prob.set_val('M', 2.5)
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+        prob.run_driver()
+
+
 class TestConfinementTimeScaling(unittest.TestCase):
     def test_partials(self):
         prob = om.Problem()
 
         uc = UserConfigurator()
 
-        prob.model = faroes.confinementtime.ConfinementTimeScaling(config=uc)
+        prob.model = ct.ConfinementTimeScaling(config=uc)
 
         prob.setup(force_alloc_complex=True)
 
@@ -64,8 +87,7 @@ class TestConfinementTimeScaling(unittest.TestCase):
             with resources.path(resource_dir, resource_name) as path:
                 uc = UserConfigurator(user_data_file=path)
 
-        prob.model = faroes.confinementtime.ConfinementTimeScaling(
-            config=uc, scaling='User')
+        prob.model = ct.ConfinementTimeScaling(config=uc, scaling='User')
 
         prob.setup(force_alloc_complex=True)
 
@@ -100,7 +122,7 @@ class TestHybridConfinementTime(unittest.TestCase):
 
         uc = UserConfigurator()
 
-        prob.model = faroes.confinementtime.MenardHybridScaling(config=uc)
+        prob.model = ct.MenardHybridScaling(config=uc)
 
         prob.setup()
 
