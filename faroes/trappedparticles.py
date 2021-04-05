@@ -38,7 +38,7 @@ class TrappedParticleFractionUpperEst(om.ExplicitComponent):
     """
     def setup(self):
         self.add_input("ε")
-        self.add_output("ftrap_u", lower=0)
+        self.add_output("ftrap_u", lower=0, val=0.5)
 
     def compute(self, inputs, outputs):
         ε = inputs["ε"]
@@ -62,10 +62,10 @@ class SauterTrappedParticleFractionCalc(om.ExplicitComponent):
     See that group for details.
     """
     def setup(self):
-        self.add_input("ε")
-        self.add_input("δ")
+        self.add_input("ε", val=0.5)
+        self.add_input("δ", val=0.0)
         # note: the upper limit should never actually be hit, here
-        self.add_output("ftrap", lower=0, upper=1.01)
+        self.add_output("ftrap", lower=0, upper=1.01, val=0.5)
         self.c0 = 0.67
         self.c1 = 1.4
 
@@ -134,9 +134,9 @@ class SauterTrappedParticleFraction(om.Group):
     Inputs
     ------
     ε : float
-       Inverse aspect ratio (of a flux surface?)
+       Inverse aspect ratio of a flux surface
     δ : float
-       Triangularity (of a flux surface?)
+       Triangularity of a flux surface
 
     Outputs
     -------

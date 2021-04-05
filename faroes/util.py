@@ -365,7 +365,7 @@ class SoftCapUnity(om.ExplicitComponent):
     def setup(self):
         self.b = self.options['b']
         self.add_input("x")
-        self.add_output("y", lower=0)
+        self.add_output("y", lower=0, val=0.9)
 
     def compute(self, inputs, outputs):
         b = self.b

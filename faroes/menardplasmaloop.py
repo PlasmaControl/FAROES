@@ -35,6 +35,8 @@ class MenardPlasmaLoop(om.Group):
         m, Minor radius
     ε : float
         Inverse aspect ratio
+    δ : float
+        Triangularity
     κa : float
         Effective kappa
     V : float
@@ -181,7 +183,7 @@ class MenardPlasmaLoop(om.Group):
         # compute bootstrap current
         self.add_subsystem("bootstrap",
                            BootstrapCurrent(),
-                           promotes_inputs=["ε", "Ip"])
+                           promotes_inputs=["ε", "δ", "Ip"])
         self.connect("ZeroDPlasma.thermal pressure fraction",
                      "bootstrap.thermal pressure fraction")
         self.connect("specP.βp", "bootstrap.βp")
