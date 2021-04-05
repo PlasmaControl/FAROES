@@ -253,11 +253,11 @@ class TestCostOfElectricity(unittest.TestCase):
         assert_check_partials(check)
 
 
-class TestFixedOperationsAndMaintenanceCost(unittest.TestCase):
+class TestFixedOMCost(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
 
-        prob.model = gc.FixedOperationsAndMaintenanceCost()
+        prob.model = gc.FixedOMCost()
 
         prob.setup(force_alloc_complex=True)
 

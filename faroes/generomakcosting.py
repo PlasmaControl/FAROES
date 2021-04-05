@@ -1074,12 +1074,12 @@ class AveragedAnnualDivertorCost(om.ExplicitComponent):
         J["C_ta", "F_tt"] = ffails * J["Avg divertor repl", "F_tt"]
 
 
-class FixedOperationsAndMaintenanceCost(om.ExplicitComponent):
+class FixedOMCost(om.ExplicitComponent):
     r"""From Sheffield; scaled based off STARFIRE.
 
     Inputs
     ------
-    Pe : float
+    P_e : float
         MW, net electric power
 
     Outputs
@@ -1126,15 +1126,15 @@ class FixedOperationsAndMaintenanceCost(om.ExplicitComponent):
        https://doi.org/10.13182/FST9-2-199.
     """
     def initialize(self):
-        self.options.declare('fixed_om_cost_coeffs', default=None)
+        self.options.declare("fixed_om_cost_coeffs", default=None)
 
     def setup(self):
-        self.cc = self.options['fixed_om_cost_coeffs']
+        self.cc = self.options["fixed_om_cost_coeffs"]
         if self.cc is None:
             self.cc = {
-                'base_Pe': 1200,
-                'base_OM': 108,
-                'fudge': 1.0,
+                "base_Pe": 1200,
+                "base_OM": 108,
+                "fudge": 1.0,
             }
         self.add_input("P_e", units="MW")
         self.add_output("C_OM", units="MUSD/a")
@@ -1142,21 +1142,21 @@ class FixedOperationsAndMaintenanceCost(om.ExplicitComponent):
     def compute(self, inputs, outputs):
         cc = self.cc
         Pe = inputs["P_e"]
-        base_OM = cc['base_OM']
-        base_Pe = cc['base_Pe']
-        fudge = cc['fudge']
+        base_OM = cc["base_OM"]
+        base_Pe = cc["base_Pe"]
+        fudge = cc["fudge"]
         cost = base_OM * (Pe / base_Pe)**(1 / 2)
         outputs["C_OM"] = fudge * cost
 
     def setup_partials(self):
-        self.declare_partials("C_OM", "P_e")
+        self.declare_partials("C_OM", "P_e", method="cs")
 
     def compute_partials(self, inputs, J):
         cc = self.cc
         Pe = inputs["P_e"]
-        base_OM = cc['base_OM']
-        base_Pe = cc['base_Pe']
-        fudge = cc['fudge']
+        base_OM = cc["base_OM"]
+        base_Pe = cc["base_Pe"]
+        fudge = cc["fudge"]
         J["C_OM", "P_e"] = fudge * base_OM / (2 * sqrt(base_Pe * Pe))
 
 
@@ -1490,6 +1490,7 @@ class GeneromakCosting(om.Group):
 
     def setup(self):
         exact_generomak = self.options['exact_generomak']
+        exact_generomak = True
 
         self.add_subsystem("primary_coilset",
                            PrimaryCoilSetCost(),
@@ -1591,16 +1592,13 @@ class GeneromakCosting(om.Group):
                            FuelCycleCost(),
                            promotes_inputs=["C_ba", "C_ta", "C_aa", "C_fa"],
                            promotes_outputs=["C_F"])
-        self.add_subsystem("operations_and_maintenance",
-                           FixedOperationsAndMaintenanceCost(),
-                           promotes_outputs=["C_OM"])
+        self.add_subsystem("omcost", FixedOMCost(), promotes_outputs=["C_OM"])
 
         if exact_generomak:
             # use the _net_ electric generation only. This ignores the cost of
             # capital to generate the recirculating power.
             self.promotes("plant_capital", inputs=[("P_e", "P_net")])
-            self.promotes("operations_and_maintenance",
-                          inputs=[("P_e", "P_net")])
+            self.promotes("omcost", inputs=[("P_e", "P_net")])
             # create a stub so that P_e has something to connect to.
             self.add_subsystem("ignore2",
                                om.ExecComp(["ignore=P_e"], P_e={'units':
@@ -1608,7 +1606,7 @@ class GeneromakCosting(om.Group):
                                promotes_inputs=["P_e"])
         else:
             self.promotes("plant_capital", inputs=["P_e"])
-            self.promotes("operations_and_maintenance", inputs=["P_e"])
+            self.promotes("omcost", inputs=["P_e"])
 
         self.add_subsystem(
             "coe",
@@ -1632,26 +1630,26 @@ if __name__ == '__main__':
     prob.set_val("V_bl", 321, units='m**3')
     prob.set_val("A_tt", 60, units='m**2')
 
-    # power levels
+    # # power levels
     prob.set_val("P_aux", 50, units='MW')
     prob.set_val("P_fus", 2250, units="MW")
     prob.set_val("P_t", 2570, units="MW")
     prob.set_val("P_e", 1157, units="MW")
     prob.set_val("P_net", 1000, units="MW")
 
-    # blanket and divertor power fluxes
+    # # blanket and divertor power fluxes
     prob.set_val("p_wn", 3, units='MW/m**2')
     prob.set_val("p_tt", 10, units="MW/m**2")
     prob.set_val("F_wn", 15, units="MW*a/m**2")
     prob.set_val("F_tt", 10, units="MW*a/m**2")
 
-    # fraction of year with fusion
+    # # fraction of year with fusion
     prob.set_val("f_av", 0.8)
 
-    # plant lifetime
+    # # plant lifetime
     prob.set_val("N_years", 30)
 
-    # construction time
+    # # construction time
     prob.set_val("T_constr", 6, units='a')
 
     prob.run_driver()
