@@ -337,7 +337,7 @@ class TotalPlasmaCurrent(om.ExplicitComponent):
         self.add_input("I_ohmic", units="MA", val=0)
         tiny = 1e-3
         self.add_output("Ip", units="MA", lower=tiny, val=10, ref=10)
-        self.add_output("f_BS", units="MA", lower=0, val=0.5, upper=1, ref=1)
+        self.add_output("f_BS", lower=0, val=0.5, upper=1, ref=1)
 
     def compute(self, inputs, outputs):
         Ip = inputs["I_BS"] + inputs["I_NBI"] + \
