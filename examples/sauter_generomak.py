@@ -30,6 +30,8 @@ from faroes.tf_magnet_set import TFMagnetSet
 
 from faroes.sol import SOLAndDivertor
 
+from faroes.ripple import SimpleRipple
+
 from faroes.powerplant import Powerplant
 
 from faroes.generomakcosting import GeneromakCosting
@@ -63,6 +65,11 @@ class Geometry(om.Group):
                      ['radial_build.ib.WC shield thickness'])
         self.connect('ib_blanket.blanket_thickness',
                      ['radial_build.ib.blanket thickness'])
+
+        self.add_subsystem("ripple", SimpleRipple())
+        self.connect("radial_build.ib_tf.r1", "ripple.r1")
+        self.connect("radial_build.ob_tf.r2", "ripple.r2")
+        self.connect("radial_build.plasma R_out", "ripple.R")
 
         # Number of angles that will be used for the constraint
         # that prevents overlap between the blanket and TF coils.
@@ -392,8 +399,10 @@ if __name__ == "__main__":
     prob.set_val("geometry.plasma.δ", 0.3)
     prob.set_val("plasma.δ", -0.3)
 
-    prob.set_val('geometry.radial_build.ib_tf.n_coil', 18)
-    prob.set_val('magnet_quantities.n_coil', 18)
+    n_coil = 18
+    prob.set_val('geometry.radial_build.ib_tf.n_coil', n_coil)
+    prob.set_val('magnet_quantities.n_coil', n_coil)
+    prob.set_val('geometry.ripple.n_coil', n_coil)
     prob.set_val("costing.N_years", 25)
     prob.set_val("costing.T_constr", 5)
 
