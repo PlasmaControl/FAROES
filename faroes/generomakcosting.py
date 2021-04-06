@@ -1,7 +1,6 @@
 import openmdao.api as om
 
 from scipy.constants import mega
-from math import sqrt
 
 
 class PrimaryCoilSetCost(om.ExplicitComponent):
@@ -1142,6 +1141,10 @@ class FixedOMCost(om.ExplicitComponent):
     def compute(self, inputs, outputs):
         cc = self.cc
         Pe = inputs["P_e"]
+
+        if Pe <= 0:
+            raise om.AnalysisError("Net electric power must be positive")
+
         base_OM = cc["base_OM"]
         base_Pe = cc["base_Pe"]
         fudge = cc["fudge"]
@@ -1157,7 +1160,7 @@ class FixedOMCost(om.ExplicitComponent):
         base_OM = cc["base_OM"]
         base_Pe = cc["base_Pe"]
         fudge = cc["fudge"]
-        J["C_OM", "P_e"] = fudge * base_OM / (2 * sqrt(base_Pe * Pe))
+        J["C_OM", "P_e"] = fudge * base_OM / (2 * (base_Pe * Pe)**(1 / 2))
 
 
 class TotalCapitalCost(om.ExplicitComponent):
