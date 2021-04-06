@@ -1152,7 +1152,7 @@ class FixedOMCost(om.ExplicitComponent):
         outputs["C_OM"] = fudge * cost
 
     def setup_partials(self):
-        self.declare_partials("C_OM", "P_e", method="cs")
+        self.declare_partials("C_OM", "P_e")
 
     def compute_partials(self, inputs, J):
         cc = self.cc
