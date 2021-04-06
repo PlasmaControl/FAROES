@@ -1,5 +1,7 @@
 import openmdao.api as om
 
+from math import log
+
 
 class SimpleRipple(om.ExplicitComponent):
     r"""Ripple magnitude estimation from Wesson
@@ -54,27 +56,27 @@ class SimpleRipple(om.ExplicitComponent):
         self.add_input("r2",
                        units="m",
                        desc="Outboard TF leg average conductor radius")
-        self.add_discrete_input("n_coil", 18, desc="Number of coils")
+        self.add_input("n_coil", 18, desc="Number of coils")
 
         self.add_output("δ",
-                        ref=0.01,
+                        ref=0.001,
                         lower=0,
                         upper=1,
                         desc="Normalized ripple strength")
 
-    def compute(self, inputs, outputs, discrete_inputs, discrete_outputs):
+    def compute(self, inputs, outputs):
         R = inputs["R"]
         r1 = inputs["r1"]
         r2 = inputs["r2"]
-        n = discrete_inputs["n_coil"]
+        n = inputs["n_coil"]
         δ = (R / r2)**n + (r1 / R)**n
         outputs["δ"] = δ
 
     def setup_partials(self):
-        self.declare_partials("δ", ["r1", "r2", "R"])
+        self.declare_partials("δ", ["r1", "r2", "R", "n_coil"])
 
-    def compute_partials(self, inputs, J, discrete_inputs):
-        n = discrete_inputs['n_coil']
+    def compute_partials(self, inputs, J):
+        n = inputs['n_coil']
         R = inputs["R"]
         r1 = inputs["r1"]
         r2 = inputs["r2"]
@@ -82,6 +84,8 @@ class SimpleRipple(om.ExplicitComponent):
         J["δ", "r1"] = (n / r1) * (r1 / R)**n
         J["δ", "r2"] = -(n / r2) * (R / r2)**n
         J["δ", "R"] = (n / R) * ((R / r2)**n - (r1 / R)**n)
+        J["δ",
+          "n_coil"] = (r1 / R)**n * log(r1 / R) + (R / r2)**n * log(R / r2)
 
 
 if __name__ == "__main__":
