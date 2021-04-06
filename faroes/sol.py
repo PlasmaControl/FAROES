@@ -27,7 +27,6 @@ class SOLProperties(om.Group):
     f_fluxexp : float
         Poloidal flux expansion factor
     """
-
     def initialize(self):
         self.options.declare("config", default=None)
 
@@ -73,7 +72,7 @@ class SOLProperties(om.Group):
 class StrikePointRadius(om.ExplicitComponent):
     r"""Radius of the critical strike point
 
-    This is computed in one of two ways. For the snowflake divertor (SF),
+    This is computed in one of three ways. For the snowflake divertor (SF),
 
     .. math::
 
@@ -89,6 +88,14 @@ class StrikePointRadius(om.ExplicitComponent):
 
     where c is a (different) constant.
 
+    For the LinearDelta model,
+
+    .. math::
+
+       R_\mathrm{strike} = R_0 + f_w a - f_d δ a,
+
+    where typically :math:`f_w = 1/4` and `f_d = 1`.
+
     Notes
     -----
     This component is configured using
@@ -100,13 +107,15 @@ class StrikePointRadius(om.ExplicitComponent):
        m, Plasma major radius
     a : float
        m, Plasma minor radius
+    δ : float
+       Triangularity
 
     Outputs
     -------
     R_strike : float
        m, Outer strike point major radius
     """
-    BAD_MODEL = "Only 'SF' or 'SXD' are supported"
+    BAD_MODEL = "Only 'SF', 'SXD', and 'LinearDelta' are supported"
 
     def initialize(self):
         self.options.declare('config', default=None)
@@ -116,6 +125,7 @@ class StrikePointRadius(om.ExplicitComponent):
             raise ValueError("StrikePointRadius requries a config file")
         self.add_input("R0", units="m")
         self.add_input("a", units="m")
+        self.add_input("δ", val=0)
         config = self.options["config"].accessor(["plasma", "SOL", "divertor"])
         model = config(["model"])
         self.model = model
@@ -126,6 +136,9 @@ class StrikePointRadius(om.ExplicitComponent):
         elif model == "SXD":
             self.c_sxd = config(
                 ["SXD", "outer strike point radius multiplier"])
+        elif model == "LinearDelta":
+            self.fw = config(["LinearDelta", "outer-inner width"])
+            self.fd = config(["LinearDelta", "delta factor"])
         else:
             raise ValueError(self.BAD_MODEL)
 
@@ -135,6 +148,7 @@ class StrikePointRadius(om.ExplicitComponent):
     def compute(self, inputs, outputs):
         R0 = inputs["R0"]
         a = inputs["a"]
+        δ = inputs["δ"]
 
         if self.model == "SF":
             c = self.c_sf
@@ -142,6 +156,10 @@ class StrikePointRadius(om.ExplicitComponent):
         elif self.model == "SXD":
             c = self.c_sxd
             outputs["R_strike"] = c * R0
+        elif self.model == "LinearDelta":
+            fw = self.fw
+            fd = self.fd
+            outputs["R_strike"] = R0 + fw * a - fd * a * δ
         else:
             raise ValueError(self.BAD_MODEL)
 
@@ -150,12 +168,29 @@ class StrikePointRadius(om.ExplicitComponent):
             c = self.c_sf
             self.declare_partials("R_strike", ["R0"], val=1)
             self.declare_partials("R_strike", ["a"], val=-c)
+            self.declare_partials("R_strike", ["δ"], dependent=False)
         elif self.model == "SXD":
             c = self.c_sxd
             self.declare_partials("R_strike", ["R0"], val=c)
             self.declare_partials("R_strike", ["a"], dependent=False)
+            self.declare_partials("R_strike", ["δ"], dependent=False)
+        elif self.model == "LinearDelta":
+            self.declare_partials("R_strike", ["R0"], val=1)
+            self.declare_partials("R_strike", ["a"])
+            self.declare_partials("R_strike", ["δ"])
         else:
             raise ValueError(self.BAD_MODEL)
+
+    def compute_partials(self, inputs, J):
+        if self.model == "LinearDelta":
+            a = inputs["a"]
+            δ = inputs["δ"]
+            fw = self.fw
+            fd = self.fd
+            J["R_strike", "a"] = fw - fd * δ
+            J["R_strike", "δ"] = -fd * a
+        else:
+            pass
 
 
 class GoldstonHDSOL(om.ExplicitComponent):
@@ -224,7 +259,6 @@ class GoldstonHDSOL(om.ExplicitComponent):
        https://doi.org/10.1088/0029-5515/52/1/013009.
        Equations (6) and (7).
     """
-
     def setup(self):
         # reference: Menard T109
         self.c_Tesep = 30.81
@@ -425,7 +459,10 @@ class SOLAndDivertor(om.Group):
                            promotes_outputs=["*"])
         self.add_subsystem("Psol",
                            om.ExecComp("P_sol = P_heat * (1 - f_rad)",
-                                       P_sol={"units": "MW", "lower": 0.1},
+                                       P_sol={
+                                           "units": "MW",
+                                           "lower": 0.1
+                                       },
                                        P_heat={"units": "MW"}),
                            promotes=["*"])
         self.add_subsystem("R_strike",

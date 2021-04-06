@@ -1,0 +1,19 @@
+plasma:
+  SOL:
+    divertor:
+      model: LinearDelta
+      # options:
+      # SF: snowflake
+      # SXD: super-X divertor
+      # LinearDelta: super-X divertor
+      SF:
+        outer strike point radius shift (SF, SFD):
+          value: 0.3
+      SXD:
+        outer strike point radius multiplier:
+          value: 1.6
+      LinearDelta:
+        outer-inner width: 0.25
+        delta factor: 1
+
+      peak heat flux model: total angle

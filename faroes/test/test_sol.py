@@ -107,6 +107,38 @@ class TestStrikePointRadius2(unittest.TestCase):
         assert_near_equal(Rs, expected, tolerance=1e-4)
 
 
+class TestStrikePointRadius3(unittest.TestCase):
+    def setUp(self):
+        prob = om.Problem()
+
+        resource_dir = "faroes.test.test_data"
+        resource_name = "sol_options_3.yaml"
+        if resources.is_resource(resource_dir, resource_name):
+            with resources.path(resource_dir, resource_name) as path:
+                uc = UserConfigurator(user_data_file=path)
+
+        prob.model = sol.StrikePointRadius(config=uc)
+
+        prob.setup(force_alloc_complex=True)
+        prob.set_val("R0", 3.0, units="m")
+        prob.set_val("a", 1.875, units="m")
+        prob.set_val("δ", 0.5)
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+    def test_values(self):
+        prob = self.prob
+        prob.run_driver()
+        Rs = prob.get_val("R_strike", units="m")
+        expected = 2.53125
+        assert_near_equal(Rs, expected, tolerance=1e-4)
+
+
 class TestPeakHeatFlux1(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
