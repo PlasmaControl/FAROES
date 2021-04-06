@@ -39,7 +39,7 @@ class PrimaryCoilSetCost(om.ExplicitComponent):
     def setup(self):
         self.cpv = self.options['cost_per_volume']
         self.add_input("V_pc", units="m**3", val=0.0)
-        self.add_output("Cpc", units="MUSD")
+        self.add_output("Cpc", units="MUSD", ref=100)
 
     def compute(self, inputs, outputs):
         outputs['Cpc'] = self.cpv * inputs["V_pc"]
@@ -87,7 +87,7 @@ class BlanketCost(om.ExplicitComponent):
     def setup(self):
         self.cpv = self.options['cost_per_volume']
         self.add_input("V_bl", units="m**3")
-        self.add_output("C_bl", units="MUSD")
+        self.add_output("C_bl", units="MUSD", ref=100)
 
     def compute(self, inputs, outputs):
         outputs['C_bl'] = self.cpv * inputs["V_bl"]
@@ -132,7 +132,7 @@ class StructureCost(om.ExplicitComponent):
     def setup(self):
         self.cpv = self.options['cost_per_volume']
         self.add_input("V_st", units="m**3")
-        self.add_output("Cst", units="MUSD")
+        self.add_output("Cst", units="MUSD", ref=100)
 
     def compute(self, inputs, outputs):
         outputs['Cst'] = self.cpv * inputs["V_st"]
@@ -177,7 +177,7 @@ class ShieldWithGapsCost(om.ExplicitComponent):
     def setup(self):
         self.cpv = self.options['cost_per_volume']
         self.add_input("V_sg", units="m**3")
-        self.add_output("Csg", units="MUSD")
+        self.add_output("Csg", units="MUSD", ref=100)
 
     def compute(self, inputs, outputs):
         outputs['Csg'] = self.cpv * inputs["V_sg"]
@@ -197,7 +197,7 @@ class DivertorCost(om.ExplicitComponent):
     Outputs
     -------
     C_tt: float
-       MUSD, cost of shielding (with gaps)
+       MUSD, cost of divertor
 
     Options
     -------
@@ -225,7 +225,7 @@ class DivertorCost(om.ExplicitComponent):
     def setup(self):
         self.cpa = self.options['cost_per_area']
         self.add_input("A_tt", units="m**2")
-        self.add_output("C_tt", units="MUSD")
+        self.add_output("C_tt", units="MUSD", ref=3)
 
     def compute(self, inputs, outputs):
         outputs['C_tt'] = self.cpa * inputs["A_tt"]
@@ -270,7 +270,7 @@ class AuxHeatingCost(om.ExplicitComponent):
     def setup(self):
         self.cpw = self.options['cost_per_watt']
         self.add_input("P_aux", units="MW")
-        self.add_output("C_aux", units="MUSD")
+        self.add_output("C_aux", units="MUSD", ref=100)
 
     def compute(self, inputs, outputs):
         outputs['C_aux'] = self.cpw * inputs["P_aux"]
@@ -312,7 +312,7 @@ class AnnualAuxHeatingCost(om.ExplicitComponent):
         if self.cc is None:
             self.cc = {'f_spares': 1.1, 'annual_aux_heating_factor': 0.1}
         self.add_input("C_aux", units="MUSD")
-        self.add_output("C_aa", units="MUSD/a")
+        self.add_output("C_aa", units="MUSD/a", ref=10)
 
     def compute(self, inputs, outputs):
         cc = self.cc
@@ -691,8 +691,8 @@ class DeuteriumCost(om.ExplicitComponent):
             }
         self.add_input("P_fus", units="MW")
         self.add_input("f_av")
-        self.add_output("C_deuterium", units="MUSD/a")
-        self.add_output("D usage", units="kg/a")
+        self.add_output("C_deuterium", units="MUSD/a", ref=0.5)
+        self.add_output("D usage", units="kg/a", ref=50)
 
         # this was done by looking up the masses of D, T, He atoms, and
         # neutrons, and doing Δm c²
@@ -773,7 +773,7 @@ class MiscReplacements(om.ExplicitComponent):
                 'C_misc': 52.8,
             }
         self.add_input("C_fuel", units="MUSD/a", val=0.8)
-        self.add_output("C_fa", units="MUSD/a")
+        self.add_output("C_fa", units="MUSD/a", ref=10)
 
     def compute(self, inputs, outputs):
         cc = self.cc
@@ -821,7 +821,7 @@ class FuelCycleCost(om.ExplicitComponent):
         self.add_input("C_ta", units="MUSD/a", val=0.0)
         self.add_input("C_aa", units="MUSD/a", val=0.0)
         self.add_input("C_fa", units="MUSD/a", val=0.0)
-        self.add_output("C_F", units="MUSD/a")
+        self.add_output("C_F", units="MUSD/a", ref=100)
 
     def compute(self, inputs, outputs):
         outputs["C_F"] = (inputs["C_ba"] + inputs["C_ta"] + inputs["C_aa"] +
@@ -1136,7 +1136,7 @@ class FixedOMCost(om.ExplicitComponent):
                 "fudge": 1.0,
             }
         self.add_input("P_e", units="MW")
-        self.add_output("C_OM", units="MUSD/a")
+        self.add_output("C_OM", units="MUSD/a", ref=100)
 
     def compute(self, inputs, outputs):
         cc = self.cc
@@ -1157,6 +1157,10 @@ class FixedOMCost(om.ExplicitComponent):
     def compute_partials(self, inputs, J):
         cc = self.cc
         Pe = inputs["P_e"]
+
+        if Pe <= 0:
+            raise om.AnalysisError("Net electric power must be positive")
+
         base_OM = cc["base_OM"]
         base_Pe = cc["base_Pe"]
         fudge = cc["fudge"]
@@ -1192,7 +1196,7 @@ class TotalCapitalCost(om.ExplicitComponent):
         self.add_input("C_D", units="MUSD")
         self.add_input("f_CAPO", val=1.0)
         self.add_input("f_IND", val=1.0)
-        self.add_output("C_CO", units="MUSD")
+        self.add_output("C_CO", units="MUSD", ref=3000)
 
     def compute(self, inputs, outputs):
         C_D = inputs["C_D"]
@@ -1415,7 +1419,7 @@ class GeneromakStructureVolume(om.ExplicitComponent):
     """
     def setup(self):
         self.add_input("V_pc", units='m**3', val=0.0)
-        self.add_output("V_st", units='m**3')
+        self.add_output("V_st", units='m**3', ref=100)
         self.c = 0.75
 
     def compute(self, inputs, outputs):
