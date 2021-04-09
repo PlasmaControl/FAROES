@@ -1,5 +1,4 @@
-# This is first example with a cycle of components, necessitating(?)
-# a nonlinear solver.
+# This tests a decently-large chunk of the Menard spreadsheet model
 
 from faroes.configurator import UserConfigurator
 import faroes.units  # noqa: F401
@@ -26,6 +25,9 @@ from faroes.sol import SOLAndDivertor
 from faroes.powerplant import Powerplant
 
 import openmdao.api as om
+
+from openmdao.utils.assert_utils import assert_near_equal
+import unittest
 
 
 class Geometry(om.Group):
@@ -175,98 +177,112 @@ class Machine(om.Group):
                      "maglife.Shielding factor")
 
 
+class TestMenardModel(unittest.TestCase):
+    def setUp(self):
+        prob = om.Problem()
+
+        uc = UserConfigurator()
+        prob.model = Machine(config=uc)
+
+        model = prob.model
+
+        ivc = om.IndepVarComp()
+        ivc.add_output("a", units="m")
+        model.add_subsystem("ivc", ivc, promotes_outputs=["*"])
+        prob.driver = om.ScipyOptimizeDriver()
+        prob.driver.options['optimizer'] = 'SLSQP'
+
+        model.add_design_var('geometry.radial_build.CS ΔR',
+                             lower=0.10,
+                             upper=1.0,
+                             ref=0.50,
+                             units='m')
+        model.add_design_var('geometry.radial_build.ib_tf.Δr_s',
+                             lower=0.05,
+                             upper=1.0,
+                             ref=0.3,
+                             units='m')
+        model.add_design_var('geometry.radial_build.ib_tf.Δr_m',
+                             lower=0.05,
+                             upper=1.0,
+                             ref=0.3,
+                             units='m')
+        model.add_design_var('a', lower=0.9, upper=3, units='m')
+        model.add_design_var('geometry.radial_build.ob.gap thickness',
+                             lower=0.00,
+                             upper=5.0,
+                             ref=0.3,
+                             units='m')
+        model.add_design_var('magnets.j_HTS',
+                             lower=10,
+                             upper=250,
+                             ref=100,
+                             units="MA/m**2")
+        model.add_objective('pplant.overall.P_net', scaler=-1)
+
+        # set constraints
+        model.add_constraint('magnets.constraint_max_stress', lower=0)
+        model.add_constraint('magnets.constraint_B_on_coil', lower=0)
+        model.add_constraint('magnets.constraint_wp_current_density', lower=0)
+        model.add_constraint('R0', equals=3.0)
+        model.add_constraint('geometry.aspect_ratio', lower=1.6, upper=5)
+
+        prob.setup()
+        prob.check_config(checks=['unconnected_inputs'])
+
+        prob.set_val('geometry.radial_build.ib_tf.n_coil', 18)
+
+        # initial values for design variables
+        prob.set_val("geometry.radial_build.CS ΔR", 0.20, units="m")
+        prob.set_val("geometry.radial_build.ib_tf.Δr_s", 0.28, units='m')
+        prob.set_val("geometry.radial_build.ib_tf.Δr_m", 0.14, units='m')
+        prob.set_val('a', 1.53, units="m")
+        prob.set_val("magnets.j_HTS", 155, units="MA/m**2")
+
+        build = model.geometry
+        newton = build.nonlinear_solver = om.NewtonSolver(
+            solve_subsystems=True)
+        newton.options['iprint'] = 2
+        newton.options['maxiter'] = 20
+        build.linear_solver = om.DirectSolver()
+
+        # initial inputs for intermediate variables
+        prob.set_val("plasma.Hbalance.H", 1.70)
+        prob.set_val("plasma.Ip", 15., units="MA")
+        prob.set_val("plasma.<n_e>", 1.625, units="n20")
+        prob.set_val("plasma.radiation.rad.P_loss", 167, units="MW")
+
+        mpl = model.plasma
+        newton = mpl.nonlinear_solver = om.NewtonSolver(solve_subsystems=True)
+        newton.options['iprint'] = 2
+        newton.options['maxiter'] = 20
+        mpl.linear_solver = om.DirectSolver()
+        newton.linesearch = om.ArmijoGoldsteinLS(retry_on_analysis_error=True,
+                                                 rho=0.5,
+                                                 c=0.1,
+                                                 method="Armijo",
+                                                 bound_enforcement="vector")
+        newton.linesearch.options["maxiter"] = 40
+
+        pplant = prob.model.pplant
+        newton = pplant.nonlinear_solver = om.NewtonSolver(
+            solve_subsystems=True)
+        newton.options['iprint'] = 2
+        newton.options['maxiter'] = 10
+        pplant.linear_solver = om.DirectSolver()
+        self.prob = prob
+
+    def test_values(self):
+        prob = self.prob
+        prob.run_driver()
+
+        f = prob.get_val("plasma.Hbalance.H")
+        expected = 1.69793
+        assert_near_equal(f, expected, tolerance=1e-3)
+        f = prob.get_val("magnets.B0")
+        expected = 3.885
+        assert_near_equal(f, expected, tolerance=1e-3)
+
+
 if __name__ == "__main__":
-    prob = om.Problem()
-
-    uc = UserConfigurator()
-    prob.model = Machine(config=uc)
-
-    model = prob.model
-
-    ivc = om.IndepVarComp()
-    ivc.add_output("a", units="m")
-    model.add_subsystem("ivc", ivc, promotes_outputs=["*"])
-
-    prob.driver = om.pyOptSparseDriver()
-
-    prob.driver.options['optimizer'] = 'IPOPT'
-    prob.driver.options['user_terminate_signal'] = True
-
-    model.add_design_var('geometry.radial_build.CS ΔR',
-                         lower=0.10,
-                         upper=1.0,
-                         units='m')
-    model.add_design_var('geometry.radial_build.ib_tf.Δr_s',
-                         lower=0.05,
-                         upper=1.0,
-                         units='m')
-    model.add_design_var('geometry.radial_build.ib_tf.Δr_m',
-                         lower=0.05,
-                         upper=1.0,
-                         units='m')
-    model.add_design_var('a', lower=0.9, upper=3, units='m')
-    model.add_design_var('geometry.radial_build.ob.gap thickness',
-                         lower=0.00,
-                         upper=5.0,
-                         units='m')
-    model.add_design_var('magnets.j_HTS',
-                         lower=10,
-                         upper=250,
-                         ref=100,
-                         units="MA/m**2")
-
-    model.add_objective('pplant.overall.P_net', scaler=-1)
-
-    # set constraints
-    model.add_constraint('magnets.constraint_max_stress', lower=0)
-    model.add_constraint('magnets.constraint_B_on_coil', lower=0)
-    model.add_constraint('magnets.constraint_wp_current_density', lower=0)
-    model.add_constraint('R0', equals=3.0)
-    model.add_constraint('geometry.aspect_ratio', lower=1.6, upper=5)
-
-    prob.setup()
-    prob.check_config(checks=['unconnected_inputs'])
-
-    prob.set_val('geometry.radial_build.ib_tf.n_coil', 18)
-
-    # initial values for design variables
-    prob.set_val("geometry.radial_build.CS ΔR", 0.15, units="m")
-    prob.set_val("geometry.radial_build.ib_tf.Δr_s", 0.1, units='m')
-    prob.set_val("geometry.radial_build.ib_tf.Δr_m", 0.1, units='m')
-    prob.set_val('a', 1.5, units="m")
-    prob.set_val("magnets.j_HTS", 20, units="MA/m**2")
-
-    build = model.geometry
-    newton = build.nonlinear_solver = om.NewtonSolver(solve_subsystems=True)
-    newton.options['iprint'] = 2
-    newton.options['maxiter'] = 20
-    build.linear_solver = om.DirectSolver()
-
-    # initial inputs for intermediate variables
-    prob.set_val("plasma.Hbalance.H", 1.10)
-    prob.set_val("plasma.Ip", 10., units="MA")
-    prob.set_val("plasma.<n_e>", 1.0, units="n20")
-    prob.set_val("plasma.radiation.rad.P_loss", 100, units="MW")
-
-    mpl = model.plasma
-    newton = mpl.nonlinear_solver = om.NewtonSolver(solve_subsystems=True)
-    newton.options['iprint'] = 2
-    newton.options['maxiter'] = 20
-    mpl.linear_solver = om.DirectSolver()
-    newton.linesearch = om.ArmijoGoldsteinLS(retry_on_analysis_error=True,
-                                             rho=0.5,
-                                             c=0.1,
-                                             method="Armijo",
-                                             bound_enforcement="vector")
-    newton.linesearch.options["maxiter"] = 40
-
-    pplant = model.pplant
-    newton = pplant.nonlinear_solver = om.NewtonSolver(solve_subsystems=True)
-    newton.options['iprint'] = 2
-    newton.options['maxiter'] = 10
-    pplant.linear_solver = om.DirectSolver()
-
-    prob.run_driver()
-
-    model.list_inputs(values=True, print_arrays=True, units=True)
-    model.list_outputs(values=True, print_arrays=True, units=True)
+    unittest.main()
