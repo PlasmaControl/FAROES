@@ -31,3 +31,24 @@ radial_build:
         slope1: -0.25
         x1: 2.25
         slope2: -0.05
+  outboard:
+    blanket thickness:
+      model: doubleReLu
+      # options:
+      #   constant
+      #   doubleReLu : function of aspect ratio. See blanket.py.
+      constant: {value: 1.0, units: m}
+      doubleReLu:
+        # parameters:
+        sharpness: 25
+        thickness_0: {value: 1.0, units: m}
+        x0: 2.1
+        slope1: -0.30
+        x1: 2.35
+        slope2: -0.10
+        reference: >
+          Menard, J. E. Fusion Nuclear Science Facilities and
+          Pilot Plants Based on the Spherical Tokamak.
+          Nuclear Fusion 2016, 56 (10), 106023.
+          https://doi.org/10.1088/0029-5515/56/10/106023.
+          See Figure 47.

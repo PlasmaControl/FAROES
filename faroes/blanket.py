@@ -194,6 +194,114 @@ class MenardInboardShieldFit(om.Group):
             raise ValueError(self.BAD_SH_MODEL % (model))
 
 
+class OutboardBlanketFit(om.Group):
+    r"""Outboard blanket thickness, optionally as a function of A.
+
+    Inputs
+    ------
+    A : float
+        Plasma aspect ratio
+
+    Outputs
+    -------
+    blanket_thickness: float
+        m, Outboard blanket thickness
+
+    Options
+    -------
+    Configuration options are either "constant" or "doubleReLu".
+    If the former, this function outputs the constant thickness regardless of
+    A.
+
+    If the latter:
+    The "smoothed, shifted double ReLu" function is
+    nearly flat at thickness=1 for :math:`A < x_0`, transitions to slope1 for
+    :math:`x_0 < A < x_1`, and transitions to slope2 for :math:`x_1 < A`.
+    The sharpness of the transitions is given by the "sharpness" parameter.
+
+    Notes
+    -----
+    This group needs to always be given "A" as an input, even when it's not
+    used. This is architectural decision made so that this is the only place
+    where there is an "if" statement related to the choice of options.
+
+    This particular fit is based off equation (A.11) of [1]_, which in turn is
+    based off [2]_.
+
+    References
+    ----------
+    .. [1] Wade, M. R.; Leuer, J. A.
+       Cost Drivers for a Tokamak-Based Compact Pilot Plant.
+       Fusion Science and Technology 2021, 77 (2), 119–143.
+       https://doi.org/10.1080/15361055.2020.1858670.
+
+    .. [2] Menard, J. E. et al.
+       Fusion Nuclear Science Facilities and Pilot Plants Based on
+       the Spherical Tokamak. Nuclear Fusion 2016, 56 (10), 106023.
+       https://doi.org/10.1088/0029-5515/56/10/106023.
+       See Figure 47.
+    """
+    BAD_BL_MODEL = "Blanket thickness model %s not supported"
+
+    def initialize(self):
+        self.options.declare('config', default=None)
+
+    def setup(self):
+        if self.options['config'] is None:
+            raise ValueError("Configuration tree required.")
+        config = self.options["config"]
+
+        # set up blanket thickness
+        f = config.accessor(["radial_build", "outboard", "blanket thickness"])
+        model = f(["model"])
+        if model == "doubleReLu":
+            f = config.accessor([
+                "radial_build", "outboard", "blanket thickness", "doubleReLu"
+            ])
+            sharpness = f(["sharpness"])
+            t0 = f(["thickness_0"], units="m")
+            x0 = f(["x0"])
+            x1 = f(["x1"])
+            s1 = f(["slope1"])
+            s2 = f(["slope2"])
+            bl = DoubleSmoothShiftedReLu(sharpness=sharpness,
+                                         x0=x0,
+                                         x1=x1,
+                                         s1=s1,
+                                         s2=s2,
+                                         units_out="m")
+            self.add_subsystem("bla",
+                               bl,
+                               promotes_inputs=[("x", "A")],
+                               promotes_outputs=[("y", "change")])
+            self.add_subsystem("bl",
+                               om.ExecComp(
+                                   f"blanket_thickness = {t0} + change",
+                                   blanket_thickness={
+                                       "units": "m",
+                                       "lower": 0
+                                   },
+                                   change={"units": "m"}),
+                               promotes_inputs=["change"],
+                               promotes_outputs=["blanket_thickness"])
+
+        elif model == "constant":
+            f = config.accessor(
+                ["radial_build", "outboard", "blanket thickness"])
+            th = f(["constant"], units="m")
+            ivc = om.IndepVarComp()
+            ivc.add_output("blanket_thickness", val=th, units="m")
+            self.add_subsystem("ivc", ivc, promotes_outputs=["*"])
+
+            # stub to have something that inputs A
+            self.add_subsystem("ignore",
+                               om.ExecComp("ignore = 0 * A",
+                                           ignore={"value": 0}),
+                               promotes_inputs=["A"])
+        else:
+            raise ValueError(self.BAD_BL_MODEL % (model))
+
+
 class MenardSTBlanketAndShieldMagnetProtection(om.ExplicitComponent):
     r"""Shielding properties of the blanket and shield for the Ib magnets
 

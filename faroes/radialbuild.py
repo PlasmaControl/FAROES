@@ -6,6 +6,7 @@ from faroes.simple_tf_magnet import OutboardMagnetGeometry
 
 from faroes.blanket import MenardInboardBlanketFit
 from faroes.blanket import MenardInboardShieldFit
+from faroes.blanket import OutboardBlanketFit
 
 
 class Properties(om.Group):
@@ -39,11 +40,6 @@ class Properties(om.Group):
                        f,
                        "SOL width",
                        component_name="Ob SOL width",
-                       units="m")
-        acc.set_output(ivc,
-                       f,
-                       "blanket thickness",
-                       component_name="Ob blanket thickness",
                        units="m")
         acc.set_output(ivc,
                        f,
@@ -432,7 +428,7 @@ class MenardSTOutboard(om.ExplicitComponent):
         self.add_input("Ob FW R_in",
                        units="m",
                        desc="outer radius of core at midplane")
-        self.add_input("blanket thickness", units="m")
+        self.add_input("blanket thickness", units="m", val=1.0)
 
         # I think this is where the PF coils go?
         self.add_input("access thickness", units="m", desc="Access thickness")
@@ -619,7 +615,6 @@ class STRadialBuild(om.Group):
                            MenardSTOutboard(),
                            promotes_outputs=[("TF R_min", "Ob TF R_min"),
                                              ("TF R_in", "Ob TF R_in")])
-        self.connect('props.Ob blanket thickness', ['ob.blanket thickness'])
         self.connect('props.Ob access thickness', ['ob.access thickness'])
         self.connect('props.Ob vv thickness', ['ob.VV thickness'])
         self.connect('props.Ob shield thickness', ['ob.shield thickness'])
@@ -666,11 +661,16 @@ class MenardSTRadialBuild(om.Group):
         self.add_subsystem("ib_shield",
                            MenardInboardShieldFit(config=config),
                            promotes_inputs=["A"])
+        self.add_subsystem("ob_blanket",
+                           OutboardBlanketFit(config=config),
+                           promotes_inputs=["A"])
 
         self.connect('ib_shield.shield_thickness',
                      ['radial_build.ib.WC shield thickness'])
         self.connect('ib_blanket.blanket_thickness',
                      ['radial_build.ib.blanket thickness'])
+        self.connect('ob_blanket.blanket_thickness',
+                     ['radial_build.ob.blanket thickness'])
 
 
 if __name__ == "__main__":

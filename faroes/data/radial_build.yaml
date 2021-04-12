@@ -81,7 +81,29 @@ inboard:
 # From Menard's spreadsheet, roughly T461-T465
 outboard:
   SOL width: {value: 15, units: cm}
-  blanket thickness: {value: 1, units: m}
+
+  # This is added as an enhancement over Menard's spreadsheet.
+  blanket thickness:
+    model: constant
+    # options:
+    #   constant
+    #   doubleReLu : function of aspect ratio. See blanket.py.
+    constant: {value: 1.0, units: m}
+    doubleReLu:
+      # parameters:
+      sharpness: 25
+      thickness_0: {value: 1.0, units: m}
+      x0: 2.1
+      slope1: -0.30
+      x1: 2.35
+      slope2: -0.10
+      reference: >
+        Menard, J. E. Fusion Nuclear Science Facilities and
+        Pilot Plants Based on the Spherical Tokamak.
+        Nuclear Fusion 2016, 56 (10), 106023.
+        https://doi.org/10.1088/0029-5515/56/10/106023.
+        See Figure 47.
+
   access thickness: {value: 1, units: m}
 
   # this seems large: half a meter for the VV?
