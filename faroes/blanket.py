@@ -332,6 +332,18 @@ class MenardSTBlanketAndShieldGeometry(om.ExplicitComponent):
     r"""
     Should be run after the inboard & outboard radial builds
 
+    The outboard blanket is in the shape of a cylinder
+
+    .. math::
+
+       V_{bl,ob} = h \pi (R_{bl,ob,o}^2 - R_{bl,ob,i}^2)
+
+    where :math:`h` is the half-height of the plasma, plus a bit for the SOL:
+
+    .. math::
+
+       h = 2 \kappa (a + \Delta R_{ob, SOL})
+
     Inputs
     ------
     a : float
@@ -374,11 +386,6 @@ class MenardSTBlanketAndShieldGeometry(om.ExplicitComponent):
         m**3, Total blanket estimated volume
 
     """
-    def initialize(self):
-        # there may be a bug in menard's calculation for shield volume
-        # if so, change self.bug to 1
-        self.bug = 1
-
     def setup(self):
         self.add_input("a", units="m", desc="Plasma minor radius")
         self.add_input("κ", desc="plasma elongation")
@@ -446,10 +453,8 @@ class MenardSTBlanketAndShieldGeometry(om.ExplicitComponent):
 
         R_out = inputs["Ib WC shield R_out"]
         R_in = inputs["Ib WC shield R_in"]
-        outputs["Ib shield V"] += self.bug * pi * (R_out**2 - R_in**2) * h
+        outputs["Ib shield V"] += pi * (R_out**2 - R_in**2) * h
 
-        # there seems to definitely be a bug in this so I'm going to do
-        # something different
         R_out = inputs["Ob blanket R_out"]
         R_in = inputs["Ob blanket R_in"]
         outputs["Ob blanket V"] = pi * (R_out**2 - R_in**2) * h
@@ -498,7 +503,6 @@ class MenardSTBlanketAndShieldGeometry(om.ExplicitComponent):
         J["Ib blanket V",
           "Ib blanket R_in"] = -4 * pi * R_in * (a + Ob_SOL_ΔR) * κ
 
-        bug = self.bug
         R_m_out = inputs["Ib WC shield R_out"]
         R_m_in = inputs["Ib WC shield R_in"]
         R_vv_out = inputs["Ib WC VV shield R_out"]
@@ -507,13 +511,13 @@ class MenardSTBlanketAndShieldGeometry(om.ExplicitComponent):
         # horizontal cross section
         h_m_CX = pi * (R_m_out**2 - R_m_in**2)
         h_vv_CX = pi * (R_vv_out**2 - R_vv_in**2)
-        J["Ib shield V", "a"] = 2 * κ * (h_vv_CX + bug * h_m_CX)
-        J["Ib shield V", "κ"] = 2 * (h_vv_CX + bug * h_m_CX) * (a + Ob_SOL_ΔR)
+        J["Ib shield V", "a"] = 2 * κ * (h_vv_CX + h_m_CX)
+        J["Ib shield V", "κ"] = 2 * (h_vv_CX + h_m_CX) * (a + Ob_SOL_ΔR)
         J["Ib shield V", "Ob SOL width"] = J["Ib shield V", "a"]
         J["Ib shield V",
-          "Ib WC shield R_out"] = 4 * bug * pi * R_m_out * κ * (a + Ob_SOL_ΔR)
+          "Ib WC shield R_out"] = 4 * pi * R_m_out * κ * (a + Ob_SOL_ΔR)
         J["Ib shield V",
-          "Ib WC shield R_in"] = -4 * bug * pi * R_m_in * κ * (a + Ob_SOL_ΔR)
+          "Ib WC shield R_in"] = -4 * pi * R_m_in * κ * (a + Ob_SOL_ΔR)
         J["Ib shield V",
           "Ib WC VV shield R_out"] = 4 * pi * R_vv_out * κ * (a + Ob_SOL_ΔR)
         J["Ib shield V",
