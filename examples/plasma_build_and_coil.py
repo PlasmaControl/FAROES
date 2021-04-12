@@ -82,7 +82,7 @@ if __name__ == "__main__":
     prob.set_val("a", 1.00, units='m')
 
     prob.set_val('magnets.n_coil', 18)
-    prob.set_val("radial_build.Ob TF gap", 0.100)
+    prob.set_val("radial_build.ob.gap thickness", 0.100)
     prob.set_val('magnets.windingpack.j_eff_max', 160)
     prob.set_val('magnets.windingpack.f_HTS', 0.76)
     prob.set_val("magnets.magnetstructure_props.Young's modulus", 220)
