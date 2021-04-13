@@ -250,5 +250,34 @@ class TestSoftmax(unittest.TestCase):
         assert_near_equal(z, expected, tolerance=1e-6)
 
 
+class TestPolygonalTorusVolume(unittest.TestCase):
+    def setUp(self):
+        x = [2, 2, 1, 1]
+        y = [0, 1, 1, 0]
+
+        ptv = util.PolygonalTorusVolume()
+        prob = om.Problem()
+        ivc = om.IndepVarComp()
+        ivc.add_output("R", val=x, units="m")
+        ivc.add_output("Z", val=y, units="m")
+        prob.model.add_subsystem("ivc", ivc, promotes_outputs=["*"])
+        prob.model.add_subsystem("ptv", ptv, promotes_inputs=["*"])
+
+        prob.setup(force_alloc_complex=True)
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check, atol=2e-5, rtol=2e-5)
+
+    def test_values(self):
+        prob = self.prob
+        prob.run_driver()
+        V = prob.get_val("ptv.V")
+        expected = 9.424777961
+        assert_near_equal(V, expected, tolerance=1e-8)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -679,6 +679,60 @@ class Softmax(om.ExplicitComponent):
         J['z', 'y'] = dz_dy
 
 
+class PolygonalTorusVolume(om.ExplicitComponent):
+    r"""A torus specified by (R, Z) points
+
+    Inputs
+    ------
+    R : array
+       m, Radial locations
+    Z : array
+       m, Vertical locations
+
+    Outputs
+    -------
+    V : float
+       m**3, Enclosed volume
+    """
+    def setup(self):
+        self.add_input("R", units="m", shape_by_conn=True)
+        self.add_input("Z", units="m", copy_shape="R", shape_by_conn=True)
+        self.add_output("V", units="m**3")
+
+    def compute(self, inputs, outputs):
+        r = inputs["R"]
+        z = inputs["Z"]
+        ra = np.append(r, r[0])
+        za = np.append(z, z[0])
+        r0 = ra[0:-1]
+        z0 = za[0:-1]
+        r1 = ra[1:]
+        z1 = za[1:]
+        Vs = (π / 3) * (r0 - r1) * (r0 * (2 * z0 + z1) + r1 * (z0 + 2 * z1))
+        outputs["V"] = np.sum(Vs)
+
+    def setup_partials(self):
+        size = self._get_var_meta("R", "size")
+        self.declare_partials("V", "R", val=np.zeros(size))
+        self.declare_partials("V", "Z", val=np.zeros(size))
+
+    def compute_partials(self, inputs, J):
+        r = inputs["R"]
+        z = inputs["Z"]
+        ra = np.append(r, r[0])
+        za = np.append(z, z[0])
+        r0 = ra[0:-1]
+        z0 = za[0:-1]
+        r1 = ra[1:]
+        z1 = za[1:]
+        dV_dr0 = (π / 3) * (r1 * (z1 - z0) + 2 * r0 * (2 * z0 + z1))
+        dV_dr1 = -(π / 3) * (r0 * (z0 - z1) + 2 * r1 * (z0 + 2 * z1))
+        dV_dz0 = (π / 3) * (r0 - r1) * (2 * r0 + r1)
+        dV_dz1 = (π / 3) * (r0 - r1) * (r0 + 2 * r1)
+        J["V", "R"] = dV_dr0 + np.roll(dV_dr1, 1)
+        J["V", "Z"] = dV_dz0 + np.roll(dV_dz1, 1)
+
+
 def most_common_isotope(sp):
     """A Particle of the most common isotope and
     maximum charge for the given species.
