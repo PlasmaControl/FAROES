@@ -16,6 +16,7 @@ from faroes.menardplasmaloop import MenardPlasmaLoop
 
 from faroes.blanket import MenardInboardBlanketFit
 from faroes.blanket import MenardInboardShieldFit
+from faroes.blanket import OutboardBlanketFit
 
 from faroes.blanket import MenardSTBlanketAndShieldGeometry
 from faroes.blanket import MenardSTBlanketAndShieldMagnetProtection
@@ -60,11 +61,16 @@ class Geometry(om.Group):
         self.add_subsystem("ib_blanket",
                            MenardInboardBlanketFit(config=config),
                            promotes_inputs=[("A", "aspect_ratio")])
+        self.add_subsystem("ob_blanket",
+                           OutboardBlanketFit(config=config),
+                           promotes_inputs=[("A", "aspect_ratio")])
 
         self.connect('ib_shield.shield_thickness',
                      ['radial_build.ib.WC shield thickness'])
         self.connect('ib_blanket.blanket_thickness',
                      ['radial_build.ib.blanket thickness'])
+        self.connect('ob_blanket.blanket_thickness',
+                     ['radial_build.ob.blanket thickness'])
 
         self.add_subsystem("ripple", SimpleRipple())
         self.connect("radial_build.ib_tf.r1", "ripple.r1")
@@ -85,16 +91,59 @@ class Geometry(om.Group):
                            promotes_outputs=["ε", "κ", "κa", "V"])
         self.connect("ivc.θ_for_dsq", "plasma.θ")
 
-        # build exclusion zone
-        self.add_subsystem("exclusion_zone",
-                           PolarParallelCurve(),
+        # build fw shape
+        self.add_subsystem("fw_shape",
+                           PolarParallelCurve(use_Rmin=True, torus_V=True),
                            promotes_inputs=["R0"])
-        self.connect("radial_build.ib.Thermal shield to FW",
+        self.connect("radial_build.ob_plasma_to_x.ob_pl_to_fw_rin",
+                     "fw_shape.s")
+        self.connect("radial_build.ib.FW R_out", "fw_shape.R_min")
+
+        # build blanket shape
+        self.add_subsystem("bl_shape",
+                           PolarParallelCurve(use_Rmin=True, torus_V=True),
+                           promotes_inputs=["R0"])
+        self.connect("radial_build.ob_plasma_to_x.ob_pl_to_bl_rout",
+                     "bl_shape.s")
+        self.connect("radial_build.ib.blanket R_in", "bl_shape.R_min")
+
+        # build exclusion zone of shield shape
+        self.add_subsystem("exclusion_zone",
+                           PolarParallelCurve(use_Rmin=True, torus_V=True),
+                           promotes_inputs=["R0"])
+        self.connect("radial_build.ob_plasma_to_x.ob_pl_to_sh_rout",
                      "exclusion_zone.s")
-        self.connect("plasma.R", "exclusion_zone.R")
-        self.connect("plasma.Z", "exclusion_zone.Z")
-        self.connect("plasma.dR_dθ", "exclusion_zone.dR_dθ")
-        self.connect("plasma.dZ_dθ", "exclusion_zone.dZ_dθ")
+        self.connect("radial_build.ib.WC shield R_in", "exclusion_zone.R_min")
+
+        # connect plasma shape to fw, bl, and exlcusion zone shapes
+        self.connect("plasma.R",
+                     ["fw_shape.R", "bl_shape.R", "exclusion_zone.R"])
+        self.connect("plasma.Z",
+                     ["fw_shape.Z", "bl_shape.Z", "exclusion_zone.Z"])
+        self.connect(
+            "plasma.dR_dθ",
+            ["fw_shape.dR_dθ", "bl_shape.dR_dθ", "exclusion_zone.dR_dθ"])
+        self.connect(
+            "plasma.dZ_dθ",
+            ["fw_shape.dZ_dθ", "bl_shape.dZ_dθ", "exclusion_zone.dZ_dθ"])
+
+        # compute shield and blanket volumes
+        self.add_subsystem(
+            "sh_bl_volumes",
+            om.ExecComp(
+                [
+                    "V_sh_mat = V_sh_enc - V_bl_enc",
+                    "V_bl_mat = V_bl_enc - V_fw_enc"
+                ],
+                V_sh_mat={'units': 'm**3'},
+                V_sh_enc={'units': 'm**3'},
+                V_bl_mat={'units': 'm**3'},
+                V_bl_enc={'units': 'm**3'},
+                V_fw_enc={'units': 'm**3'},
+            ))
+        self.connect("exclusion_zone.V", "sh_bl_volumes.V_sh_enc")
+        self.connect("bl_shape.V", "sh_bl_volumes.V_bl_enc")
+        self.connect("fw_shape.V", "sh_bl_volumes.V_fw_enc")
 
         # create the 'poloidal shape' of the magnets
         self.add_subsystem("adaptor", ThreeArcDeeTFSetAdaptor())
@@ -295,8 +344,9 @@ class Machine(om.Group):
         self.connect("magnet_quantities.V_set", "costing.V_pc")
         # # using the 'exact' generomak formulation the structure volume is
         # # estimated
-        self.connect("geometry.blanketgeom.Ib shield V", "costing.V_sg")
-        self.connect("geometry.blanketgeom.Blanket V", "costing.V_bl")
+        self.connect("geometry.sh_bl_volumes.V_sh_mat", "costing.V_sg")
+        self.connect("geometry.sh_bl_volumes.V_bl_mat", "costing.V_bl")
+
         self.connect("geometry.divertor_area.Adiv", "costing.A_tt")
         self.connect("pplant.aux.P_aux,h", "costing.P_aux")
         self.connect("pplant.gen.P_el", "costing.P_e")
@@ -313,7 +363,7 @@ class Machine(om.Group):
 if __name__ == "__main__":
     prob = om.Problem()
 
-    uc = UserConfigurator()
+    uc = UserConfigurator("sauter_generomak.yaml")
     machine = Machine(config=uc)
     prob.model = machine
 
@@ -396,8 +446,10 @@ if __name__ == "__main__":
     prob.set_val("geometry.adaptor.Z_1", -2.0)
 
     # parameters
-    prob.set_val("geometry.plasma.δ", 0.3)
-    prob.set_val("plasma.δ", -0.3)
+    δ = -0.7
+    prob.set_val("geometry.plasma.δ", δ)
+    prob.set_val("plasma.δ", δ)
+    prob.set_val("SOL.δ", δ)
 
     n_coil = 18
     prob.set_val('geometry.radial_build.ib_tf.n_coil', n_coil)
@@ -440,16 +492,19 @@ if __name__ == "__main__":
     prob.run_driver()
 
     all_inputs = prob.model.list_inputs(values=True,
-                                        print_arrays=True,
+                                        print_arrays=False,
                                         units=True)
     all_outputs = prob.model.list_outputs(values=True,
-                                          print_arrays=True,
+                                          print_arrays=False,
                                           units=True)
 
     fig, ax = plt.subplots()
-    machine.geometry.plasma.geom.plot(ax)
-    machine.geometry.exclusion_zone.pts.plot(ax)
-    machine.geometry.coils.plot(ax)
+    machine.geometry.plasma.geom.plot(ax, label="Plasma")
+    machine.geometry.fw_shape.limiter.plot(ax, label="First wall")
+    machine.geometry.bl_shape.limiter.plot(ax, label="Blanket")
+    machine.geometry.exclusion_zone.limiter.plot(ax, label="Shield")
+    machine.geometry.coils.plot(ax, label="TF Coils (inner profile)")
     ax.set_xlim([-1, 8])
     ax.axis('equal')
+    ax.legend()
     plt.show()
