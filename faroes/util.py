@@ -525,9 +525,11 @@ class PolarParallelCurve(om.Group):
     """
     def initialize(self):
         self.options.declare('use_Rmin', default=False)
+        self.options.declare('torus_V', default=False)
 
     def setup(self):
         use_Rmin = self.options['use_Rmin']
+        torus_V = self.options['torus_V']
         self.add_subsystem("pts",
                            OffsetParametricCurvePoints(),
                            promotes_inputs=[("x", "R"), ("y", "Z"), "s",
@@ -540,18 +542,23 @@ class PolarParallelCurve(om.Group):
                                promotes_inputs=[("x", "R"), ("y", "Z"), "s",
                                                 ("x_min", "R_min")])
             self.connect("pts.θ_o", "limiter.θ_o")
+            points_comp = "limiter"
+        else:
+            points_comp = "pts"
 
         self.add_subsystem("d_sq_theta",
                            PolarAngleAndDistanceFromPoint(),
                            promotes_inputs=[("X0", "R0"), ("Y0", "Z0")],
                            promotes_outputs=["d_sq", ("θ", "θ_parall")])
+        self.connect(points_comp + ".x_o", "d_sq_theta.x")
+        self.connect(points_comp + ".y_o", "d_sq_theta.y")
 
-        if use_Rmin:
-            self.connect("limiter.x_o", "d_sq_theta.x")
-            self.connect("limiter.y_o", "d_sq_theta.y")
-        else:
-            self.connect("pts.x_o", "d_sq_theta.x")
-            self.connect("pts.y_o", "d_sq_theta.y")
+        if torus_V:
+            self.add_subsystem("V_enc",
+                               PolygonalTorusVolume(),
+                               promotes_outputs=["V"])
+            self.connect(points_comp + ".x_o", "V_enc.R")
+            self.connect(points_comp + ".y_o", "V_enc.Z")
 
 
 class SoftCapUnity(om.ExplicitComponent):
