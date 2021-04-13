@@ -129,6 +129,42 @@ class TestOffsetParametricCurvePoints(unittest.TestCase):
         prob.run_driver()
 
 
+class TestOffsetCurveWithLimiter(unittest.TestCase):
+    def setUp(self):
+        x = [2, 2, 1, 1]
+        y = [0, 1, 1, 0]
+        θ_o = [-np.pi / 4, 1 * np.pi / 4, 3 * np.pi / 4, -3 * np.pi / 4]
+
+        opc = util.OffsetCurveWithLimiter()
+        prob = om.Problem()
+        ivc = om.IndepVarComp()
+        ivc.add_output("x", val=x, units="m")
+        ivc.add_output("y", val=y, units="m")
+        ivc.add_output("θ_o", val=θ_o)
+        ivc.add_output("x_min", val=0.5, units="m")
+        prob.model.add_subsystem("ivc", ivc, promotes_outputs=["*"])
+        prob.model.add_subsystem("opc", opc, promotes_inputs=["*"])
+
+        prob.setup(force_alloc_complex=True)
+        prob.set_val("s", 2**(1 / 2), units="m")
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check, atol=2e-5, rtol=2e-5)
+
+    def test_values(self):
+        prob = self.prob
+        prob.run_driver()
+        x_o = prob.get_val("opc.x_o")
+        expected = [3, 3, 0.5, 0.5]
+        assert_near_equal(x_o, expected, tolerance=1e-8)
+        y_o = prob.get_val("opc.y_o")
+        expected = [-1, 2, 1.5, -0.5]
+        assert_near_equal(y_o, expected, tolerance=1e-8)
+
+
 class TestSmoothShiftedReLu(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
@@ -180,6 +216,38 @@ class TestSoftCapUnity(unittest.TestCase):
         prob.run_driver()
         y = prob.get_val("y")
         assert (y < 1.0)
+
+
+class TestSoftmax(unittest.TestCase):
+    def setUp(self):
+        x = [0, 2, 3, 4]
+        y = 2.5
+
+        u = "m**3"  # arbitrary unit
+        sm = util.Softmax(units=u)
+        prob = om.Problem()
+        ivc = om.IndepVarComp()
+        ivc.add_output("x", val=x, units=u)
+        ivc.add_output("y", val=y, units=u)
+        prob.model.add_subsystem("ivc", ivc, promotes_outputs=["*"])
+        prob.model.add_subsystem("sm", sm, promotes_inputs=["*"])
+
+        prob.setup(force_alloc_complex=True)
+        self.prob = prob
+        self.u = u
+
+    def test_partials(self):
+        prob = self.prob
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+    def test_values(self):
+        prob = self.prob
+        prob.run_driver()
+        u = self.u
+        z = prob.get_val("sm.z", units=u)
+        expected = [2.5, 2.5, 3, 4]
+        assert_near_equal(z, expected, tolerance=1e-6)
 
 
 if __name__ == "__main__":

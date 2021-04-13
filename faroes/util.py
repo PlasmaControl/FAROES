@@ -217,11 +217,13 @@ class OffsetParametricCurvePoints(om.ExplicitComponent):
         m, x-locations of points on offset curve
     y_o : array
         m, y-locations of points on offset curve
+    θ_o : array
+        Angle of the offset distance
 
     References
     ----------
-    [1] https://mathworld.wolfram.com/ParallelCurves.html
-    [2] https://en.wikipedia.org/wiki/Parallel_curve
+    .. [1] https://mathworld.wolfram.com/ParallelCurves.html
+    .. [2] https://en.wikipedia.org/wiki/Parallel_curve
     """
     def setup(self):
         self.add_input("x", units="m", shape_by_conn=True)
@@ -232,6 +234,7 @@ class OffsetParametricCurvePoints(om.ExplicitComponent):
 
         self.add_output("x_o", units="m", copy_shape="x")
         self.add_output("y_o", units="m", copy_shape="x")
+        self.add_output("θ_o", copy_shape="x")
 
     def compute(self, inputs, outputs):
         x = inputs["x"]
@@ -243,6 +246,7 @@ class OffsetParametricCurvePoints(om.ExplicitComponent):
         y_o = y - s * dx_dt / (dx_dt**2 + dy_dt**2)**(1 / 2)
         outputs["x_o"] = x_o
         outputs["y_o"] = y_o
+        outputs["θ_o"] = cs_safe_arctan2(y=-dx_dt, x=dy_dt)
 
     def setup_partials(self):
         size = self._get_var_meta("x", "size")
@@ -262,6 +266,9 @@ class OffsetParametricCurvePoints(om.ExplicitComponent):
                               rows=range(size),
                               cols=range(size))
         self.declare_partials("y_o", ["s"], val=np.zeros(size))
+        self.declare_partials("θ_o", ["dx_dt", "dy_dt"],
+                              rows=range(size),
+                              cols=range(size))
 
     def compute_partials(self, inputs, J):
         size = self._get_var_meta("x", "size")
@@ -289,6 +296,196 @@ class OffsetParametricCurvePoints(om.ExplicitComponent):
 
         dyo_dxdt = -s * dy_dt**2 / denom32
         J["y_o", "dx_dt"] = dyo_dxdt
+
+        J["θ_o", "dx_dt"] = -dy_dt / (dx_dt**2 + dy_dt**2)
+        J["θ_o", "dy_dt"] = dx_dt / (dx_dt**2 + dy_dt**2)
+
+    def plot(self, ax=None, **kwargs):
+        x = self.get_val('x_o')
+        y = self.get_val('y_o')
+        x = np.append(x, x[0])
+        y = np.append(y, y[0])
+        ax.plot(x, y, **kwargs)
+
+
+class OffsetCurveWithLimiter(om.ExplicitComponent):
+    r"""
+
+    Inputs
+    ------
+    x : array
+        m, x-locations of points on a parametric curve
+    y : array
+        m, y-locations of points on a parametric curve
+    θ_o : array
+        Angle between the original point and the offset point
+    s : float
+        m, Perpendicular offset of the resulting curve from the original.
+    x_min : float
+        m, Minimum x for offset points. Points that would otherwise exceed this
+           will have the local s decreased. Must be equal to or smaller than
+           all points in x.
+
+    Outputs
+    -------
+    x_o : array
+        m, x-locations of points on offset curve
+    y_o : array
+        m, y-locations of points on offset curve
+
+    Notes
+    -----
+    All points x must be greater than or equal to xmin.
+
+    References
+    ----------
+    .. [1] Cook, John D.
+       www.johndcook.com/blog/2010/01/20/how-to-compute-the-soft-maximum/
+    """
+    def setup(self):
+        self.add_input("x", units="m", shape_by_conn=True)
+        self.add_input("y", units="m", copy_shape="x", shape_by_conn=True)
+        self.add_input("θ_o", copy_shape="x", shape_by_conn=True)
+        self.add_input("s", units="m", desc="offset")
+        self.add_input("x_min", units="m", val=0.0)
+
+        self.add_output("x_o", units="m", copy_shape="x")
+        self.add_output("y_o", units="m", copy_shape="x")
+        self.b = 30
+        self.θε = 1e-3  # prevents dealing with tan(π/2) = infinity
+
+    def compute(self, inputs, outputs):
+        b = self.b
+        size = self._get_var_meta("x", "size")
+        x = inputs["x"]
+        y = inputs["y"]
+        θ_o = inputs["θ_o"]
+        s = inputs["s"]
+        x_min = inputs["x_min"]
+
+        if self.under_complex_step:
+            array_type = np.cdouble
+        else:
+            array_type = np.double
+        x_o = np.zeros(size, dtype=array_type)
+        y_o = np.zeros(size, dtype=array_type)
+
+        # the inboard side may be modified; the outboard side will be left
+        # alone.
+        ib = np.logical_or(θ_o > np.pi / 2 + self.θε,
+                           θ_o < -np.pi / 2 - self.θε)
+
+        # initial computation for x_o, y_o; the ones on the inner half
+        # will be rewritten
+        x_o = x + s * np.cos(θ_o)
+        y_o = y + s * np.sin(θ_o)
+
+        # construct a new x_o.
+        case1 = np.logical_and(x_o >= x_min, ib)
+        case2 = np.logical_and(x_o < x_min, ib)
+
+        xo1 = x_o[case1]
+        xo2 = x_o[case2]
+
+        xo1_new = xo1 + np.log(1 + np.exp(b * (x_min - xo1))) / b
+        xo2_new = x_min + np.log(1 + np.exp(b * (xo2 - x_min))) / b
+
+        x_o[case1] = xo1_new
+        x_o[case2] = xo2_new
+
+        # use that to find s_new for that point
+        # Since π/2 < θ < 3 π/2 cosine will not be zero.
+        y_o[ib] = y[ib] + (x_o[ib] - x[ib]) * np.tan(θ_o[ib])
+
+        outputs["x_o"] = x_o
+        outputs["y_o"] = y_o
+
+    def setup_partials(self):
+        # perhaps this can be written in a more compact manner
+        size = self._get_var_meta("x", "size")
+        self.declare_partials("x_o", ["x"], rows=range(size), cols=range(size))
+        self.declare_partials("x_o", ["θ_o"],
+                              rows=range(size),
+                              cols=range(size))
+        self.declare_partials("x_o", ["s"], val=np.zeros(size))
+        self.declare_partials("x_o", ["x_min"], val=np.zeros(size))
+
+        self.declare_partials("y_o", ["x"], rows=range(size), cols=range(size))
+        self.declare_partials("y_o", ["y"], rows=range(size), cols=range(size))
+        self.declare_partials("y_o", ["θ_o"],
+                              rows=range(size),
+                              cols=range(size))
+        self.declare_partials("y_o", ["s"], val=np.zeros(size))
+        self.declare_partials("y_o", ["x_min"], val=np.zeros(size))
+
+    def compute_partials(self, inputs, J):
+        b = self.b
+        size = self._get_var_meta("x", "size")
+        x = inputs["x"]
+        θ_o = inputs["θ_o"]
+        s = inputs["s"]
+        x_min = inputs["x_min"]
+
+        # basic offset
+        dxo_dx = np.ones(size)
+        dxo_dθ = -s * np.sin(θ_o)
+        dxo_ds = np.cos(θ_o)
+        dxo_dxmin = np.zeros(size)
+
+        # now apply the minimum x computation
+        ib = np.logical_or(θ_o > np.pi / 2 + self.θε,
+                           θ_o < -np.pi / 2 - self.θε)
+        x_o = x + s * np.cos(θ_o)
+        case1 = np.logical_and(x_o >= x_min, ib)
+        case2 = np.logical_and(x_o < x_min, ib)
+        xo1 = x_o[case1]
+        xo2 = x_o[case2]
+
+        dxo1n_dxmin = (b * np.exp(b * (x_min - xo1)) /
+                       (1 + np.exp(b * (x_min - xo1))))
+        dxo1n_dxo1 = 1 - dxo1n_dxmin
+        dxo2n_dxo2 = (b * np.exp(b * (xo2 - x_min)) /
+                      (1 + np.exp(b * (xo2 - x_min))))
+        dxo2n_dxmin = 1 - dxo2n_dxo2
+
+        dxo_dx[case1] = dxo1n_dxo1 * dxo_dx[case1]
+        dxo_dx[case2] = dxo2n_dxo2 * dxo_dx[case2]
+        dxo_dθ[case1] = dxo1n_dxo1 * dxo_dθ[case1]
+        dxo_dθ[case2] = dxo2n_dxo2 * dxo_dθ[case2]
+        dxo_ds[case1] = dxo1n_dxo1 * dxo_ds[case1]
+        dxo_ds[case2] = dxo2n_dxo2 * dxo_ds[case2]
+
+        dxo_dxmin[case1] = dxo1n_dxmin
+        dxo_dxmin[case2] = dxo2n_dxmin
+
+        J["x_o", "x"] = dxo_dx
+        J["x_o", "θ_o"] = dxo_dθ
+        J["x_o", "s"] = dxo_ds
+        J["x_o", "x_min"] = dxo_dxmin
+
+        dyo_dx = np.zeros(size)
+        dyo_dy = np.ones(size)
+        dyo_dθ = s * np.cos(θ_o)
+        dyo_ds = np.sin(θ_o)
+        dyo_dxmin = np.zeros(size)
+
+        xo1 = x_o[case1]
+        xo2 = x_o[case2]
+
+        x_o[case1] = xo1 + np.log(1 + np.exp(b * (x_min - xo1))) / b
+        x_o[case2] = x_min + np.log(1 + np.exp(b * (xo2 - x_min))) / b
+
+        dyo_dx[ib] = (dxo_dx[ib] - 1) * np.tan(θ_o[ib])
+        dyo_dθ[ib] = (dxo_dθ[ib] * np.tan(θ_o[ib]) +
+                      (x_o[ib] - x[ib]) / np.cos(θ_o[ib])**2)
+        dyo_ds[ib] = dxo_ds[ib] * np.tan(θ_o[ib])
+        dyo_dxmin[ib] = dxo_dxmin[ib] * np.tan(θ_o[ib])
+
+        J["y_o", "x"] = dyo_dx
+        J["y_o", "y"] = dyo_dy
+        J["y_o", "θ_o"] = dyo_dθ
+        J["y_o", "s"] = dyo_ds
+        J["y_o", "x_min"] = dyo_dxmin
 
     def plot(self, ax=None, **kwargs):
         x = self.get_val('x_o')
@@ -326,18 +523,35 @@ class PolarParallelCurve(om.Group):
     θ_parall : array
        Angles to points on the parallel curve
     """
+    def initialize(self):
+        self.options.declare('use_Rmin', default=False)
+
     def setup(self):
+        use_Rmin = self.options['use_Rmin']
         self.add_subsystem("pts",
                            OffsetParametricCurvePoints(),
                            promotes_inputs=[("x", "R"), ("y", "Z"), "s",
                                             ("dx_dt", "dR_dθ"),
                                             ("dy_dt", "dZ_dθ")])
+
+        if use_Rmin:
+            self.add_subsystem("limiter",
+                               OffsetCurveWithLimiter(),
+                               promotes_inputs=[("x", "R"), ("y", "Z"), "s",
+                                                ("x_min", "R_min")])
+            self.connect("pts.θ_o", "limiter.θ_o")
+
         self.add_subsystem("d_sq_theta",
                            PolarAngleAndDistanceFromPoint(),
                            promotes_inputs=[("X0", "R0"), ("Y0", "Z0")],
                            promotes_outputs=["d_sq", ("θ", "θ_parall")])
-        self.connect("pts.x_o", "d_sq_theta.x")
-        self.connect("pts.y_o", "d_sq_theta.y")
+
+        if use_Rmin:
+            self.connect("limiter.x_o", "d_sq_theta.x")
+            self.connect("limiter.y_o", "d_sq_theta.y")
+        else:
+            self.connect("pts.x_o", "d_sq_theta.x")
+            self.connect("pts.y_o", "d_sq_theta.y")
 
 
 class SoftCapUnity(om.ExplicitComponent):
@@ -380,6 +594,89 @@ class SoftCapUnity(om.ExplicitComponent):
         b = self.b
         x = inputs["x"]
         J['y', 'x'] = np.exp(b) / (np.exp(b) + np.exp(b * x))
+
+
+class Softmax(om.ExplicitComponent):
+    r"""Soft maximum of an array x and a value y
+
+    .. math::
+
+       z = \max(x,y) - \frac{1}{b}
+           \left(\log(1 + \exp(b(\min(x,y) - \max(x,y))))\right)
+
+    where :math:`b` is a parameter; typically 20.
+
+    Inputs
+    ------
+    x : array
+        An array of floats
+    y : float
+        A single value
+
+    Outputs
+    -------
+    z : array
+        An array of floats
+
+    References
+    ----------
+    https://www.johndcook.com/blog/2010/01/20/how-to-compute-the-soft-maximum/
+    """
+    def initialize(self):
+        self.options.declare('b', default=20)
+        self.options.declare('units', default='m')
+
+    def setup(self):
+        self.b = self.options['b']
+        u = self.options['units']
+        self.add_input("x", shape_by_conn=True, units=u)
+        self.add_input("y", units=u)
+        self.add_output("z", copy_shape="x", units=u)
+
+    def compute(self, inputs, outputs):
+        b = self.b
+        x = inputs["x"]
+        y = inputs["y"]
+        size = self._get_var_meta("x", "size")
+        z = np.zeros(size, dtype=np.cdouble)
+
+        case1 = x >= y
+        case2 = x < y
+
+        x1 = x[case1]
+        x2 = x[case2]
+
+        z[case1] = x1 + np.log(1 + np.exp(b * (y - x1))) / b
+        z[case2] = y + np.log(1 + np.exp(b * (x2 - y))) / b
+        outputs["z"] = z
+
+    def setup_partials(self):
+        size = self._get_var_meta("x", "size")
+        self.declare_partials('z', ['x'], rows=range(size), cols=range(size))
+        self.declare_partials('z', ['y'])
+
+    def compute_partials(self, inputs, J):
+        size = self._get_var_meta("x", "size")
+        dz_dx = np.zeros(size, dtype=np.double)
+        dz_dy = np.zeros(size, dtype=np.double)
+
+        b = self.b
+        x = inputs["x"]
+        y = inputs["y"]
+
+        case1 = x >= y
+        case2 = x < y
+        x1 = x[case1]
+        x2 = x[case2]
+
+        dz_dx[case1] = 1 - np.exp(b * (y - x1)) / (1 + np.exp(b * (y - x1)))
+        dz_dy[case1] = np.exp(b * (y - x1)) / (1 + np.exp(b * (y - x1)))
+
+        dz_dx[case2] = np.exp(b * (x2 - y)) / (1 + np.exp(b * (x2 - y)))
+        dz_dy[case2] = 1 - np.exp(b * (x2 - y)) / (1 + np.exp(b * (x2 - y)))
+
+        J['z', 'x'] = dz_dx
+        J['z', 'y'] = dz_dy
 
 
 def most_common_isotope(sp):

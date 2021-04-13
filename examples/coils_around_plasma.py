@@ -27,7 +27,7 @@ class Machine(om.Group):
                            promotes_outputs=["R_out", "R_in"])
 
         self.add_subsystem("exclusion_zone",
-                           PolarParallelCurve(),
+                           PolarParallelCurve(use_Rmin=True),
                            promotes_inputs=["R0", ("s", "offset")])
         self.connect("plasma.R", "exclusion_zone.R")
         self.connect("plasma.Z", "exclusion_zone.Z")
@@ -141,7 +141,8 @@ if __name__ == "__main__":
     prob.set_val("plasma.κ", 2.5)
     prob.set_val("plasma.δ", -0.4)
     prob.set_val("plasma.ξ", 0.05)
-    prob.set_val("offset", 1.5)
+    prob.set_val("offset", 2.0)
+    prob.set_val("exclusion_zone.R_min", 2.5)
 
     # initial values for the design variables
     # since we are 'shrink-wrapping' the coils, it's good to initially make
