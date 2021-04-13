@@ -166,6 +166,10 @@ class MenardSTInboard(om.ExplicitComponent):
     Thermal shield to FW : float
         m, Total thickness of region including
                the thermal shield and inboard FW
+    Shield to FW: float
+        m, Total thickness from the outer WC shield to FW
+    Blanket to FW : float
+        m, Total thickness from the blanket to FW.
     """
     def initialize(self):
         self.options.declare('config', default=None)
@@ -236,6 +240,8 @@ class MenardSTInboard(om.ExplicitComponent):
         self.add_output("FW R_out", units='m', desc="first wall outer radius")
 
         self.add_output("Thermal shield to FW", units="m")
+        self.add_output("Shield to FW", units="m")
+        self.add_output("Blanket to FW", units="m")
 
     def setup_partials(self):
         outs = [
@@ -264,6 +270,14 @@ class MenardSTInboard(om.ExplicitComponent):
             "blanket thickness", "FW thickness"
         ],
                               val=1)
+        self.declare_partials(
+            "Shield to FW",
+            ["WC shield thickness", "blanket thickness", "FW thickness"],
+            val=1)
+        self.declare_partials(
+            "Blanket to FW",
+            ["blanket thickness", "FW thickness"],
+            val=1)
 
     def compute(self, inputs, outputs):
 
@@ -283,7 +297,8 @@ class MenardSTInboard(om.ExplicitComponent):
         outputs["VV 1st shell R_in"] = wc_vv_shield_r_out  # same
         vv_r_out = wc_vv_shield_r_out + self.vv_shell_thickness
         outputs["VV R_out"] = vv_r_out
-        outputs["WC shield R_in"] = vv_r_out  # same
+        wc_r_in = vv_r_out
+        outputs["WC shield R_in"] = wc_r_in  # same
 
         wc_shield_ΔR = inputs["WC shield thickness"]
         wc_r_out = vv_r_out + wc_shield_ΔR
@@ -298,6 +313,8 @@ class MenardSTInboard(om.ExplicitComponent):
 
         # This totals up part of the radial build
         outputs["Thermal shield to FW"] = fw_r_out - thermal_shield_r_in
+        outputs["Shield to FW"] = fw_r_out - wc_r_in
+        outputs["Blanket to FW"] = fw_r_out - bb_r_in
 
 
 class Plasma(om.ExplicitComponent):
@@ -379,7 +396,7 @@ class Plasma(om.ExplicitComponent):
                               val=1)
         self.declare_partials("R_out", ["Ib FW R_out", "Ib SOL width"], val=1)
         self.declare_partials("R_out", ["a"], val=2)
-        self.declare_partials("Ob FW R_in", ["Ib FW R_out", "Ib SOL width"],
+        self.declare_partials("Ob FW R_in", ["Ib FW R_out", "Ib SOL width", "Ob SOL width"],
                               val=1)
         self.declare_partials("Ob FW R_in", ["a"], val=2)
         self.declare_partials("A", ["Ib FW R_out", "Ib SOL width", "a"])
@@ -402,12 +419,12 @@ class MenardSTOutboard(om.ExplicitComponent):
         m, Outer radius of the first wall at midplane
     blanket thickness : float
         m, Thickness of FW and blanket
+    shield thickness : float
+        m, thickness of neutron shield
     access thickness : float
         m, thickness of access region
     VV thickness : float
         m, thickness of vacuum vessel
-    shield thickness : float
-        m, thickness of neutron shield
     gap thickness : float
         m, thickness of extra gap in front of TF
 
