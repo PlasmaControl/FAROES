@@ -686,9 +686,13 @@ class ThreeArcDeeTFSet(om.ExplicitComponent):
     def plot(self, ax=None, **kwargs):
         size = 100
         color = "black"
+        label = None
 
         if "color" in kwargs.keys():
-            color = kwargs[color]
+            color = kwargs.pop("color")
+
+        if "label" in kwargs.keys():
+            label = kwargs.pop("label")
 
         t = np.linspace(0, 1, 100)
         r_ot = self.get_val("Ib TF R_out")
@@ -701,7 +705,7 @@ class ThreeArcDeeTFSet(om.ExplicitComponent):
         r_c = self.get_val("r_c")
         c_R = r_ot + r_c * (1 - np.cos(t * np.pi / 2))
         c_Z = hhs + r_c * (np.sin(t * np.pi / 2))
-        ax.plot(c_R, c_Z, color=color, **kwargs)
+        ax.plot(c_R, c_Z, color=color, label=label, **kwargs)
         ax.plot(c_R, -c_Z, color=color, **kwargs)
 
         # half-ellipse
