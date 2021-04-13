@@ -274,10 +274,9 @@ class MenardSTInboard(om.ExplicitComponent):
             "Shield to FW",
             ["WC shield thickness", "blanket thickness", "FW thickness"],
             val=1)
-        self.declare_partials(
-            "Blanket to FW",
-            ["blanket thickness", "FW thickness"],
-            val=1)
+        self.declare_partials("Blanket to FW",
+                              ["blanket thickness", "FW thickness"],
+                              val=1)
 
     def compute(self, inputs, outputs):
 
@@ -396,7 +395,8 @@ class Plasma(om.ExplicitComponent):
                               val=1)
         self.declare_partials("R_out", ["Ib FW R_out", "Ib SOL width"], val=1)
         self.declare_partials("R_out", ["a"], val=2)
-        self.declare_partials("Ob FW R_in", ["Ib FW R_out", "Ib SOL width", "Ob SOL width"],
+        self.declare_partials("Ob FW R_in",
+                              ["Ib FW R_out", "Ib SOL width", "Ob SOL width"],
                               val=1)
         self.declare_partials("Ob FW R_in", ["a"], val=2)
         self.declare_partials("A", ["Ib FW R_out", "Ib SOL width", "a"])
@@ -434,6 +434,8 @@ class MenardSTOutboard(om.ExplicitComponent):
         m, inner radius of outboard blanket at midplane
     blanket R_out : float
         m, outer radius of outboard blanket at midplane
+    shield R_out : float
+        m, outer radius of outboard blanket at midplane
     TF R_min : float
         m, minimum radius of inner part of TF outboard leg
     TF R_in : float
@@ -458,6 +460,8 @@ class MenardSTOutboard(om.ExplicitComponent):
 
         self.add_output("blanket R_in", units='m', lower=0)
         self.add_output("blanket R_out", units='m', lower=0)
+
+        self.add_output("shield R_out", units='m', lower=0)
         self.add_output("TF R_min",
                         units='m',
                         desc="TF leg casing minimum radius")
@@ -483,21 +487,26 @@ class MenardSTOutboard(om.ExplicitComponent):
         self.declare_partials("blanket R_out",
                               ["Ob FW R_in", "blanket thickness"],
                               val=1)
+        self.declare_partials(
+            "shield R_out",
+            ["Ob FW R_in", "blanket thickness", "shield thickness"],
+            val=1)
 
     def compute(self, inputs, outputs):
         ob_fw = inputs["Ob FW R_in"]
         ob_blanket_thickness = inputs["blanket thickness"]
+        ob_shield_thickness = inputs["shield thickness"]
         ob_access_thickness = inputs["access thickness"]
         ob_vv_thickness = inputs["VV thickness"]
-        ob_shield_thickness = inputs["shield thickness"]
 
         outputs["blanket R_in"] = ob_fw
-        outputs["blanket R_out"] = (outputs["blanket R_in"] +
-                                    ob_blanket_thickness)
+        blanket_r_out = ob_fw + ob_blanket_thickness
+        outputs["blanket R_out"] = blanket_r_out
+        outputs["shield R_out"] = blanket_r_out + ob_shield_thickness
 
         ob_build = [
-            ob_fw, ob_blanket_thickness, ob_access_thickness, ob_vv_thickness,
-            ob_shield_thickness
+            ob_fw, ob_blanket_thickness, ob_shield_thickness,
+            ob_access_thickness, ob_vv_thickness
         ]
         outputs["TF R_min"] = sum(ob_build)
         outputs["TF R_in"] = outputs["TF R_min"] + inputs["gap thickness"]
@@ -623,19 +632,22 @@ class STRadialBuild(om.Group):
                            promotes_inputs=["a"],
                            promotes_outputs=[("R_in", "plasma R_in"),
                                              ("R_out", "plasma R_out"), "R0",
-                                             "A"])
+                                             "A", "Ob FW R_in"])
         self.connect('props.Ib SOL width', ['plasma.Ib SOL width'])
         self.connect('props.Ob SOL width', ['plasma.Ob SOL width'])
         self.connect('ib.FW R_out', ['plasma.Ib FW R_out'])
 
         self.add_subsystem('ob',
                            MenardSTOutboard(),
-                           promotes_outputs=[("TF R_min", "Ob TF R_min"),
-                                             ("TF R_in", "Ob TF R_in")])
+                           promotes_inputs=["Ob FW R_in"],
+                           promotes_outputs=[
+                               ("shield R_out", "Ob shield R_out"),
+                               ("TF R_min", "Ob TF R_min"),
+                               ("TF R_in", "Ob TF R_in")
+                           ])
+        self.connect('props.Ob shield thickness', ['ob.shield thickness'])
         self.connect('props.Ob access thickness', ['ob.access thickness'])
         self.connect('props.Ob vv thickness', ['ob.VV thickness'])
-        self.connect('props.Ob shield thickness', ['ob.shield thickness'])
-        self.connect('plasma.Ob FW R_in', 'ob.Ob FW R_in')
 
         self.add_subsystem('ob_tf',
                            OutboardMagnetGeometry(),
@@ -650,6 +662,27 @@ class STRadialBuild(om.Group):
                            promotes_outputs=["cryostat R_out"])
         self.connect('props.TF-cryostat thickness',
                      ['om.TF-cryostat thickness'])
+
+        # constructs distances from the plasma to various outboard components
+        # especially in order to use for use with 'parallel' curves.
+        self.add_subsystem("ob_plasma_to_x",
+                           om.ExecComp([
+                               "ob_pl_to_fw_rin = ob_fw_rin - ob_pl_rout",
+                               "ob_pl_to_bl_rout = ob_bl_rout - ob_pl_rout",
+                               "ob_pl_to_sh_rout = ob_sh_rout - ob_pl_rout"
+                           ],
+                                       ob_pl_to_fw_rin={'units': 'm'},
+                                       ob_pl_to_bl_rout={'units': 'm'},
+                                       ob_pl_to_sh_rout={'units': 'm'},
+                                       ob_fw_rin={'units': 'm'},
+                                       ob_bl_rout={'units': 'm'},
+                                       ob_sh_rout={'units': 'm'},
+                                       ob_pl_rout={'units': 'm'}),
+                           promotes_inputs=[("ob_pl_rout", "plasma R_out"),
+                                            ("ob_fw_rin", "Ob FW R_in"),
+                                            ("ob_sh_rout", "Ob shield R_out")],
+                           promotes_outputs=[])
+        self.connect("ob.blanket R_out", "ob_plasma_to_x.ob_bl_rout")
 
 
 class MenardSTRadialBuild(om.Group):
