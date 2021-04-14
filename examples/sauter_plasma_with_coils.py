@@ -246,7 +246,7 @@ class Machine(om.Group):
                            InboardMidplaneNeutronFluxFromRing(),
                            promotes_inputs=["R0"])
         self.add_subsystem("q_n", NeutronWallLoading())
-        self.connect("geometry.plasma R_in", "q_n_IB.r_in")
+        self.connect("geometry.radial_build.ib.FW R_out", "q_n_IB.r_in")
 
         self.connect("geometry.plasma.S", "q_n.SA")
         self.connect("plasma.DTfusion.P_n", ["q_n_IB.P_n", "q_n.P_n"])
