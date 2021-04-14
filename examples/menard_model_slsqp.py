@@ -219,7 +219,7 @@ if __name__ == "__main__":
                               ref=100,
                               units="MA/m**2")
 
-    prob.model.add_objective('pplant.overall.P_net', scaler=-1)
+    prob.model.add_objective('pplant.overall.P_net', scaler=-0.01)
     # prob.model.add_objective('magnets.B0', scaler=-1)
     # prob.model.add_objective('geometry.radial_build.cryostat R_out',
     #                           scaler=-1)
@@ -227,7 +227,9 @@ if __name__ == "__main__":
     # set constraints
     prob.model.add_constraint('magnets.constraint_max_stress', lower=0)
     prob.model.add_constraint('magnets.constraint_B_on_coil', lower=0)
-    prob.model.add_constraint('magnets.constraint_wp_current_density', lower=0)
+    prob.model.add_constraint('magnets.constraint_wp_current_density',
+                              lower=0,
+                              ref=30)
     prob.model.add_constraint('R0', equals=3.0)
     prob.model.add_constraint('geometry.aspect_ratio', lower=1.6, upper=5)
 

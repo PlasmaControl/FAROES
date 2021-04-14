@@ -218,14 +218,19 @@ class TestMenardModel(unittest.TestCase):
                              upper=250,
                              ref=100,
                              units="MA/m**2")
-        model.add_objective('pplant.overall.P_net', scaler=-1)
+        model.add_objective('pplant.overall.P_net', scaler=-0.01)
 
         # set constraints
-        model.add_constraint('magnets.constraint_max_stress', lower=0)
+        model.add_constraint('magnets.constraint_max_stress', lower=0, ref=0.1)
         model.add_constraint('magnets.constraint_B_on_coil', lower=0)
-        model.add_constraint('magnets.constraint_wp_current_density', lower=0)
+        model.add_constraint('magnets.constraint_wp_current_density',
+                             lower=0,
+                             ref=20)
         model.add_constraint('R0', equals=3.0)
-        model.add_constraint('geometry.aspect_ratio', lower=1.6, upper=5)
+        model.add_constraint('geometry.aspect_ratio',
+                             lower=1.6,
+                             upper=5,
+                             ref=3)
 
         prob.setup()
         prob.check_config(checks=['unconnected_inputs'])

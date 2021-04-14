@@ -376,7 +376,7 @@ if __name__ == "__main__":
     prob.driver = om.pyOptSparseDriver()
 
     prob.driver.options['optimizer'] = 'IPOPT'
-    prob.driver.options['user_terminate_signal'] = True
+    prob.driver.opt_settings['print_level'] = 4
 
     prob.model.add_design_var('geometry.radial_build.CS ΔR',
                               lower=0.10,
@@ -415,22 +415,29 @@ if __name__ == "__main__":
                               ref=100,
                               units="MW")
 
-    prob.model.add_objective('costing.COE', scaler=1)
+    prob.model.add_objective('costing.COE', scaler=0.01)
 
     # set constraints
     prob.model.add_constraint('magnets.constraint_max_stress',
                               lower=0,
-                              upper=0.05)
+                              upper=0.05,
+                              ref=0.1)
     prob.model.add_constraint('magnets.constraint_B_on_coil', lower=0, upper=1)
-    prob.model.add_constraint('magnets.constraint_wp_current_density', lower=0)
+    prob.model.add_constraint('magnets.constraint_wp_current_density',
+                              lower=0,
+                              ref=20)
     prob.model.add_constraint('R0', lower=3.0, upper=9.0, units='m')
-    prob.model.add_constraint('geometry.aspect_ratio', lower=1.8, upper=3)
+    prob.model.add_constraint('geometry.aspect_ratio',
+                              lower=1.8,
+                              upper=3,
+                              ref=1)
     prob.model.add_constraint('plasma.Hbalance.H', lower=0.99, upper=1.01)
     prob.model.add_constraint('geometry.adaptor.r_c', lower=0.2)
     prob.model.add_constraint('pplant.overall.P_net',
                               lower=599,
                               upper=601,
-                              units='MW')
+                              units='MW',
+                              ref=500)
 
     prob.setup()
     prob.check_config(checks=['unconnected_inputs'])

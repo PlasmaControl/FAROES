@@ -333,7 +333,7 @@ if __name__ == "__main__":
     # prob.model.add_objective('magnets.B0', scaler=-1)
     # prob.model.add_objective('geometry.radial_build.cryostat R_out',
     #    scaler=1)
-    prob.model.add_objective('custom_obj.obj', scaler=1)
+    prob.model.add_objective('custom_obj.obj', scaler=0.01)
 
     # set constraints
     prob.model.add_constraint('magnets.constraint_max_stress',
@@ -348,7 +348,8 @@ if __name__ == "__main__":
     prob.model.add_constraint('pplant.overall.P_net',
                               lower=599,
                               upper=601,
-                              units='MW')
+                              units='MW',
+                              ref=600)
 
     prob.setup()
     prob.check_config(checks=['unconnected_inputs'])
