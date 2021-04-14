@@ -704,7 +704,7 @@ class PolygonalTorusVolume(om.ExplicitComponent):
     def setup(self):
         self.add_input("R", units="m", shape_by_conn=True)
         self.add_input("Z", units="m", copy_shape="R", shape_by_conn=True)
-        self.add_output("V", units="m**3")
+        self.add_output("V", units="m**3", ref=100)
 
     def compute(self, inputs, outputs):
         r = inputs["R"]
