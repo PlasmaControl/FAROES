@@ -12,6 +12,7 @@ from faroes.cryostat import SimpleCryostat
 
 from faroes.util import PolarParallelCurve
 
+from faroes.rfheating import SimpleRFHeating
 from faroes.menardplasmaloop import MenardPlasmaLoop
 
 from faroes.blanket import MenardInboardBlanketFit
@@ -280,6 +281,8 @@ class Machine(om.Group):
                      "magnet_quantities.arc length")
         self.connect("magnets.I_leg", "magnet_quantities.I_leg")
 
+        self.add_subsystem("rf_heating", SimpleRFHeating(config=config))
+
         # Zero-D plasma model with NBI
         mpl = MenardPlasmaLoop(config=config)
         self.add_subsystem(
@@ -293,6 +296,7 @@ class Machine(om.Group):
                      ["plasma.L_pol", "plasma.L_pol_simple"])
 
         self.connect("magnets.B0", ["plasma.Bt"])
+        self.connect("rf_heating.P", ["plasma.P_heat.P_RF"])
 
         # magnet heating model;
         self.add_subsystem("magcryo", MagnetCryoCoolingPower(config=config))
@@ -307,6 +311,8 @@ class Machine(om.Group):
         self.add_subsystem("pplant", Powerplant(config=config))
         self.connect("plasma.NBIsource.P", ["pplant.P_NBI"])
         self.connect("plasma.NBIsource.eff", ["pplant.η_NBI"])
+        self.connect("rf_heating.P", ["pplant.P_RF"])
+        self.connect("rf_heating.eff", ["pplant.η_RF"])
         self.connect("plasma.DTfusion.P_α", ["pplant.P_α"])
         self.connect("magcryo.P_c,el", ["pplant.P_cryo"])
         self.connect("blanket_P.P_th", ["pplant.P_blanket"])
@@ -414,6 +420,11 @@ if __name__ == "__main__":
                               upper=350,
                               ref=100,
                               units="MW")
+    prob.model.add_design_var('rf_heating.P',
+                              lower=0,
+                              upper=100,
+                              ref=10,
+                              units="MW")
 
     prob.model.add_objective('costing.COE', scaler=0.01)
 
@@ -449,6 +460,7 @@ if __name__ == "__main__":
     prob.set_val('a', 1.7, units="m")
     prob.set_val("magnets.j_HTS", 70, units="MA/m**2")
     prob.set_val("plasma.NBIsource.P", 280, units="MW")
+    prob.set_val('rf_heating.P', 0, units="MW")
     prob.set_val("geometry.adaptor.f_c", 0.9)
     prob.set_val("geometry.adaptor.Z_1", -2.0)
 

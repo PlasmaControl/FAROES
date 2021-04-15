@@ -133,10 +133,11 @@ class MenardPlasmaLoop(om.Group):
 
         self.add_subsystem(
             "P_heat",
-            om.ExecComp("P_heat = P_alpha + P_NBI",
+            om.ExecComp("P_heat = P_alpha + P_NBI + P_RF",
                         P_heat={'units': 'MW'},
                         P_alpha={'units': 'MW'},
-                        P_NBI={'units': 'MW'}))
+                        P_RF={'units': 'MW', 'value': 0},
+                        P_NBI={'units': 'MW', 'value': 0}))
         self.connect("DTfusion.P_α", "P_heat.P_alpha")
         self.connect("NBIsource.P", "P_heat.P_NBI")
 

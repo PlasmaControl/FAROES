@@ -22,4 +22,6 @@ NBI:
   wall-plug efficiency : {value: 0.3, reference: Menard T366}
 
 RF:
+  # note: RF is for extra heating only; no current drive.
   power: {value: 0, units: MW}
+  wall-plug efficiency : {value: 0.50, reference: "Sorbom 2015"}
