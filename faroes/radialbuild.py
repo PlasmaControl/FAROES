@@ -69,6 +69,9 @@ class CSToTF(om.ExplicitComponent):
         m, outer radius of a central plug
     CS ΔR : float
         m, thickness of CS
+    CS-TF gap: float
+        m, Extra distance between the outside of the CS and the inner structure
+        of the TF.
 
     Outputs
     -------
@@ -81,7 +84,7 @@ class CSToTF(om.ExplicitComponent):
 
     Notes
     -----
-    Loads the cs-to-tf gap from the configuration tree.
+    Loads a default value for the cs-to-tf gap from the configuration tree.
     """
     def initialize(self):
         self.options.declare('config', default=None)
