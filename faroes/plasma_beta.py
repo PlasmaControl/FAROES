@@ -262,7 +262,7 @@ class BetaPoloidal(om.ExplicitComponent):
 
     .. math::
 
-       \beta_{p,tot} = \left<p_{tot}\right> (\mu_0 / B_p^2)
+       \beta_{p,tot} = 2 \left<p_{tot}\right> (\mu_0 / B_p^2)
 
     Inputs
     ------
