@@ -24,8 +24,9 @@ inboard:
   vv tf gap thickness: {value: 5, units: mm}
 
   # vacuum vessel shield thickness
+  vv inner shell thickness: {value: 12, units: mm}
   vv shielding thickness: {value: 0.1, units: m}
-  vv shell thickness: {value: 12, units: mm}
+  vv outer shell thickness: {value: 12, units: mm}
 
   # tungsten carbide neutron shield thickness
   WC n shield thickness:

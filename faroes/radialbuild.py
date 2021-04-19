@@ -185,7 +185,10 @@ class MenardSTInboard(om.ExplicitComponent):
             self.thermal_shield_thickness = ac(
                 ["thermal shield insulation thickness"], units="m")
             self.vv_tf_gap = ac(["vv tf gap thickness"], units="m")
-            self.vv_shell_thickness = ac(["vv shell thickness"], units="m")
+            self.vv_inner_shell_thickness = ac(["vv inner shell thickness"],
+                                               units="m")
+            self.vv_outer_shell_thickness = ac(["vv outer shell thickness"],
+                                               units="m")
             self.vv_tpt = ac(["vv tpt"], units="m")
 
         self.add_input("TF R_out",
@@ -287,14 +290,14 @@ class MenardSTInboard(om.ExplicitComponent):
         vv_r_in = thermal_shield_r_in + self.thermal_shield_thickness + \
             self.vv_tf_gap
         outputs["VV R_in"] = vv_r_in
-        wc_vv_shield_r_in = vv_r_in + self.vv_shell_thickness
+        wc_vv_shield_r_in = vv_r_in + self.vv_inner_shell_thickness
         outputs["VV 2nd shell R_out"] = wc_vv_shield_r_in
         outputs["WC VV shield R_in"] = wc_vv_shield_r_in  # same
         wc_vv_ΔR = inputs["WC VV shield thickness"]
         wc_vv_shield_r_out = wc_vv_shield_r_in + wc_vv_ΔR
         outputs["WC VV shield R_out"] = wc_vv_shield_r_out
         outputs["VV 1st shell R_in"] = wc_vv_shield_r_out  # same
-        vv_r_out = wc_vv_shield_r_out + self.vv_shell_thickness
+        vv_r_out = wc_vv_shield_r_out + self.vv_outer_shell_thickness
         outputs["VV R_out"] = vv_r_out
         wc_r_in = vv_r_out
         outputs["WC shield R_in"] = wc_r_in  # same
@@ -640,11 +643,10 @@ class STRadialBuild(om.Group):
         self.add_subsystem('ob',
                            MenardSTOutboard(),
                            promotes_inputs=["Ob FW R_in"],
-                           promotes_outputs=[
-                               ("shield R_out", "Ob shield R_out"),
-                               ("TF R_min", "Ob TF R_min"),
-                               ("TF R_in", "Ob TF R_in")
-                           ])
+                           promotes_outputs=[("shield R_out",
+                                              "Ob shield R_out"),
+                                             ("TF R_min", "Ob TF R_min"),
+                                             ("TF R_in", "Ob TF R_in")])
         self.connect('props.Ob shield thickness', ['ob.shield thickness'])
         self.connect('props.Ob access thickness', ['ob.access thickness'])
         self.connect('props.Ob vv thickness', ['ob.VV thickness'])
