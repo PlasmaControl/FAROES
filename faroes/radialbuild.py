@@ -96,6 +96,7 @@ class CSToTF(om.ExplicitComponent):
 
         self.add_input("Plug R_out", units='m', val=0)
         self.add_input("CS ΔR", units='m', val=0)
+        self.add_input("CS-TF gap", units='m', val=self.cs_tf_gap)
         self.add_output("CS R_in", units='m', lower=0)
         self.add_output("CS R_out", units='m', lower=0)
         self.add_output("TF R_in",
@@ -110,12 +111,14 @@ class CSToTF(om.ExplicitComponent):
         cs_Δr = inputs["CS ΔR"]
         cs_r_out = cs_r_in + cs_Δr
         outputs["CS R_out"] = cs_r_out
-        outputs["TF R_in"] = cs_r_out + self.cs_tf_gap
+        cs_tf_gap = inputs["CS-TF gap"]
+        outputs["TF R_in"] = cs_r_out + cs_tf_gap
 
     def setup_partials(self):
         self.declare_partials("CS R_in", "Plug R_out", val=1)
         self.declare_partials(["CS R_out", "TF R_in"], ["CS ΔR", "Plug R_out"],
                               val=1)
+        self.declare_partials(["TF R_in"], ["CS-TF gap"], val=1)
 
 
 class MenardSTInboard(om.ExplicitComponent):
@@ -184,16 +187,18 @@ class MenardSTInboard(om.ExplicitComponent):
                 ["wedge assy fit-up thickness"], units="m")
             self.thermal_shield_thickness = ac(
                 ["thermal shield insulation thickness"], units="m")
-            self.vv_tf_gap = ac(["vv tf gap thickness"], units="m")
+            vv_tf_gap = ac(["vv tf gap thickness"], units="m")
             self.vv_inner_shell_thickness = ac(["vv inner shell thickness"],
                                                units="m")
             self.vv_outer_shell_thickness = ac(["vv outer shell thickness"],
                                                units="m")
-            self.vv_tpt = ac(["vv tpt"], units="m")
+            extra_shield_to_blanket_gap = ac(["extra shield to blanket gap"],
+                                             units="m")
 
         self.add_input("TF R_out",
                        units='m',
                        desc="Inboard TF leg casing outer radius")
+        self.add_input("Thermal shield to VV gap", units='m', val=vv_tf_gap)
         self.add_input(
             "WC VV shield thickness",
             units="m",
@@ -201,6 +206,9 @@ class MenardSTInboard(om.ExplicitComponent):
         self.add_input("WC shield thickness",
                        units="m",
                        desc="Tungsten-carbide neutron shield thickness")
+        self.add_input("Extra shield to blanket gap",
+                       units="m",
+                       val=extra_shield_to_blanket_gap)
         self.add_input("blanket thickness",
                        units="m",
                        desc="Inboard blanket thickness")
@@ -263,20 +271,24 @@ class MenardSTInboard(om.ExplicitComponent):
             "FW R_out",
         ]
         self.declare_partials(outs[:], "TF R_out", val=1)
+        self.declare_partials(outs[1:], "Thermal shield to VV gap", val=1)
         self.declare_partials(outs[4:], "WC VV shield thickness", val=1)
         self.declare_partials(outs[8:], "WC shield thickness", val=1)
+        self.declare_partials(outs[9:], "Extra shield to blanket gap", val=1)
         self.declare_partials(outs[10:], "blanket thickness", val=1)
         self.declare_partials(outs[12:], "FW thickness", val=1)
 
         self.declare_partials("Thermal shield to FW", [
+            "Thermal shield to VV gap",
             "WC VV shield thickness", "WC shield thickness",
+            "Extra shield to blanket gap", "blanket thickness", "FW thickness"
+        ],
+                              val=1)
+        self.declare_partials("Shield to FW", [
+            "WC shield thickness", "Extra shield to blanket gap",
             "blanket thickness", "FW thickness"
         ],
                               val=1)
-        self.declare_partials(
-            "Shield to FW",
-            ["WC shield thickness", "blanket thickness", "FW thickness"],
-            val=1)
         self.declare_partials("Blanket to FW",
                               ["blanket thickness", "FW thickness"],
                               val=1)
@@ -286,9 +298,11 @@ class MenardSTInboard(om.ExplicitComponent):
         tf_r_out = inputs["TF R_out"]
         thermal_shield_r_in = tf_r_out + self.tf_tpt + \
             self.vv_tpt + self.wedge_assy_fitup_thickness
+
+        ts_vv_gap = inputs["Thermal shield to VV gap"]
         outputs["Thermal shield R_in"] = thermal_shield_r_in
         vv_r_in = thermal_shield_r_in + self.thermal_shield_thickness + \
-            self.vv_tf_gap
+            ts_vv_gap
         outputs["VV R_in"] = vv_r_in
         wc_vv_shield_r_in = vv_r_in + self.vv_inner_shell_thickness
         outputs["VV 2nd shell R_out"] = wc_vv_shield_r_in
@@ -305,7 +319,8 @@ class MenardSTInboard(om.ExplicitComponent):
         wc_shield_ΔR = inputs["WC shield thickness"]
         wc_r_out = vv_r_out + wc_shield_ΔR
         outputs["WC shield R_out"] = wc_r_out
-        bb_r_in = wc_r_out + self.vv_tpt
+        extra_sh_to_bl_gap = inputs["Extra shield to blanket gap"]
+        bb_r_in = wc_r_out + self.vv_tpt + extra_sh_to_bl_gap
         outputs["blanket R_in"] = bb_r_in
         bb_r_out = bb_r_in + inputs["blanket thickness"]
         outputs["blanket R_out"] = bb_r_out

@@ -52,6 +52,7 @@ inboard:
 
   # vacuum vessel true position tolerance
   vv tpt: *vvtpt
+  extra shield to blanket gap: {value: 0.0, units: m}
 
   # some designs have no room for an inboard breeding blanket
   blanket thickness:
