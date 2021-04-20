@@ -62,7 +62,6 @@ class MenardPlasmaLoop(om.Group):
     radiation.rad.P_loss : float
         MW, Power lost via particle diffusion into the SOL.
     """
-
     def initialize(self):
         self.options.declare('config')
 
@@ -133,11 +132,19 @@ class MenardPlasmaLoop(om.Group):
 
         self.add_subsystem(
             "P_heat",
-            om.ExecComp("P_heat = P_alpha + P_NBI + P_RF",
-                        P_heat={'units': 'MW'},
-                        P_alpha={'units': 'MW'},
-                        P_RF={'units': 'MW', 'value': 0},
-                        P_NBI={'units': 'MW', 'value': 0}))
+            om.ExecComp(
+                ["P_heat = P_alpha + P_NBI + P_RF", "P_aux = P_NBI + P_RF"],
+                P_heat={'units': 'MW'},
+                P_aux={'units': 'MW'},
+                P_alpha={'units': 'MW'},
+                P_RF={
+                    'units': 'MW',
+                    'value': 0
+                },
+                P_NBI={
+                    'units': 'MW',
+                    'value': 0
+                }))
         self.connect("DTfusion.P_α", "P_heat.P_alpha")
         self.connect("NBIsource.P", "P_heat.P_NBI")
 
@@ -203,6 +210,14 @@ class MenardPlasmaLoop(om.Group):
         self.connect("current.q_star", "bootstrap.q_star")
         self.connect("current.q_min", "bootstrap.q_min")
 
+        self.add_subsystem(
+            "Q_phys",
+            om.ExecComp("Q = P_fus/P_heat",
+                        P_fus={'units': 'MW'},
+                        P_heat={'units': 'MW'}))
+        self.connect("P_heat.P_aux", "Q_phys.P_heat")
+        self.connect("DTfusion.P_fus", "Q_phys.P_fus")
+
 
 if __name__ == "__main__":
 
@@ -221,10 +236,9 @@ if __name__ == "__main__":
             mpl = MenardPlasmaLoop(config=config)
             self.add_subsystem("plasma",
                                mpl,
-                               promotes_inputs=[("minor_radius", "a"),
-                                                "R0", "Bt", "ε", "κa", "V",
-                                                ("aspect_ratio", "A")
-                                                ])
+                               promotes_inputs=[("minor_radius", "a"), "R0",
+                                                "Bt", "ε", "κa", "V",
+                                                ("aspect_ratio", "A")])
             self.connect("plasmageom.L_pol", "plasma.L_pol")
             self.connect("plasmageom.L_pol_simple", "plasma.L_pol_simple")
 
