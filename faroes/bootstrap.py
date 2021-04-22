@@ -187,7 +187,8 @@ class BootstrapFraction(om.ExplicitComponent):
 
     .. math::
 
-        0.9 bs_\mathrm{mult} * \beta_{p, th} * \sqrt{\epsilon}
+        0.9 bs_\mathrm{mult} * \beta_{p, th} * \sqrt{\epsilon} *
+           \delta_\mathrm{mult} * \mathrm{fudge}
 
     Inputs
     ------
@@ -199,6 +200,8 @@ class BootstrapFraction(om.ExplicitComponent):
         Thermal poloidal beta
     δ_mult : float
         Extra multiplier to incorporate triangularity effects.
+    fudge : float
+        Extra fudge factor multiplier. Useful for matching with other codes.
 
     Outputs
     -------
@@ -226,6 +229,7 @@ class BootstrapFraction(om.ExplicitComponent):
         self.add_input("δ_mult", desc="Extra multiplier for dependence on δ")
         self.add_input("ε", val=0.5)
         self.add_input("βp_th")
+        self.add_input("fudge")
         self.add_output("f_BS")
         self.c = 0.9  # boostrap fraction multiplier
 
@@ -234,22 +238,26 @@ class BootstrapFraction(om.ExplicitComponent):
         bs_mult = inputs["bs_mult"]
         δ_mult = inputs["δ_mult"]
         βp_th = inputs["βp_th"]
+        f = inputs["fudge"]
         c = self.c
-        outputs["f_BS"] = c * ε**(1 / 2) * bs_mult * βp_th * δ_mult
+        outputs["f_BS"] = c * ε**(1 / 2) * bs_mult * βp_th * δ_mult * f
 
     def setup_partials(self):
-        self.declare_partials("f_BS", ["ε", "bs_mult", "βp_th", "δ_mult"])
+        self.declare_partials("f_BS",
+                              ["ε", "bs_mult", "βp_th", "δ_mult", "fudge"])
 
     def compute_partials(self, inputs, J):
         ε = inputs["ε"]
         bs_mult = inputs["bs_mult"]
         βp_th = inputs["βp_th"]
         δ_mult = inputs["δ_mult"]
+        f = inputs["fudge"]
         c = self.c
-        J["f_BS", "ε"] = c * βp_th * bs_mult * (1 / 2) / sqrt(ε) * δ_mult
-        J["f_BS", "βp_th"] = c * bs_mult * sqrt(ε) * δ_mult
-        J["f_BS", "bs_mult"] = c * βp_th * sqrt(ε) * δ_mult
-        J["f_BS", "δ_mult"] = c * βp_th * sqrt(ε)
+        J["f_BS", "ε"] = c * βp_th * bs_mult * (1 / 2) / sqrt(ε) * δ_mult * f
+        J["f_BS", "βp_th"] = c * bs_mult * sqrt(ε) * δ_mult * f
+        J["f_BS", "bs_mult"] = c * βp_th * sqrt(ε) * δ_mult * f
+        J["f_BS", "δ_mult"] = c * βp_th * sqrt(ε) * f
+        J["f_BS", "fudge"] = c * βp_th * sqrt(ε) * δ_mult
 
 
 class BootstrapCurrent(om.Group):
