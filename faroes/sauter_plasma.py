@@ -125,6 +125,8 @@ class SauterGeometry(om.ExplicitComponent):
         m, Minor radius in vertical direction
     ε : float
         Inverse aspect ratio
+    δ_out : float
+        Passthrough for δ
     w07 : float
         Sauter 70% width parameter
     full plasma height : float
@@ -223,6 +225,7 @@ class SauterGeometry(om.ExplicitComponent):
         self.add_output("dZ_dθ", units="m", copy_shape="θ")
         self.add_output("<(R0/R)^2>")
         self.add_output("<(R0/R)^2>n")
+        self.add_output("δ_out")
 
     def R02_over_R2_normalized_integrand(self, θ, A, δ=0, ξ=0):
         r"""
@@ -316,10 +319,12 @@ class SauterGeometry(om.ExplicitComponent):
         R02_over_R_ellipse = (2 * A) / (A + np.sqrt(A**2 - 1))
         outputs["<(R0/R)^2>"] = R02_over_R / V_n
         outputs["<(R0/R)^2>n"] = R02_over_R / V_n / R02_over_R_ellipse
+        outputs["δ_out"] = inputs["δ"]
 
     def setup_partials(self):
         size = self._get_var_meta("θ", "size")
         self.declare_partials("ε", ["A"])
+        self.declare_partials("δ_out", ["δ"], val=1)
         self.declare_partials("full_plasma_height", ["a", "κ"])
 
         self.declare_partials(["R_in", "R_out"], "R0", val=1)
