@@ -256,8 +256,8 @@ class BootstrapFraction(om.ExplicitComponent):
         J["f_BS", "ε"] = c * βp_th * bs_mult * (1 / 2) / sqrt(ε) * δ_mult * f
         J["f_BS", "βp_th"] = c * bs_mult * sqrt(ε) * δ_mult * f
         J["f_BS", "bs_mult"] = c * βp_th * sqrt(ε) * δ_mult * f
-        J["f_BS", "δ_mult"] = c * βp_th * sqrt(ε) * f
-        J["f_BS", "fudge"] = c * βp_th * sqrt(ε) * δ_mult
+        J["f_BS", "δ_mult"] = c * bs_mult * βp_th * sqrt(ε) * f
+        J["f_BS", "fudge"] = c * bs_mult * βp_th * sqrt(ε) * δ_mult
 
 
 class BootstrapCurrent(om.Group):

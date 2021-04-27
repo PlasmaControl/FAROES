@@ -54,6 +54,32 @@ class TestBootstrapFraction(unittest.TestCase):
         assert_near_equal(prob["f_BS"], 0.54, tolerance=1e-4)
 
 
+class TestBootstrapFraction2(unittest.TestCase):
+    def setUp(self):
+        prob = om.Problem()
+
+        prob.model = bootstrap.BootstrapFraction()
+
+        prob.setup(force_alloc_complex=True)
+
+        prob.set_val("bs_mult", 0.9)
+        prob.set_val("βp_th", 0.4)
+        prob.set_val("δ_mult", 1.2)
+        prob.set_val("fudge", 2.0)
+        prob.set_val("ε", 0.36)
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+    def test_value(self):
+        prob = self.prob
+        prob.run_driver()
+        assert_near_equal(prob["f_BS"], 0.46656, tolerance=1e-4)
+
+
 class TestBootstrapCurrent(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
