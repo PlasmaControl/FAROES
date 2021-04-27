@@ -165,6 +165,42 @@ class TestOffsetCurveWithLimiter(unittest.TestCase):
         assert_near_equal(y_o, expected, tolerance=1e-8)
 
 
+class TestOffsetCurveWithLimiter2(unittest.TestCase):
+    def setUp(self):
+        x = [4, 4, 3, 3]
+        y = [0, 1, 1, 0]
+        θ_o = [-np.pi / 4, 1 * np.pi / 4, 3 * np.pi / 4, -3 * np.pi / 4]
+
+        opc = util.OffsetCurveWithLimiter()
+        prob = om.Problem()
+        ivc = om.IndepVarComp()
+        ivc.add_output("x", val=x, units="m")
+        ivc.add_output("y", val=y, units="m")
+        ivc.add_output("θ_o", val=θ_o)
+        ivc.add_output("x_min", val=0.5, units="m")
+        prob.model.add_subsystem("ivc", ivc, promotes_outputs=["*"])
+        prob.model.add_subsystem("opc", opc, promotes_inputs=["*"])
+
+        prob.setup(force_alloc_complex=True)
+        prob.set_val("s", 2**(1 / 2), units="m")
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check, atol=2e-5, rtol=2e-5)
+
+    def test_values(self):
+        prob = self.prob
+        prob.run_driver()
+        x_o = prob.get_val("opc.x_o")
+        expected = [5, 5, 2, 2]
+        assert_near_equal(x_o, expected, tolerance=1e-8)
+        y_o = prob.get_val("opc.y_o")
+        expected = [-1, 2, 2, -1]
+        assert_near_equal(y_o, expected, tolerance=1e-8)
+
+
 class TestSmoothShiftedReLu(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
