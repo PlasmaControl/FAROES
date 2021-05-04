@@ -10,6 +10,8 @@ class BetaNTotal(om.ExplicitComponent):
     ------
     A : float
         Aspect ratio
+    f : float
+        A multiplier to β_N. The default is set via configuration.
 
     Outputs
     -------
@@ -17,7 +19,7 @@ class BetaNTotal(om.ExplicitComponent):
         normalized beta from a scaling law
 
     β_N total : float
-        the total normalized beta
+        the actual normalized beta
 
     Reference
     ---------
@@ -36,9 +38,12 @@ class BetaNTotal(om.ExplicitComponent):
             ac = self.config.accessor(['fits'])
             self.β_ε_scaling_constants = ac(
                 ["no-wall β_N scaling with ε", "constants"])
-            self.β_N_multiplier = ac(["β_N multiplier"])
+            β_N_multiplier = ac(["β_N multiplier"])
+        else:
+            β_N_multiplier = 1
 
         self.add_input("A", desc="Aspect Ratio")
+        self.add_input("f", val=β_N_multiplier)
         self.add_output("β_N", units="m * T / MA", desc="Normalized beta")
         self.add_output("β_N total",
                         units="m * T / MA",
@@ -67,21 +72,23 @@ class BetaNTotal(om.ExplicitComponent):
 
     def compute(self, inputs, outputs):
         A = inputs["A"]
-        β_N = self.β_N_scaling(A)
-        outputs["β_N"] = β_N
-        outputs["β_N total"] = β_N * self.β_N_multiplier
+        β_N_law = self.β_N_scaling(A)
+        outputs["β_N"] = β_N_law
+        outputs["β_N total"] = β_N_law * inputs["f"]
 
     def setup_partials(self):
-        self.declare_partials(["β_N", "β_N total"], "A")
+        self.declare_partials(["β_N", "β_N total"], ["A", "f"])
 
     def compute_partials(self, inputs, J):
         const = self.β_ε_scaling_constants
         A = inputs["A"]
+        β_N_law = self.β_N_scaling(A)
         c = const[1]
         d = const[2]
         J["β_N", "A"] = -0.01 * A**(-d - 1) * c * d
-        scale = self.β_N_multiplier
+        scale = inputs["f"]
         J["β_N total", "A"] = scale * J["β_N", "A"]
+        J["β_N total", "f"] = β_N_law
 
 
 class BetaToroidal(om.ExplicitComponent):

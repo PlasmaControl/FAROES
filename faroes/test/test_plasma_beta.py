@@ -13,11 +13,11 @@ class TestBetaNComputation(unittest.TestCase):
 
         prob.model = faroes.plasma_beta.BetaNTotal()
         prob.model.β_ε_scaling_constants = [3.12, 3.5, 1.7]
-        prob.model.β_N_multiplier = 1.1
 
         prob.setup(force_alloc_complex=True)
 
         prob.set_val("A", 1.6)
+        prob.set_val("f", 1.1)
         self.prob = prob
 
     def test_partials(self):
