@@ -20,3 +20,13 @@ blanket:
   model: simple
   simple:
     neutron power multiplier: {value: 1.1, reference: Menard O367}
+
+availability:
+  model: divertorsOnly
+  divertorsOnly:
+    replacement time: {value: 70, units: d, reference: Nagy 2009}
+    # Sheffield, J.; Milora, S. L.
+    # Generic Magnetic Fusion Reactor Revisited.
+    # Fusion Science and Technology 2016, 70 (1), 14–35.
+    # https://doi.org/10.13182/FST15-157.
+    lifetime : {value: 10, units: MW*a/m**2, reference: Sheffield 2016}
