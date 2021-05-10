@@ -15,6 +15,7 @@ from faroes.util import PolarParallelCurve
 from faroes.rfheating import SimpleRFHeating
 from faroes.menardplasmaloop import MenardPlasmaLoop
 
+from faroes.availability import SimpleAvailability
 from faroes.blanket import MenardInboardBlanketFit
 from faroes.blanket import MenardInboardShieldFit
 from faroes.blanket import OutboardBlanketFit
@@ -338,6 +339,10 @@ class Machine(om.Group):
         self.connect("plasma.DTfusion.rate_fus", ["q_n_IB.S"])
         self.connect("q_n_IB.q_n", ["q_n.q_n_IB"])
 
+        # compute availability from divertor lifetime
+        self.add_subsystem("availability", SimpleAvailability(config=config))
+        self.connect("SOL.q_max", "availability.p_tt")
+
         # compute magnet lifetime w.r.t. neutron damage
         self.add_subsystem("maglife", MenardMagnetLifetime(config=config))
         self.connect("q_n_IB.q_n", "maglife.q_n_IB")
@@ -361,9 +366,9 @@ class Machine(om.Group):
         self.connect("plasma.DTfusion.P_fus", "costing.P_fus")
         self.connect("q_n.q_n_avg", "costing.p_wn")
         self.connect("SOL.q_max", "costing.p_tt")
-        costing.set_input_defaults("F_tt", 20, units="MW*a/m**2")
+        self.connect("availability.f_av", "costing.f_av")
+        self.connect("availability.F_tt", "costing.F_tt")
         costing.set_input_defaults("F_wn", 15, units="MW*a/m**2")
-        costing.set_input_defaults("f_av", 0.6)
 
 
 if __name__ == "__main__":
@@ -493,7 +498,7 @@ if __name__ == "__main__":
     mpl = prob.model.plasma
     newton = mpl.nonlinear_solver = om.NewtonSolver(solve_subsystems=True)
     newton.options['iprint'] = 2
-    newton.options['maxiter'] = 12
+    newton.options['maxiter'] = 50
     mpl.linear_solver = om.DirectSolver()
     newton.linesearch = om.ArmijoGoldsteinLS(retry_on_analysis_error=True,
                                              rho=0.5,
