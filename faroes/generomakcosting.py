@@ -346,23 +346,23 @@ class FusionIslandCost(om.ExplicitComponent):
         MW, thermal power handled by the steam generators, etc
 
     Cpc : float
-        MUSD, Cost of the primary (TF) coil set
+        GUSD, Cost of the primary (TF) coil set
 
     Csg : float
-        MUSD, Cost of shielding-and-gaps
+        GUSD, Cost of shielding-and-gaps
 
     Cst : float
-        MUSD, Cost of the structure
+        GUSD, Cost of the structure
     C_aux : float
-        MUSD, Cost of auxilliary heating systems
+        GUSD, Cost of auxilliary heating systems
 
     Outputs
     -------
     C_ht : float
-        MUSD, cost of the "main heat transfer steam system". Note that the BOP
+        GUSD, cost of the "main heat transfer steam system". Note that the BOP
         such as turbine equipment is tabulated separately.
     C_FI: float
-        MUSD, cost of the fusion island
+        GUSD, cost of the fusion island
 
     Options
     -------
@@ -373,7 +373,7 @@ class FusionIslandCost(om.ExplicitComponent):
 
         c_Pt : float
             MUSD, Coefficient for the thermal conversion systems cost.
-            Default is 221 MUSD.
+            Default is 0.221 GUSD.
         d_Pt : float
             MW, Divisor for the thermal conversion systems cost.
             Default is 4150 MW.
@@ -413,7 +413,7 @@ class FusionIslandCost(om.ExplicitComponent):
         self.cc = self.options['fusion_island_costing']
         if self.cc is None:
             self.cc = {
-                'c_Pt': 221,
+                'c_Pt': 0.221,
                 'd_Pt': 4150,
                 'e_Pt': 0.6,
                 'm_pc': 1.5,
@@ -423,13 +423,13 @@ class FusionIslandCost(om.ExplicitComponent):
                 'fudge': 1.0
             }
         self.add_input("P_t", units="MW")
-        self.add_input("Cpc", units="MUSD")
-        self.add_input("Csg", units="MUSD")
-        self.add_input("Cst", units="MUSD")
-        self.add_input("C_aux", units="MUSD")
+        self.add_input("Cpc", units="GUSD")
+        self.add_input("Csg", units="GUSD")
+        self.add_input("Cst", units="GUSD")
+        self.add_input("C_aux", units="GUSD")
 
-        self.add_output("C_ht", units="MUSD", ref=1000)
-        self.add_output("C_FI", units="MUSD", ref=1000)
+        self.add_output("C_ht", units="GUSD", ref=1)
+        self.add_output("C_FI", units="GUSD", ref=1)
 
     def compute(self, inputs, outputs):
         Pt = inputs['P_t']
@@ -494,19 +494,19 @@ class CapitalCost(om.ExplicitComponent):
     V_FI: float
        m**3, volume of the fusion island
     C_FI: float
-       MUSD, Cost of the fusion island components
+       GUSD, Cost of the fusion island components
 
     Outputs
     -------
     C_BOP : float
-       MUSD, Capital cost of the balance-of-plant systems,
+       GUSD, Capital cost of the balance-of-plant systems,
        including turbine equipment. Does not include contingency.
     C_bld : float
-       MUSD, Capital cost of reactor building, hot cells, vacuum systems,
+       GUSD, Capital cost of reactor building, hot cells, vacuum systems,
        power supplies and peripherals, and cryogenic systems. Does not
        include contingency.
     C_D : float
-       MUSD, Capital cost of the overall plant
+       GUSD, Capital cost of the overall plant
 
     Options
     -------
@@ -518,10 +518,10 @@ class CapitalCost(om.ExplicitComponent):
         f_cont : float
             Contigency factor. Default is 1.15.
         c_e1 : float
-            MUSD, Base BOP cost for any plant. Default is 900 MUSD.
+            MUSD, Base BOP cost for any plant. Default is 0.900 GUSD.
         c_e2 : float
             MUSD, Additional cost for a plant of power c_e3.
-            Default is 900 MUSD.
+            Default is 0.900 GUSD.
         c_e3 : float
             MW, Power of a typical plant. Default is 1200 MW.
         d_Pt : float
@@ -531,7 +531,7 @@ class CapitalCost(om.ExplicitComponent):
             Exponent for the thermal conversion systems cost. Default is 0.6.
         c_V : float
             MUSD, Coefficient for the fusion island volume.
-            Default is 839 MUSD.
+            Default is 0.839 GUSD.
         d_V : float
             Divisor for the fusion island volume. Default is 5100 MW.
         e_V : float
@@ -558,12 +558,12 @@ class CapitalCost(om.ExplicitComponent):
         if self.cc is None:
             self.cc = {
                 'f_cont': 1.15,
-                'c_e1': 900,
-                'c_e2': 900,
+                'c_e1': 0.900,
+                'c_e2': 0.900,
                 'c_e3': 1200,
                 'd_Pt': 4150,
                 'e_Pt': 0.6,
-                'c_V': 839,
+                'c_V': 0.839,
                 'd_V': 5100,
                 'e_V': 0.67,
                 'fudge': 1.0
@@ -571,11 +571,11 @@ class CapitalCost(om.ExplicitComponent):
         self.add_input("P_e", units="MW")
         self.add_input("P_t", units="MW")
         self.add_input("V_FI", units="m**3")
-        self.add_input("C_FI", units="MUSD")
+        self.add_input("C_FI", units="GUSD")
 
-        self.add_output("C_BOP", units="MUSD", ref=1000)
-        self.add_output("C_bld", units="MUSD", ref=1000)
-        self.add_output("C_D", units="MUSD", ref=1000)
+        self.add_output("C_BOP", units="GUSD", ref=1)
+        self.add_output("C_bld", units="GUSD", ref=1)
+        self.add_output("C_D", units="GUSD", ref=1)
 
     def compute(self, inputs, outputs):
         Pt = inputs['P_t']
@@ -804,7 +804,7 @@ class FuelCycleCost(om.ExplicitComponent):
     Outputs
     -------
     C_F : float
-        MUSD/a, Fuel cycle cost. Includes all blanket and divertor replacement
+        GUSD/a, Fuel cycle cost. Includes all blanket and divertor replacement
         and C_OM
 
     From Equation (22) of [1]_.
@@ -821,14 +821,15 @@ class FuelCycleCost(om.ExplicitComponent):
         self.add_input("C_ta", units="MUSD/a", val=0.0)
         self.add_input("C_aa", units="MUSD/a", val=0.0)
         self.add_input("C_fa", units="MUSD/a", val=0.0)
-        self.add_output("C_F", units="MUSD/a", ref=100)
+        self.add_output("C_F", units="GUSD/a", ref=0.100)
 
     def compute(self, inputs, outputs):
         outputs["C_F"] = (inputs["C_ba"] + inputs["C_ta"] + inputs["C_aa"] +
-                          inputs["C_fa"])
+                          inputs["C_fa"]) / 1000
 
     def setup_partials(self):
-        self.declare_partials("C_F", ["C_ba", "C_ta", "C_aa", "C_fa"], val=1)
+        self.declare_partials("C_F", ["C_ba", "C_ta", "C_aa", "C_fa"],
+                              val=0.001)
 
 
 class AveragedAnnualBlanketCost(om.ExplicitComponent):
@@ -1174,7 +1175,7 @@ class TotalCapitalCost(om.ExplicitComponent):
     Inputs
     ------
     C_D : float
-        MUSD, overnight capital cost of the plant
+        GUSD, overnight capital cost of the plant
     f_CAPO : float
         Constant-dollar capitalization factor
     f_IND : float
@@ -1183,7 +1184,7 @@ class TotalCapitalCost(om.ExplicitComponent):
     Outputs
     -------
     C_CO : float
-        MUSD, Total capital cost of the plant
+        GUSD, Total capital cost of the plant
 
     References
     ----------
@@ -1193,10 +1194,10 @@ class TotalCapitalCost(om.ExplicitComponent):
        https://doi.org/10.13182/FST15-157.
     """
     def setup(self):
-        self.add_input("C_D", units="MUSD")
+        self.add_input("C_D", units="GUSD")
         self.add_input("f_CAPO", val=1.0)
         self.add_input("f_IND", val=1.0)
-        self.add_output("C_CO", units="MUSD", ref=3000)
+        self.add_output("C_CO", units="GUSD", ref=3)
 
     def compute(self, inputs, outputs):
         C_D = inputs["C_D"]

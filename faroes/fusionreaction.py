@@ -6,7 +6,7 @@ import faroes.units  # noqa: F401
 import openmdao.api as om
 from openmdao.api import unit_conversion
 
-from scipy.constants import mega, femto
+from scipy.constants import mega, atto
 
 _REACTION_ENERGY = nuclear_reaction_energy(reactants=['D', 'T'],
                                            products=['alpha', 'n'])
@@ -101,7 +101,7 @@ class VolumetricThermalFusionRate(om.ExplicitComponent):
 
         self.add_output("rate_fus/V",
                         lower=0,
-                        units="1/m**3/fs",
+                        units="1/m**3/as",
                         desc="Volumetric fusion rate")
         self.add_output("P_fus/V",
                         lower=0,
@@ -129,7 +129,7 @@ class VolumetricThermalFusionRate(om.ExplicitComponent):
         rate = n_D * n_T * σv_avg
         # W / m**3
         energy_rate = rate * self.ENERGY_J
-        outputs["rate_fus/V"] = rate * femto
+        outputs["rate_fus/V"] = rate * atto
         outputs["P_fus/V"] = energy_rate / mega
         outputs["P_n/V"] = self.n_fraction * energy_rate / mega
         outputs["P_α/V"] = self.α_fraction * energy_rate / mega
@@ -145,9 +145,9 @@ class VolumetricThermalFusionRate(om.ExplicitComponent):
         n_T = self.n_conv * inputs["n_T"]
         σv_avg = self.sigma_conv * inputs["<σv>"]
 
-        J["rate_fus/V", "n_D"] = self.n_conv * n_T * σv_avg * femto
-        J["rate_fus/V", "n_T"] = self.n_conv * n_D * σv_avg * femto
-        J["rate_fus/V", "<σv>"] = self.sigma_conv * n_D * n_T * femto
+        J["rate_fus/V", "n_D"] = self.n_conv * n_T * σv_avg * atto
+        J["rate_fus/V", "n_T"] = self.n_conv * n_D * σv_avg * atto
+        J["rate_fus/V", "<σv>"] = self.sigma_conv * n_D * n_T * atto
         J["P_fus/V", "n_D"] = self.n_conv * n_T * σv_avg * self.ENERGY_J / mega
         J["P_fus/V", "n_T"] = self.n_conv * n_D * σv_avg * self.ENERGY_J / mega
         J["P_fus/V",
@@ -179,7 +179,7 @@ class NBIBeamTargetFusion(om.ExplicitComponent):
     Outputs
     -------
     rate_fus : float
-        1/fs, Fusion reaction rate
+        1/as, Fusion reaction rate
     P_fus : float
         MW, Total fusion power
     #P_α : float
@@ -220,7 +220,7 @@ class NBIBeamTargetFusion(om.ExplicitComponent):
         self.add_input("<T_e>", units="keV")
 
         R_fus_ref = 1e4
-        self.add_output("rate_fus", units="1/fs", ref=R_fus_ref, lower=0)
+        self.add_output("rate_fus", units="1/as", ref=R_fus_ref, lower=0)
         P_fus_ref = 10
         self.add_output("P_fus", units="MW", ref=P_fus_ref, lower=0)
         # self.add_output("P_α", units="MW", ref=P_fus_ref, lower=0)
@@ -235,7 +235,7 @@ class NBIBeamTargetFusion(om.ExplicitComponent):
             raise om.AnalysisError("Negative temperatures.")
 
         R = c * P_NBI * Te**(3 / 2)
-        outputs["rate_fus"] = R * femto
+        outputs["rate_fus"] = R * atto
 
         energy_MJ = self.ENERGY_J / mega
         P_fus = R * energy_MJ
@@ -259,8 +259,8 @@ class NBIBeamTargetFusion(om.ExplicitComponent):
         P_NBI = inputs["P_NBI"]
         Te = inputs["<T_e>"]
         energy_MJ = self.ENERGY_J / mega
-        J["rate_fus", "P_NBI"] = c * Te**(3 / 2) * femto
-        J["rate_fus", "<T_e>"] = (3 / 2) * c * P_NBI * Te**(1 / 2) * femto
+        J["rate_fus", "P_NBI"] = c * Te**(3 / 2) * atto
+        J["rate_fus", "<T_e>"] = (3 / 2) * c * P_NBI * Te**(1 / 2) * atto
         J["P_fus", "P_NBI"] = c * Te**(3 / 2) * energy_MJ
         J["P_fus", "<T_e>"] = (3 / 2) * c * P_NBI * Te**(1 / 2) * energy_MJ
         # J["P_α", "P_NBI"] = self.α_fraction * J["P_fus", "P_NBI"]
@@ -275,9 +275,9 @@ class TotalDTFusionRate(om.ExplicitComponent):
     Inputs
     ------
     rate_th : float
-        1 / fs, Thermal fusion rate
+        1 / as, Thermal fusion rate
     rate_NBI : float
-        1 / fs, NBI beam-target fusion rate
+        1 / as, NBI beam-target fusion rate
 
     P_fus_th : float
         MW, Thermal fusion power
@@ -287,7 +287,7 @@ class TotalDTFusionRate(om.ExplicitComponent):
     Outputs
     -------
     rate_fus : float
-        1 / fs
+        1 / as
     P_fus : float
         MW, Total fusion power
     P_α : float
@@ -308,11 +308,11 @@ class TotalDTFusionRate(om.ExplicitComponent):
 
         self.add_input("P_fus_th", val=0, units="MW")
         self.add_input("P_fus_NBI", val=0, units="MW")
-        self.add_input("rate_th", val=0, units="1/fs")
-        self.add_input("rate_NBI", val=0, units="1/fs")
+        self.add_input("rate_th", val=0, units="1/as")
+        self.add_input("rate_NBI", val=0, units="1/as")
 
         rate_fus_ref = 1e5
-        self.add_output("rate_fus", lower=0, ref=rate_fus_ref, units="1/fs")
+        self.add_output("rate_fus", lower=0, ref=rate_fus_ref, units="1/as")
         P_fus_ref = 100
         tiny = 1e-6
         self.add_output("P_fus", lower=tiny, ref=P_fus_ref, units="MW")

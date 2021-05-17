@@ -135,47 +135,47 @@ class TotalThermalPower(om.ExplicitComponent):
     Inputs
     ------
     P_blanket : float
-        MW, Power removed from blanket
+        GW, Power removed from blanket
     P_α : float
-        MW, Total alpha power
+        GW, Total alpha power
     P_aux : float
-        MW, Auxilliary heating power to plasma
+        GW, Auxilliary heating power to plasma
     P_coolant : float
-        MW, Power from pumps dissipated thermally
+        GW, Power from pumps dissipated thermally
              in the primary (or secondary...) coolant
 
     Outputs
     -------
     P_primary_heat : float
-        MW, Thermal power that needs to be removed from the tokamak
+        GW, Thermal power that needs to be removed from the tokamak
     P_heat : float
-        MW, Thermal power delivered to electricity generating systems
+        GW, Thermal power delivered to electricity generating systems
     """
     def setup(self):
         self.add_input("P_blanket",
-                       units="MW",
+                       units="GW",
                        val=0,
                        desc="Power removed from the blanket")
-        self.add_input("P_α", units="MW", val=0, desc="Total alpha power")
+        self.add_input("P_α", units="GW", val=0, desc="Total alpha power")
         self.add_input("P_aux",
-                       units="MW",
+                       units="GW",
                        val=0,
                        desc="Auxilliary heating power to plasma")
         self.add_input(
             "P_coolant",
-            units="MW",
+            units="GW",
             val=0,
             desc="Power from pumps dissipated thermally in the coolant")
-        P_ref = 100
+        P_ref = 0.1
         self.add_output(
             "P_primary_heat",
-            units="MW",
+            units="GW",
             lower=0,
             ref=P_ref,
             desc="Thermal power that needs to be removed from the tokamak")
         self.add_output(
             "P_heat",
-            units="MW",
+            units="GW",
             lower=0,
             ref=P_ref,
             desc="Thermal power delivered to electricity generating systems")
@@ -206,19 +206,19 @@ class SimpleGeneratedPower(om.ExplicitComponent):
     Inputs
     ------
     P_heat : float
-        MW, Power to generators
+        GW, Power to generators
 
     Outputs
     -------
     P_el : float
-        MW, Electrical power generated
+        GW, Electrical power generated
     """
     def initialize(self):
         self.options.declare("config", default=None)
 
     def setup(self):
-        self.add_input("P_heat", units="MW")
-        self.add_output("P_el", ref=500, units="MW")
+        self.add_input("P_heat", units="GW")
+        self.add_output("P_el", ref=0.500, units="GW")
 
         if self.options['config'] is not None:
             self.config = self.options['config']
@@ -251,31 +251,31 @@ class PowerplantQ(om.ExplicitComponent):
     Inputs
     ------
     P_gen : float
-        MW, Power generated
+        GW, Power generated
     P_recirc : float
-        MW, Recirculating electric power
+        GW, Recirculating electric power
 
     Outputs
     -------
     Q_eng : float
         Engineering Q of the plant
     P_net : float
-        MW, net electric power
+        GW, net electric power
     f_recirc : float
         Fraction of generated electric power which is recirculated
     """
     def setup(self):
-        P_ref = 100
-        self.add_input("P_gen", units="MW", desc="Power generated")
+        P_ref = 0.5
+        self.add_input("P_gen", units="GW", desc="Power generated")
         self.add_input("P_recirc",
-                       units="MW",
+                       units="GW",
                        desc="Recirculating electric power")
         self.add_output("Q_eng",
                         lower=0,
                         ref=3,
                         desc="Engineering Q of the plant")
         self.add_output("P_net",
-                        units="MW", ref=P_ref,
+                        units="GW", ref=P_ref,
                         desc="Net electric power generated")
         self.add_output("f_recirc",
                         lower=0,

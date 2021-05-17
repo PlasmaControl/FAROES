@@ -218,7 +218,7 @@ class TestMenardModel(unittest.TestCase):
                              upper=250,
                              ref=100,
                              units="MA/m**2")
-        model.add_objective('pplant.overall.P_net', scaler=-0.01)
+        model.add_objective('pplant.overall.P_net', scaler=-1.0, units="GW")
 
         # set constraints
         model.add_constraint('magnets.constraint_max_stress', lower=0, ref=0.1)
@@ -284,7 +284,7 @@ class TestMenardModel(unittest.TestCase):
         f = prob.get_val("plasma.Hbalance.H")
         expected = 1.69793
         assert_near_equal(f, expected, tolerance=1e-3)
-        f = prob.get_val("magnets.B0")
+        f = prob.get_val("magnets.B0", units="T")
         expected = 3.885
         assert_near_equal(f, expected, tolerance=1e-3)
 
