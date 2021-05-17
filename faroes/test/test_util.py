@@ -201,6 +201,69 @@ class TestOffsetCurveWithLimiter2(unittest.TestCase):
         assert_near_equal(y_o, expected, tolerance=1e-8)
 
 
+class TestOffsetCurveWithLimiter3(unittest.TestCase):
+    def setUp(self):
+        x = np.array([
+            10.51731228, 10.3315235, 9.81106632, 9.05371789, 8.1861703,
+            7.32885186, 6.57185004, 5.96754431, 5.53680138, 5.28156277,
+            5.19731228, 5.28156277, 5.53680138, 5.96754431, 6.57185004,
+            7.32885186, 8.1861703, 9.05371789, 9.81106632, 10.3315235
+        ])
+        y = np.array([
+            0.00000000e+00, 1.47299749e+00, 2.80180772e+00, 3.85635749e+00,
+            4.53342012e+00, 4.76672000e+00, 4.53342012e+00, 3.85635749e+00,
+            2.80180772e+00, 1.47299749e+00, 5.83754839e-16, -1.47299749e+00,
+            -2.80180772e+00, -3.85635749e+00, -4.53342012e+00, -4.76672000e+00,
+            -4.53342012e+00, -3.85635749e+00, -2.80180772e+00, -1.47299749e+00
+        ])
+        θ_o = np.array([
+            0., 0.25100785, 0.49809132, 0.75850899, 1.08691177, 1.57079633,
+            2.16398779, 2.60885909, 2.86614669, 3.02350726, 3.14159265,
+            -3.02350726, -2.86614669, -2.60885909, -2.16398779, -1.57079633,
+            -1.08691177, -0.75850899, -0.49809132, -0.25100785
+        ])
+
+        opc = util.OffsetCurveWithLimiter()
+        prob = om.Problem()
+        ivc = om.IndepVarComp()
+        ivc.add_output("x", val=x, units="m")
+        ivc.add_output("y", val=y, units="m")
+        ivc.add_output("θ_o", val=θ_o)
+        ivc.add_output("x_min", val=3.6969, units="m")
+        prob.model.add_subsystem("ivc", ivc, promotes_outputs=["*"])
+        prob.model.add_subsystem("opc", opc, promotes_inputs=["*"])
+
+        prob.setup(force_alloc_complex=True)
+        prob.set_val("s", 1.81462, units="m")
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check, atol=2e-5, rtol=2e-5)
+
+    def test_values(self):
+        prob = self.prob
+        prob.run_driver()
+        x_o = prob.get_val("opc.x_o")
+        expected = np.array([
+            12.3319246, 12.08927056, 11.40519605, 10.37087673, 9.03036655,
+            7.32885186, 5.55746342, 4.40439744, 3.79254135, 3.69697368,
+            3.69692728, 3.69697368, 3.79254135, 4.40439744, 5.55746342,
+            7.32885186, 9.03036655, 10.37087673, 11.40519605, 12.08927056
+        ])
+        assert_near_equal(x_o, expected, tolerance=2e-6)
+        y_o = prob.get_val("opc.y_o")
+        expected = np.array([
+            0.00000000e+00, 1.92371153e+00, 3.66873810e+00, 5.10452033e+00,
+            6.13970483e+00, 6.58133232e+00, 6.03802561e+00, 4.77798092e+00,
+            3.29478818e+00, 1.66098892e+00, 7.67499007e-16, -1.66098892e+00,
+            -3.29478818e+00, -4.77798092e+00, -6.03802561e+00, -6.58133232e+00,
+            -6.13970483e+00, -5.10452033e+00, -3.66873810e+00, -1.92371153e+00
+        ])
+        assert_near_equal(y_o, expected, tolerance=2e-6)
+
+
 class TestSmoothShiftedReLu(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()

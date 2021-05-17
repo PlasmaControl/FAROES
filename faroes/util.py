@@ -441,10 +441,10 @@ class OffsetCurveWithLimiter(om.ExplicitComponent):
         xo1 = x_o[case1]
         xo2 = x_o[case2]
 
-        dxo1n_dxmin = (b * np.exp(b * (x_min - xo1)) /
+        dxo1n_dxmin = (np.exp(b * (x_min - xo1)) /
                        (1 + np.exp(b * (x_min - xo1))))
         dxo1n_dxo1 = 1 - dxo1n_dxmin
-        dxo2n_dxo2 = (b * np.exp(b * (xo2 - x_min)) /
+        dxo2n_dxo2 = (np.exp(b * (xo2 - x_min)) /
                       (1 + np.exp(b * (xo2 - x_min))))
         dxo2n_dxmin = 1 - dxo2n_dxo2
 
