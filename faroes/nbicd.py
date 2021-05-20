@@ -667,16 +667,20 @@ class NBICurrent(om.ExplicitComponent):
 
     .. math::
 
-        I_\mathrm{NBI} = \sum (S Eb It/P)
+        I_\mathrm{NBI} = fudge * \sum (S Eb It/P)
 
     Inputs
     ------
     S : array
         1/s, Neutral beam source rates
     It/P: array
-        A/W, efficiency of current drive
+        A/W, efficiency of current drive for each source
     Eb : array
-        keV, Initial energy of beam ions
+        keV, Initial energy of beam ions for each source
+    fudge : float
+        Overall fudge factor.
+        This will likely be a constant during a given run,
+        but can be used to match other calculations
 
     Outputs
     -------
@@ -696,28 +700,31 @@ class NBICurrent(om.ExplicitComponent):
         if config is not None:
             self.config = self.options["config"]
             ac = self.config.accessor(["h_cd", "NBI"])
-            self.c = ac(["current drive estimate", "fudge factor"])
+            c = ac(["current drive estimate", "fudge factor"])
+            self.add_input("fudge", val=c)
         else:
-            self.c = 1
+            self.add_input("fudge", val=1.0)
 
     def compute(self, inputs, outputs):
         S = inputs["S"]
         Eb = inputs["Eb"]
         eff = inputs["It/P"]
-        c = self.c
-        outputs["I_NBI"] = c * kilo * eV * np.sum(S * Eb * eff) / mega
+        f = inputs["fudge"]
+        outputs["I_NBI"] = f * kilo * eV * np.sum(S * Eb * eff) / mega
 
     def setup_partials(self):
         self.declare_partials("I_NBI", ["S", "Eb", "It/P"])
+        self.declare_partials("I_NBI", ["fudge"])
 
     def compute_partials(self, inputs, J):
         S = inputs["S"]
         Eb = inputs["Eb"]
         eff = inputs["It/P"]
-        c = self.c
-        J["I_NBI", "S"] = c * kilo * eV * Eb * eff / mega
-        J["I_NBI", "Eb"] = c * kilo * eV * S * eff / mega
-        J["I_NBI", "It/P"] = c * kilo * eV * Eb * S / mega
+        f = inputs["fudge"]
+        J["I_NBI", "S"] = f * kilo * eV * Eb * eff / mega
+        J["I_NBI", "Eb"] = f * kilo * eV * S * eff / mega
+        J["I_NBI", "It/P"] = f * kilo * eV * Eb * S / mega
+        J["I_NBI", "fudge"] = f * kilo * eV * np.sum(S * Eb * eff) / mega
 
 
 if __name__ == "__main__":
