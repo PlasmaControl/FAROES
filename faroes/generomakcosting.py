@@ -518,22 +518,25 @@ class CapitalCost(om.ExplicitComponent):
         f_cont : float
             Contigency factor. Default is 1.15.
         c_e1 : float
-            MUSD, Base BOP cost for any plant. Default is 0.900 GUSD.
+            GUSD, Base BOP cost for any plant. Default is 0.900 GUSD.
         c_e2 : float
-            MUSD, Additional cost for a plant of power c_e3.
+            GUSD, Additional cost for a plant of power c_e3.
             Default is 0.900 GUSD.
         c_e3 : float
-            MW, Power of a typical plant. Default is 1200 MW.
+            MW, Net Electric power of a typical plant.
+            Default is 1200 MW.
         d_Pt : float
             MW, Divisor for the thermal conversion systems cost.
             Default is 4150 MW.
         e_Pt : float
-            Exponent for the thermal conversion systems cost. Default is 0.6.
+            Exponent for the thermal conversion systems cost.
+            Default is 0.6.
         c_V : float
-            MUSD, Coefficient for the fusion island volume.
+            GUSD, Coefficient for the fusion island volume.
             Default is 0.839 GUSD.
         d_V : float
-            Divisor for the fusion island volume. Default is 5100 MW.
+            m^3, Divisor for the fusion island volume.
+            Default is 5100 m^3.
         e_V : float
             Exponent for the fusion island volume. Default is 0.67.
 
@@ -1495,10 +1498,13 @@ class GeneromakCosting(om.Group):
     """
     def initialize(self):
         self.options.declare('exact_generomak', default=True)
+        self.options.declare('costing_parameters', default=None)
 
     def setup(self):
         exact_generomak = self.options['exact_generomak']
         exact_generomak = True
+
+        # cost_pars = self.options['costing_parameters']
 
         self.add_subsystem("primary_coilset",
                            PrimaryCoilSetCost(),
