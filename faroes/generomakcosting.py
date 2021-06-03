@@ -19,7 +19,7 @@ class PrimaryCoilSetCost(om.ExplicitComponent):
     Options
     -------
     cost_per_cubic_meter : float
-        MUSD/m**3, Cost per cubic meter. Default is 1.66.
+        MUSD/m**3, Cost per cubic meter.
 
     Notes
     -----
@@ -365,33 +365,29 @@ class FusionIslandCost(om.ExplicitComponent):
     Options
     -------
     fusion_island_costing : dict
-        This is a dictionary of coefficients for the costing model. If none is
-        supplied, coefficients identical to those in [1]_ are used. The
-        dictionary provided must have values for *all* of these keys:
+        This is a dictionary of coefficients for the costing model.
+        The dictionary provided must have values for all these keys:
 
         c_Pt : float
             MUSD, Coefficient for the thermal conversion systems cost.
-            Default is 0.221 GUSD.
         d_Pt : float
             MW, Divisor for the thermal conversion systems cost.
-            Default is 4150 MW.
         e_Pt : float
             Exponent for the thermal conversion systems cost.
-            Default is 0.6.
         m_pc : float
             Multiplier for the cost of the primary coil set, Cpc,
             to account for the secondary coilsets and redundancy in the coil
-            windings. Default is 1.5.
+            windings.
         m_sg : float
             Multiplier for the cost of shielding and gaps, Csg, to account
-            for extra shielding around ports. Default is 1.25.
+            for extra shielding around ports.
         m_st : float
-            Multiplier for the structure cost Cst. Default is 1.0.
+            Multiplier for the structure cost Cst.
         m_aux : float
             Multiplier for the auxilliary heating cost C_aux, to allow for
-            spares. Default is 1.1.
+            spares.
         fudge : float
-            Overall fudge factor. Default is 1.0.
+            Overall fudge factor.
 
     Notes
     -----
@@ -499,34 +495,27 @@ class CapitalCost(om.ExplicitComponent):
     Options
     -------
     capital_cost_coeffs : dict
-        This is a dictionary of coefficients for the costing model. If none is
-        supplied, coefficients identical to those in [1]_ are used. The
-        dictionary provided must have values for all these keys:
+        This is a dictionary of coefficients for the costing model.
+        The dictionary provided must have values for all these keys:
 
         f_cont : float
-            Contigency factor. Default is 1.15.
+            Contigency factor.
         c_e1 : float
-            GUSD, Base BOP cost for any plant. Default is 0.900 GUSD.
+            GUSD, Base BOP cost for any plant.
         c_e2 : float
             GUSD, Additional cost for a plant of power c_e3.
-            Default is 0.900 GUSD.
         c_e3 : float
             MW, Net Electric power of a typical plant.
-            Default is 1200 MW.
         d_Pt : float
             MW, Divisor for the thermal conversion systems cost.
-            Default is 4150 MW.
         e_Pt : float
             Exponent for the thermal conversion systems cost.
-            Default is 0.6.
         c_V : float
             GUSD, Coefficient for the fusion island volume.
-            Default is 0.839 GUSD.
         d_V : float
             m^3, Divisor for the fusion island volume.
-            Default is 5100 m^3.
         e_V : float
-            Exponent for the fusion island volume. Default is 0.67.
+            Exponent for the fusion island volume.
 
     Notes
     -----
@@ -634,12 +623,11 @@ class DeuteriumCost(om.ExplicitComponent):
     Options
     -------
     deuterium_cost_coeffs : dict
-        This is a dictionary of coefficients for the costing model. If none is
-        supplied, coefficients identical to those in [1]_ are used. The
-        dictionary provided must have values for all these keys:
+        This is a dictionary of coefficients for the costing model.
+        The dictionary provided must have values for all these keys:
 
         C_deu  : float
-            USD/kg, Price of Deuterium in $/kg. Default is 10000.
+            USD/kg, Price of Deuterium in $/kg.
 
     Notes
     -----
@@ -659,7 +647,7 @@ class DeuteriumCost(om.ExplicitComponent):
       https://doi.org/10.2172/6633213
     """
     def initialize(self):
-        self.options.declare('deuterium_cost_coeffs', default=None)
+        self.options.declare('deuterium_cost_coeffs', types=dict)
 
     def setup(self):
         self.cc = self.options['deuterium_cost_coeffs']
@@ -710,16 +698,13 @@ class MiscReplacements(om.ExplicitComponent):
     Options
     -------
     misc_cost_coeffs : dict
-        This is a dictionary of coefficients for the costing model. If none is
-        supplied, coefficients identical to those in [1]_ are used. The
-        dictionary provided must have values for all these keys:
+        This is a dictionary of coefficients for the costing model.
+        The dictionary provided must have values for all these keys:
 
         F_CR0  : float
-            1/a, Constant dollar fixed charge rate; default is 0.078.
+            1/a, Constant dollar fixed charge rate.
         C_misc: float
             MUSD, Capital cost of miscellaneous scheduled-replaceable items.
-            Default is 52.8.
-
 
     Notes
     -----
@@ -737,7 +722,7 @@ class MiscReplacements(om.ExplicitComponent):
        https://doi.org/10.13182/FST15-157.
     """
     def initialize(self):
-        self.options.declare('misc_cost_coeffs', default=None)
+        self.options.declare('misc_cost_coeffs', types=dict)
 
     def setup(self):
         self.cc = self.options['misc_cost_coeffs']
@@ -774,7 +759,7 @@ class FuelCycleCost(om.ExplicitComponent):
     -------
     C_F : float
         GUSD/a, Fuel cycle cost. Includes all blanket and divertor replacement
-        and C_OM
+        and C_OM.
 
     From Equation (22) of [1]_.
 
@@ -806,7 +791,7 @@ class AveragedAnnualBlanketCost(om.ExplicitComponent):
     From Equation (23) of [1]_.
 
     .. math::
-        C_{ba} = f_{fail} \left(f_{spare} C_{bl} F_{CRO}
+        C_{ba} = f_{fail} \left(f_{spare} C_{bl} F_{CR0}
                         + (f_{av} N p_{wn} / F_{wn} - 1)C_bl/N)
 
     where :math:`N` is the number of years of plant operation.
@@ -832,18 +817,17 @@ class AveragedAnnualBlanketCost(om.ExplicitComponent):
         MUSD, Averaged annual blanket replacement costs
 
     blanket_cost_coeffs : dict
-        This is a dictionary of coefficients for the costing model. If none is
-        supplied, coefficients identical to those in [1]_ are used. The
-        dictionary provided must have values for all these keys:
+        This is a dictionary of coefficients for the costing model.
+        The dictionary provided must have values for all these keys:
 
         f_failures : float
-            Contigency factor for failures. Default is 1.1.
+            Contigency factor for failures.
         f_spares : float
-            Factor for spares. Default is 1.1.
+            Factor for spares.
         F_CR0  : float
-            1/a, Constant dollar fixed charge rate; default is 0.078.
+            1/a, Constant dollar fixed charge rate.
         fudge  : float
-            Overall fudge factor; default is 1.0.
+            Overall fudge factor.
 
     References
     ----------
@@ -853,7 +837,7 @@ class AveragedAnnualBlanketCost(om.ExplicitComponent):
        https://doi.org/10.13182/FST15-157.
     """
     def initialize(self):
-        self.options.declare('blanket_cost_coeffs', default=None)
+        self.options.declare('blanket_cost_coeffs', types=dict)
 
     def setup(self):
         self.cc = self.options['blanket_cost_coeffs']
@@ -920,7 +904,7 @@ class AveragedAnnualDivertorCost(om.ExplicitComponent):
     From Equation (24) of [1]_.
 
     .. math::
-        C_{ta} = f_{fail} \left(f_{spare} C_{tt} F_{CRO}
+        C_{ta} = f_{fail} \left(f_{spare} C_{tt} F_{CR0}
                         + (f_{av} N p_{tt} / F_{tt} - 1)C_tt/N)
 
     where :math:`N` is the number of years of plant operation.
@@ -946,18 +930,17 @@ class AveragedAnnualDivertorCost(om.ExplicitComponent):
         MUSD/a, Averaged divertor replacement costs
 
     divertor_cost_coeffs : dict
-        This is a dictionary of coefficients for the costing model. If none is
-        supplied, coefficients identical to those in [1]_ are used. The
-        dictionary provided must have values for all these keys:
+        This is a dictionary of coefficients for the costing model.
+        The dictionary provided must have values for all these keys:
 
         f_failures : float
-            Contigency factor for failures. Default is 1.2.
+            Contigency factor for failures.
         f_spares : float
-            Factor for spares. Default is 1.1.
+            Factor for spares.
         F_CR0  : float
-            1/a, Constant dollar fixed charge rate; default is 0.078.
+            1/a, Constant dollar fixed charge rate.
         fudge  : float
-            Overall fudge factor; default is 1.0.
+            Overall fudge factor.
 
     References
     ----------
@@ -1045,16 +1028,16 @@ class FixedOMCost(om.ExplicitComponent):
     Options
     -------
     fixed_om_cost_coeffs : dict
-        This is a dictionary of coefficients for the costing model. If none is
-        supplied, coefficients identical to those in [1]_ are used. The
-        dictionary provided must have values for all these keys:
+        This is a dictionary of coefficients for the costing model.
+        The dictionary provided must have values for all these keys:
 
         base_Pe  : float
             MW, Base electric power for the scaling formula
         base_OM  : float
-            MUSD/a, Fixed operations and maintenance cost for a 1200MWe plant
+            MUSD/a, Fixed operations and maintenance cost for a plant that
+            generates base_Pe of net electric power.
         fudge  : float
-            Overall fudge factor; default is 1.0.
+            Overall fudge factor.
 
     Notes
     -----
@@ -1081,7 +1064,7 @@ class FixedOMCost(om.ExplicitComponent):
        https://doi.org/10.13182/FST9-2-199.
     """
     def initialize(self):
-        self.options.declare("fixed_om_cost_coeffs", default=None)
+        self.options.declare("fixed_om_cost_coeffs", types=dict)
 
     def setup(self):
         self.cc = self.options["fixed_om_cost_coeffs"]
@@ -1125,14 +1108,14 @@ class TotalCapitalCost(om.ExplicitComponent):
     ------
     C_D : float
         GUSD, overnight capital cost of the plant
-    f_CAPO : float
+    f_CAP0 : float
         Constant-dollar capitalization factor
     f_IND : float
         Factor for indirect charges
 
     Outputs
     -------
-    C_CO : float
+    C_C0 : float
         GUSD, Total capital cost of the plant
 
     References
@@ -1144,26 +1127,26 @@ class TotalCapitalCost(om.ExplicitComponent):
     """
     def setup(self):
         self.add_input("C_D", units="GUSD")
-        self.add_input("f_CAPO", val=1.0)
+        self.add_input("f_CAP0", val=1.0)
         self.add_input("f_IND", val=1.0)
-        self.add_output("C_CO", units="GUSD", ref=3)
+        self.add_output("C_C0", units="GUSD", ref=3)
 
     def compute(self, inputs, outputs):
         C_D = inputs["C_D"]
-        f_CAPO = inputs["f_CAPO"]
+        f_CAP0 = inputs["f_CAP0"]
         f_IND = inputs["f_IND"]
-        outputs["C_CO"] = C_D * f_CAPO * f_IND
+        outputs["C_C0"] = C_D * f_CAP0 * f_IND
 
     def setup_partials(self):
-        self.declare_partials("C_CO", ["C_D", "f_CAPO", "f_IND"])
+        self.declare_partials("C_C0", ["C_D", "f_CAP0", "f_IND"])
 
     def compute_partials(self, inputs, J):
         C_D = inputs["C_D"]
-        f_CAPO = inputs["f_CAPO"]
+        f_CAP0 = inputs["f_CAP0"]
         f_IND = inputs["f_IND"]
-        J["C_CO", "C_D"] = f_CAPO * f_IND
-        J["C_CO", "f_CAPO"] = C_D * f_IND
-        J["C_CO", "f_IND"] = C_D * f_CAPO
+        J["C_C0", "C_D"] = f_CAP0 * f_IND
+        J["C_C0", "f_CAP0"] = C_D * f_IND
+        J["C_C0", "f_IND"] = C_D * f_CAP0
 
 
 class IndirectChargesFactor(om.ExplicitComponent):
@@ -1213,7 +1196,7 @@ class ConstantDollarCapitalizationFactor(om.ExplicitComponent):
 
     Outputs
     -------
-    f_CAPO : float
+    f_CAP0 : float
         Constant-dollar capitalization factor
 
     Notes
@@ -1233,15 +1216,15 @@ class ConstantDollarCapitalizationFactor(om.ExplicitComponent):
     """
     def setup(self):
         self.add_input("T_constr", units='a')
-        self.add_output("f_CAPO")
+        self.add_output("f_CAP0")
 
     def compute(self, inputs, outputs):
         T = inputs["T_constr"]
-        f_capo = 1 + 0.012 * T + 0.003
-        outputs["f_CAPO"] = f_capo
+        f_cap0 = 1 + 0.012 * T + 0.003
+        outputs["f_CAP0"] = f_cap0
 
     def setup_partials(self):
-        self.declare_partials("f_CAPO", "T_constr", val=0.012)
+        self.declare_partials("f_CAP0", "T_constr", val=0.012)
 
 
 class CostOfElectricity(om.ExplicitComponent):
@@ -1250,7 +1233,7 @@ class CostOfElectricity(om.ExplicitComponent):
 
     Inputs
     ------
-    C_CO : float
+    C_C0 : float
         MUSD, total capital cost
     C_F : float
         MUSD, Annual fuel cycle costs
@@ -1269,9 +1252,8 @@ class CostOfElectricity(om.ExplicitComponent):
     Options
     -------
     coe_cost_coeffs : dict
-        This is a dictionary of coefficients for the costing model. If none is
-        supplied, coefficients identical to those in [1]_ are used. The
-        dictionary provided must have values for all these keys:
+        This is a dictionary of coefficients for the costing model.
+        The dictionary provided must have values for all these keys:
 
         F_CR0  : float
             1/a, Constant dollar fixed charge rate.
@@ -1292,7 +1274,7 @@ class CostOfElectricity(om.ExplicitComponent):
 
     def setup(self):
         self.cc = self.options['coe_cost_coeffs']
-        self.add_input("C_CO", units="MUSD", val=0.0)
+        self.add_input("C_C0", units="MUSD", val=0.0)
         self.add_input("C_F", units="MUSD/a", val=0.0)
         self.add_input("C_OM", units="MUSD/a", val=0.0)
         self.add_input("f_av", val=1.0)
@@ -1302,24 +1284,24 @@ class CostOfElectricity(om.ExplicitComponent):
 
     def compute(self, inputs, outputs):
         cc = self.cc
-        C_CO = inputs["C_CO"]
+        C_C0 = inputs["C_C0"]
         C_F = inputs["C_F"]
         C_OM = inputs["C_OM"]
         Pe = inputs["P_e"]
         f_av = inputs["f_av"]
 
-        numerator = mega * (C_CO * cc['F_CR0'] + C_F + C_OM)
+        numerator = mega * (C_C0 * cc['F_CR0'] + C_F + C_OM)
         h_per_y = 8760
         electricity_produced = Pe * h_per_y * f_av
         coe = numerator / electricity_produced + cc['waste_charge']
         outputs["COE"] = cc['fudge'] * coe
 
     def setup_partials(self):
-        self.declare_partials("COE", ["C_CO", "C_F", "C_OM", "P_e", "f_av"])
+        self.declare_partials("COE", ["C_C0", "C_F", "C_OM", "P_e", "f_av"])
 
     def compute_partials(self, inputs, J):
         cc = self.cc
-        C_CO = inputs["C_CO"]
+        C_C0 = inputs["C_C0"]
         C_F = inputs["C_F"]
         C_OM = inputs["C_OM"]
         Pe = inputs["P_e"]
@@ -1328,12 +1310,12 @@ class CostOfElectricity(om.ExplicitComponent):
         h_per_y = 8760
         fudge = cc['fudge']
 
-        J["COE", "C_CO"] = fudge * F_CR0 * mega / (h_per_y * f_av * Pe)
+        J["COE", "C_C0"] = fudge * F_CR0 * mega / (h_per_y * f_av * Pe)
         J["COE", "C_F"] = fudge * mega / (h_per_y * f_av * Pe)
         J["COE", "C_OM"] = fudge * mega / (h_per_y * f_av * Pe)
-        J["COE", "P_e"] = -fudge * mega * ((C_F + C_OM + C_CO * F_CR0) /
+        J["COE", "P_e"] = -fudge * mega * ((C_F + C_OM + C_C0 * F_CR0) /
                                            (h_per_y * f_av * Pe**2))
-        J["COE", "f_av"] = -fudge * mega * ((C_F + C_OM + C_CO * F_CR0) /
+        J["COE", "f_av"] = -fudge * mega * ((C_F + C_OM + C_C0 * F_CR0) /
                                             (h_per_y * f_av**2 * Pe))
 
 
@@ -1446,7 +1428,6 @@ class GeneromakCosting(om.Group):
 
     def setup(self):
         exact_generomak = self.options['exact_generomak']
-        exact_generomak = True
 
         default_cost_pars = {
             "Finance.F_CR0": 0.078,
@@ -1608,15 +1589,15 @@ class GeneromakCosting(om.Group):
         self.add_subsystem("capitalization_factor",
                            ConstantDollarCapitalizationFactor(),
                            promotes_inputs=["T_constr"],
-                           promotes_outputs=["f_CAPO"])
+                           promotes_outputs=["f_CAP0"])
         self.add_subsystem("indirect_charges",
                            IndirectChargesFactor(),
                            promotes_inputs=["T_constr"],
                            promotes_outputs=["f_IND"])
         self.add_subsystem("total_capital",
                            TotalCapitalCost(),
-                           promotes_inputs=["C_D", "f_CAPO", "f_IND"],
-                           promotes_outputs=["C_CO"])
+                           promotes_inputs=["C_D", "f_CAP0", "f_IND"],
+                           promotes_outputs=["C_C0"])
 
         ann_bl_cc = {
             'f_failures': cost_pars["Blanket.f_failures"],
@@ -1677,7 +1658,7 @@ class GeneromakCosting(om.Group):
         self.add_subsystem(
             "coe",
             CostOfElectricity(coe_cost_coeffs=coe_cc),
-            promotes_inputs=["C_CO", "C_F", ("P_e", "P_net"), "f_av", "C_OM"],
+            promotes_inputs=["C_C0", "C_F", ("P_e", "P_net"), "f_av", "C_OM"],
             promotes_outputs=["COE"])
 
 

@@ -283,7 +283,7 @@ class TestCostOfElectricity(unittest.TestCase):
         prob.setup(force_alloc_complex=True)
 
         prob.set_val("f_av", 0.9)
-        prob.set_val("C_CO", 3000, units="MUSD")
+        prob.set_val("C_C0", 3000, units="MUSD")
         prob.set_val("C_F", 3000, units="MUSD/a")
         prob.set_val("C_OM", 300, units="MUSD/a")
         prob.set_val("P_e", 500, units="MW")
@@ -347,7 +347,7 @@ class TestTotalCapitalCost(unittest.TestCase):
         prob.setup(force_alloc_complex=True)
 
         prob.set_val("C_D", 500, units="MUSD")
-        prob.set_val("f_CAPO", 1.063)
+        prob.set_val("f_CAP0", 1.063)
         prob.set_val("f_IND", 1.063)
         self.prob = prob
 
