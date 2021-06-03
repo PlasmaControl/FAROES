@@ -1,0 +1,54 @@
+costing method: Generomak
+
+Generomak:
+  Finance:
+    F_CR0: 0.078
+  PrimaryCoils:
+    cost per volume: {value: 1.66, units: MUSD/m**3}
+  Blanket:
+    cost per volume: {value: 0.75, units: MUSD/m**3}
+    f_failures: 1.1
+    f_spares: 1.1
+    fudge: 1.0
+  Divertor:
+    cost per area: {value: 0.114, units: MUSD/m**2}
+    f_failures: 1.2
+    f_spares: 1.1
+    fudge: 1.0
+  Structure:
+    cost per volume: {value: 0.36, units: MUSD/m**3}
+  ShieldWithGaps:
+    cost per volume: {value: 0.29, units: MUSD/m**3}
+  AuxHeating:
+    cost per watt: {value: 5.3, units: MUSD/MW}
+    f_spares: 1.1
+    annual maintenance factor: 0.1
+  ReferencePlant:
+    d_Pt: {value: 4.150, units: GW}
+    e_Pt: 0.6
+    d_Pe: {value: 1.200, units: GW}
+  FusionIsland:
+    c_Pt: {value: 0.221, units: GUSD}
+    m_pc: 1.5
+    m_sg: 1.25
+    m_st: 1.0
+    fudge: 1.0
+  CapitalCost:
+    contingency: 1.15
+    c_e1: {value: 0.900, units: GUSD}
+    c_e2: {value: 0.900, units: GUSD}
+    c_V: {value: 0.839, units: GUSD}
+    d_V: {value: 5100, units: m**3}
+    e_V: 0.67
+    fudge: 1.0
+  MiscReplacements:
+    c_misc: {value: 52.8, units: MUSD/a}
+  FixedOM:
+    base_cost: {value: 108, units: MUSD/a}
+    fudge: 1.0
+  WasteCharge: {value: 0.5, units: mUSD/kW/h}
+  Consumables:
+    Deuterium:
+      cost_per_mass: {value: 10, units: kUSD/kg}
+  COE:
+    fudge: 1.0

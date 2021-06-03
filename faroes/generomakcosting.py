@@ -1,5 +1,6 @@
-import openmdao.api as om
+from faroes.configurator import UserConfigurator
 
+import openmdao.api as om
 from scipy.constants import mega
 
 
@@ -305,10 +306,10 @@ class AnnualAuxHeatingCost(om.ExplicitComponent):
        https://doi.org/10.13182/FST15-157.
     """
     def initialize(self):
-        self.options.declare('annual_aux_heating_costing', default=None)
+        self.options.declare('cost_params', default=None)
 
     def setup(self):
-        self.cc = self.options['annual_aux_heating_costing']
+        self.cc = self.options['cost_params']
         self.add_input("C_aux", units="MUSD")
         self.add_output("C_aa", units="MUSD/a", ref=10)
 
@@ -401,10 +402,10 @@ class FusionIslandCost(om.ExplicitComponent):
        https://doi.org/10.13182/FST15-157.
     """
     def initialize(self):
-        self.options.declare('fusion_island_costing', default=None, types=dict)
+        self.options.declare('cost_params', default=None, types=dict)
 
     def setup(self):
-        self.cc = self.options['fusion_island_costing']
+        self.cc = self.options['cost_params']
         #  todo: raise a proper error
         self.add_input("P_t", units="MW")
         self.add_input("Cpc", units="GUSD")
@@ -494,7 +495,7 @@ class CapitalCost(om.ExplicitComponent):
 
     Options
     -------
-    capital_cost_coeffs : dict
+    cost_params : dict
         This is a dictionary of coefficients for the costing model.
         The dictionary provided must have values for all these keys:
 
@@ -531,10 +532,10 @@ class CapitalCost(om.ExplicitComponent):
        https://doi.org/10.13182/FST15-157.
     """
     def initialize(self):
-        self.options.declare('capital_cost_coeffs', default=None)
+        self.options.declare('cost_params', types=dict)
 
     def setup(self):
-        self.cc = self.options['capital_cost_coeffs']
+        self.cc = self.options['cost_params']
         self.add_input("P_e", units="MW")
         self.add_input("P_t", units="MW")
         self.add_input("V_FI", units="m**3")
@@ -622,7 +623,7 @@ class DeuteriumCost(om.ExplicitComponent):
 
     Options
     -------
-    deuterium_cost_coeffs : dict
+    cost_params : dict
         This is a dictionary of coefficients for the costing model.
         The dictionary provided must have values for all these keys:
 
@@ -647,10 +648,10 @@ class DeuteriumCost(om.ExplicitComponent):
       https://doi.org/10.2172/6633213
     """
     def initialize(self):
-        self.options.declare('deuterium_cost_coeffs', types=dict)
+        self.options.declare('cost_params', types=dict)
 
     def setup(self):
-        self.cc = self.options['deuterium_cost_coeffs']
+        self.cc = self.options['cost_params']
         self.add_input("P_fus", units="MW")
         self.add_input("f_av")
         self.add_output("C_deuterium", units="MUSD/a", ref=0.5)
@@ -697,7 +698,7 @@ class MiscReplacements(om.ExplicitComponent):
 
     Options
     -------
-    misc_cost_coeffs : dict
+    cost_params : dict
         This is a dictionary of coefficients for the costing model.
         The dictionary provided must have values for all these keys:
 
@@ -722,10 +723,10 @@ class MiscReplacements(om.ExplicitComponent):
        https://doi.org/10.13182/FST15-157.
     """
     def initialize(self):
-        self.options.declare('misc_cost_coeffs', types=dict)
+        self.options.declare('cost_params', types=dict)
 
     def setup(self):
-        self.cc = self.options['misc_cost_coeffs']
+        self.cc = self.options['cost_params']
         self.add_input("C_fuel", units="MUSD/a", val=0.8)
         self.add_output("C_fa", units="MUSD/a", ref=10)
 
@@ -816,7 +817,7 @@ class AveragedAnnualBlanketCost(om.ExplicitComponent):
     Avg blanket repl : float
         MUSD, Averaged annual blanket replacement costs
 
-    blanket_cost_coeffs : dict
+    cost_params : dict
         This is a dictionary of coefficients for the costing model.
         The dictionary provided must have values for all these keys:
 
@@ -837,10 +838,10 @@ class AveragedAnnualBlanketCost(om.ExplicitComponent):
        https://doi.org/10.13182/FST15-157.
     """
     def initialize(self):
-        self.options.declare('blanket_cost_coeffs', types=dict)
+        self.options.declare('cost_params', types=dict)
 
     def setup(self):
-        self.cc = self.options['blanket_cost_coeffs']
+        self.cc = self.options['cost_params']
         self.add_input("C_bl", units="MUSD", val=0.0)
         self.add_input("f_av", val=1.0)
         self.add_input("F_wn", units="MW*a/m**2")
@@ -929,7 +930,7 @@ class AveragedAnnualDivertorCost(om.ExplicitComponent):
     Avg divertor repl : float
         MUSD/a, Averaged divertor replacement costs
 
-    divertor_cost_coeffs : dict
+    cost_params : dict
         This is a dictionary of coefficients for the costing model.
         The dictionary provided must have values for all these keys:
 
@@ -950,10 +951,10 @@ class AveragedAnnualDivertorCost(om.ExplicitComponent):
        https://doi.org/10.13182/FST15-157.
     """
     def initialize(self):
-        self.options.declare('divertor_cost_coeffs', default=None)
+        self.options.declare('cost_params', default=None)
 
     def setup(self):
-        self.cc = self.options['divertor_cost_coeffs']
+        self.cc = self.options['cost_params']
         self.add_input("C_tt", units="MUSD", val=0.0)
         self.add_input("f_av", val=1.0)
         self.add_input("F_tt", units="MW*a/m**2")
@@ -1027,7 +1028,7 @@ class FixedOMCost(om.ExplicitComponent):
 
     Options
     -------
-    fixed_om_cost_coeffs : dict
+    cost_params : dict
         This is a dictionary of coefficients for the costing model.
         The dictionary provided must have values for all these keys:
 
@@ -1064,10 +1065,10 @@ class FixedOMCost(om.ExplicitComponent):
        https://doi.org/10.13182/FST9-2-199.
     """
     def initialize(self):
-        self.options.declare("fixed_om_cost_coeffs", types=dict)
+        self.options.declare("cost_params", types=dict)
 
     def setup(self):
-        self.cc = self.options["fixed_om_cost_coeffs"]
+        self.cc = self.options["cost_params"]
         self.add_input("P_e", units="MW")
         self.add_output("C_OM", units="MUSD/a", ref=100)
 
@@ -1251,7 +1252,7 @@ class CostOfElectricity(om.ExplicitComponent):
 
     Options
     -------
-    coe_cost_coeffs : dict
+    cost_params : dict
         This is a dictionary of coefficients for the costing model.
         The dictionary provided must have values for all these keys:
 
@@ -1270,10 +1271,10 @@ class CostOfElectricity(om.ExplicitComponent):
        https://doi.org/10.13182/FST15-157.
     """
     def initialize(self):
-        self.options.declare('coe_cost_coeffs', default=None)
+        self.options.declare('cost_params', default=None)
 
     def setup(self):
-        self.cc = self.options['coe_cost_coeffs']
+        self.cc = self.options['cost_params']
         self.add_input("C_C0", units="MUSD", val=0.0)
         self.add_input("C_F", units="MUSD/a", val=0.0)
         self.add_input("C_OM", units="MUSD/a", val=0.0)
@@ -1424,53 +1425,86 @@ class GeneromakCosting(om.Group):
     """
     def initialize(self):
         self.options.declare('exact_generomak', default=True)
-        self.options.declare('costing_parameters', default=None)
+        self.options.declare('config', default=None)
+
+    def reformat_cost_parameters(self, f):
+        r"""Loads cost parameters from configuration tree
+
+        Parameters
+        ----------
+        f : UserConfigurator.accessor function
+
+        Returns
+        -------
+        cost_parameters: dict
+            Dictionary with the various basic Generomak costing parameters
+        """
+        cp = {}
+        cp["Finance.F_CR0"] = f(["Finance", "F_CR0"])
+        cp["Deuterium.cost_per_mass"] = f(
+            ["Consumables", "Deuterium", "cost_per_mass"], units="USD/kg")
+        cp["PrimaryCoils.cost_per_vol"] = f(
+            ["PrimaryCoils", "cost per volume"], units="MUSD/m**3")
+        bl = "Blanket"
+        cp[bl + ".cost_per_vol"] = f([bl, "cost per volume"],
+                                     units="MUSD/m**3")
+        cp[bl + ".f_failures"] = f([bl, "f_failures"])
+        cp[bl + ".f_spares"] = f([bl, "f_spares"])
+        cp[bl + ".fudge"] = f([bl, "fudge"])
+
+        dv = "Divertor"
+        cp[dv + ".cost_per_area"] = f([dv, "cost per area"], units="MUSD/m**2")
+        cp[dv + ".f_failures"] = f([dv, "f_failures"])
+        cp[dv + ".f_spares"] = f([dv, "f_spares"])
+        cp[dv + ".fudge"] = f([dv, "fudge"])
+
+        st = "Structure"
+        cp[st + ".cost_per_vol"] = f([st, "cost per volume"],
+                                     units="MUSD/m**3")
+        sg = "ShieldWithGaps"
+        cp[sg + ".cost_per_vol"] = f([sg, "cost per volume"],
+                                     units="MUSD/m**3")
+        aux = "AuxHeating"
+        cp[aux + ".cost_per_watt"] = f([aux, "cost per watt"], units="MUSD/MW")
+        cp[aux + ".f_spares"] = f([aux, "f_spares"])
+        cp[aux + ".ann_maint_fact"] = f([aux, "annual maintenance factor"])
+
+        rp = "ReferencePlant"
+        cp[rp + ".d_Pt"] = f([rp, "d_Pt"], units="MW")
+        cp[rp + ".e_Pt"] = f([rp, "e_Pt"])
+        cp[rp + ".d_Pe"] = f([rp, "d_Pe"], units="MW")
+
+        fi = "FusionIsland"
+        cp[fi + ".c_Pt"] = f([fi, "c_Pt"], units="GUSD")
+        cp[fi + ".m_pc"] = f([fi, "m_pc"])
+        cp[fi + ".m_sg"] = f([fi, "m_sg"])
+        cp[fi + ".m_st"] = f([fi, "m_st"])
+        cp[fi + ".fudge"] = f([fi, "fudge"])
+
+        cap = "CapitalCost"
+        cp[cap + ".contingency"] = f([cap, "contingency"])
+        cp[cap + ".c_e1"] = f([cap, "c_e1"], units="GUSD")
+        cp[cap + ".c_e2"] = f([cap, "c_e2"], units="GUSD")
+        cp[cap + ".c_V"] = f([cap, "c_V"], units="GUSD")
+        cp[cap + ".d_V"] = f([cap, "d_V"], units="m**3")
+        cp[cap + ".e_V"] = f([cap, "e_V"])
+        cp[cap + ".fudge"] = f([cap, "fudge"])
+
+        miscr = "MiscReplacements"
+        cp[miscr + ".c_misc"] = f([miscr, "c_misc"], units="MUSD/a")
+
+        fom = "FixedOM"
+        cp[fom + ".base_cost"] = f([fom, "base_cost"], units="MUSD/a")
+        cp[fom + ".fudge"] = f([fom, "fudge"])
+        cp["COE.waste_charge"] = f(["WasteCharge"], units="mUSD/kW/h")
+        cp["COE.fudge"] = f(["COE", "fudge"])
+        return cp
 
     def setup(self):
         exact_generomak = self.options['exact_generomak']
-
-        default_cost_pars = {
-            "Finance.F_CR0": 0.078,
-            "Deuterium.cost_per_mass": 10000,  # USD/kg
-            "PrimaryCoils.cost_per_vol": 1.66,  # MUSD/m^3
-            "Blanket.cost_per_vol": 0.75,  # MUSD/m^3
-            "Blanket.f_failures": 1.1,
-            "Blanket.f_spares": 1.1,
-            "Blanket.fudge": 1.0,
-            "Divertor.cost_per_area": 0.114,  # MUSD/m^2
-            "Divertor.f_failures": 1.2,
-            "Divertor.f_spares": 1.1,
-            "Divertor.fudge": 1.0,
-            "Structure.cost_per_vol": 0.36,  # MUSD/m^3
-            "ShieldWithGaps.cost_per_vol": 0.29,  # MUSD/m^3
-            "AuxHeating.cost_per_watt": 5.3,  # MUSD/W
-            "AuxHeating.f_spares": 1.1,
-            "AuxHeating.ann_maint_fact": 0.1,
-            "ReferencePlant.d_Pt": 4150,  # MW
-            "ReferencePlant.e_Pt": 0.6,
-            "ReferencePlant.d_Pe": 1200,  # MW
-            "FusionIsland.c_Pt": 0.221,  # GUSD
-            "FusionIsland.m_pc": 1.5,
-            "FusionIsland.m_sg": 1.25,
-            "FusionIsland.m_st": 1.0,
-            "FusionIsland.fudge": 1.0,
-            "CapitalCost.contingency": 1.15,
-            "CapitalCost.c_e1": 0.900,  # GUSD
-            "CapitalCost.c_e2": 0.900,  # GUSD
-            "CapitalCost.c_V": 0.839,  # GUST
-            "CapitalCost.d_V": 5100,  # m^3
-            "CapitalCost.e_V": 0.67,
-            "CapitalCost.fudge": 1.0,
-            "MiscReplacements.c_misc": 52.8,  # MUSD/a
-            "FixedOM.base_cost": 108,  # MUSD/a
-            "FixedOM.fudge": 1.0,
-            "COE.waste_charge": 0.5,  # mUSD/kW/h
-            "COE.fudge": 1.0
-        }
-
-        cost_pars = self.options['costing_parameters']
-        # replace any updates
-        cost_pars = default_cost_pars
+        config = self.options['config']
+        f = config.accessor(["costing", "Generomak"])
+        cost_pars = self.reformat_cost_parameters(f)
 
         pc_cost_per_vol = cost_pars["PrimaryCoils.cost_per_vol"]
         self.add_subsystem("primary_coilset",
@@ -1524,7 +1558,7 @@ class GeneromakCosting(om.Group):
         # that's considered to be part of the blankets(?).
         deu_cc = {"C_deu_per_kg": cost_pars["Deuterium.cost_per_mass"]}
         self.add_subsystem("ann_d_cost",
-                           DeuteriumCost(deuterium_cost_coeffs=deu_cc),
+                           DeuteriumCost(cost_params=deu_cc),
                            promotes_inputs=["P_fus", "f_av"])
 
         if exact_generomak:
@@ -1540,7 +1574,7 @@ class GeneromakCosting(om.Group):
                 'C_misc': cost_pars["MiscReplacements.c_misc"]
             }
             self.add_subsystem("misc",
-                               MiscReplacements(misc_cost_coeffs=misc_cc),
+                               MiscReplacements(cost_params=misc_cc),
                                promotes_outputs=["C_fa"])
             self.connect("ann_d_cost.C_deuterium", "misc.C_fuel")
 
@@ -1548,11 +1582,10 @@ class GeneromakCosting(om.Group):
             'f_spares': cost_pars["AuxHeating.f_spares"],
             'annual_aux_heating_factor': cost_pars["AuxHeating.ann_maint_fact"]
         }
-        self.add_subsystem(
-            "annual_aux",
-            AnnualAuxHeatingCost(annual_aux_heating_costing=ann_aux_cc),
-            promotes_inputs=["C_aux"],
-            promotes_outputs=["C_aa"])
+        self.add_subsystem("annual_aux",
+                           AnnualAuxHeatingCost(cost_params=ann_aux_cc),
+                           promotes_inputs=["C_aux"],
+                           promotes_outputs=["C_aa"])
 
         fi_cc = {
             'c_Pt': cost_pars["FusionIsland.c_Pt"],
@@ -1566,7 +1599,7 @@ class GeneromakCosting(om.Group):
         }
         self.add_subsystem(
             "fusion_island",
-            FusionIslandCost(fusion_island_costing=fi_cc),
+            FusionIslandCost(cost_params=fi_cc),
             promotes_inputs=["P_t", "Cpc", "Csg", "Cst", "C_aux"],
             promotes_outputs=["C_FI"])
 
@@ -1583,7 +1616,7 @@ class GeneromakCosting(om.Group):
             'fudge': cost_pars["CapitalCost.fudge"],
         }
         self.add_subsystem("plant_capital",
-                           CapitalCost(capital_cost_coeffs=cap_cc),
+                           CapitalCost(cost_params=cap_cc),
                            promotes_inputs=["C_FI", "V_FI", "P_t"],
                            promotes_outputs=["C_D"])
         self.add_subsystem("capitalization_factor",
@@ -1607,7 +1640,7 @@ class GeneromakCosting(om.Group):
         }
         self.add_subsystem(
             "ann_blanket_cost",
-            AveragedAnnualBlanketCost(blanket_cost_coeffs=ann_bl_cc),
+            AveragedAnnualBlanketCost(cost_params=ann_bl_cc),
             promotes_inputs=["f_av", "N_years", "p_wn", "C_bl", "F_wn"],
             promotes_outputs=["C_ba"])
 
@@ -1619,7 +1652,7 @@ class GeneromakCosting(om.Group):
         }
         self.add_subsystem(
             "ann_divertor_cost",
-            AveragedAnnualDivertorCost(divertor_cost_coeffs=ann_dv_cc),
+            AveragedAnnualDivertorCost(cost_params=ann_dv_cc),
             promotes_inputs=["f_av", "N_years", "p_tt", "C_tt", "F_tt"],
             promotes_outputs=["C_ta"])
 
@@ -1633,7 +1666,7 @@ class GeneromakCosting(om.Group):
             "fudge": cost_pars["FixedOM.fudge"],
         }
         self.add_subsystem("omcost",
-                           FixedOMCost(fixed_om_cost_coeffs=fom_cc),
+                           FixedOMCost(cost_params=fom_cc),
                            promotes_outputs=["C_OM"])
 
         if exact_generomak:
@@ -1657,15 +1690,16 @@ class GeneromakCosting(om.Group):
         }
         self.add_subsystem(
             "coe",
-            CostOfElectricity(coe_cost_coeffs=coe_cc),
+            CostOfElectricity(cost_params=coe_cc),
             promotes_inputs=["C_C0", "C_F", ("P_e", "P_net"), "f_av", "C_OM"],
             promotes_outputs=["COE"])
 
 
 if __name__ == '__main__':
     prob = om.Problem()
+    uc = UserConfigurator()
 
-    prob.model = GeneromakCosting(exact_generomak=True)
+    prob.model = GeneromakCosting(exact_generomak=True, config=uc)
 
     prob.setup(force_alloc_complex=True)
 

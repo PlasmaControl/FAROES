@@ -20,7 +20,7 @@ class TestFusionIslandCost(unittest.TestCase):
             'm_aux': 1.1,
             'fudge': 1.0,
         }
-        prob.model = gc.FusionIslandCost(fusion_island_costing=fi_cc)
+        prob.model = gc.FusionIslandCost(cost_params=fi_cc)
         prob.setup(force_alloc_complex=True)
         prob.set_val("P_t", 2000, units="MW")
         prob.set_val("Cpc", 500, units="MUSD")
@@ -147,7 +147,7 @@ class TestDeuteriumCost(unittest.TestCase):
         prob = om.Problem()
 
         deu_cc = {"C_deu_per_kg": 10000.0}
-        prob.model = gc.DeuteriumCost(deuterium_cost_coeffs=deu_cc)
+        prob.model = gc.DeuteriumCost(cost_params=deu_cc)
 
         prob.setup(force_alloc_complex=True)
         prob.set_val("P_fus", 1500, units="MW")
@@ -176,7 +176,7 @@ class TestCapitalCost(unittest.TestCase):
             'e_V': 0.67,
             'fudge': 1.0,
         }
-        prob.model = gc.CapitalCost(capital_cost_coeffs=cap_cc)
+        prob.model = gc.CapitalCost(cost_params=cap_cc)
         prob.setup(force_alloc_complex=True)
         prob.set_val("P_t", 2000, units="MW")
         prob.set_val("P_e", 1000, units="MW")
@@ -221,8 +221,7 @@ class TestAveragedAnnualBlanketCost(unittest.TestCase):
             'fudge': 1.0,
         }
 
-        prob.model = gc.AveragedAnnualBlanketCost(
-            blanket_cost_coeffs=ann_bl_cc)
+        prob.model = gc.AveragedAnnualBlanketCost(cost_params=ann_bl_cc)
 
         prob.setup(force_alloc_complex=True)
 
@@ -251,7 +250,7 @@ class TestAveragedAnnualDivertorCost(unittest.TestCase):
         }
 
         prob.model = gc.AveragedAnnualDivertorCost(
-            divertor_cost_coeffs=ann_dv_cc)
+            cost_params=ann_dv_cc)
 
         prob.setup(force_alloc_complex=True)
 
@@ -278,7 +277,7 @@ class TestCostOfElectricity(unittest.TestCase):
             'fudge': 1.0,
         }
 
-        prob.model = gc.CostOfElectricity(coe_cost_coeffs=coe_cc)
+        prob.model = gc.CostOfElectricity(cost_params=coe_cc)
 
         prob.setup(force_alloc_complex=True)
 
@@ -305,7 +304,7 @@ class TestFixedOMCost(unittest.TestCase):
             "base_OM": 108,
             "fudge": 1.0,
         }
-        prob.model = gc.FixedOMCost(fixed_om_cost_coeffs=fom_cc)
+        prob.model = gc.FixedOMCost(cost_params=fom_cc)
 
         prob.setup(force_alloc_complex=True)
 
@@ -324,7 +323,7 @@ class TestMiscReplacements(unittest.TestCase):
         prob = om.Problem()
 
         misc_cc = {'f_CR0': 0.078, 'C_misc': 52.8}
-        prob.model = gc.MiscReplacements(misc_cost_coeffs=misc_cc)
+        prob.model = gc.MiscReplacements(cost_params=misc_cc)
 
         prob.setup(force_alloc_complex=True)
 
