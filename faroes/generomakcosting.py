@@ -34,7 +34,7 @@ class PrimaryCoilSetCost(om.ExplicitComponent):
        https://doi.org/10.13182/FST15-157.
     """
     def initialize(self):
-        self.options.declare('cost_per_volume', default=1.66)
+        self.options.declare('cost_per_volume')
 
     def setup(self):
         self.cpv = self.options['cost_per_volume']
@@ -64,7 +64,7 @@ class BlanketCost(om.ExplicitComponent):
     Options
     -------
     cost_per_cubic_meter : float
-        MUSD/m**3, Cost per cubic meter. Default is 0.75.
+        MUSD/m**3, Cost per cubic meter.
 
     Notes
     -----
@@ -82,7 +82,7 @@ class BlanketCost(om.ExplicitComponent):
        https://doi.org/10.13182/FST15-157.
     """
     def initialize(self):
-        self.options.declare('cost_per_volume', default=0.75)
+        self.options.declare('cost_per_volume')
 
     def setup(self):
         self.cpv = self.options['cost_per_volume']
@@ -112,7 +112,7 @@ class StructureCost(om.ExplicitComponent):
     Options
     -------
     cost_per_cubic_meter : float
-        MUSD/m**3, Cost per cubic meter. Default is 0.36.
+        MUSD/m**3, Cost per cubic meter.
 
     Notes
     -----
@@ -127,7 +127,7 @@ class StructureCost(om.ExplicitComponent):
        https://doi.org/10.13182/FST15-157.
     """
     def initialize(self):
-        self.options.declare('cost_per_volume', default=0.36)
+        self.options.declare('cost_per_volume')
 
     def setup(self):
         self.cpv = self.options['cost_per_volume']
@@ -157,7 +157,7 @@ class ShieldWithGapsCost(om.ExplicitComponent):
     Options
     -------
     cost_per_cubic_meter : float
-        MUSD/m**3, Cost per cubic meter. Default is 0.29.
+        MUSD/m**3, Cost per cubic meter.
 
     Notes
     -----
@@ -172,7 +172,7 @@ class ShieldWithGapsCost(om.ExplicitComponent):
        https://doi.org/10.13182/FST15-157.
     """
     def initialize(self):
-        self.options.declare('cost_per_volume', default=0.29)
+        self.options.declare('cost_per_volume')
 
     def setup(self):
         self.cpv = self.options['cost_per_volume']
@@ -202,7 +202,7 @@ class DivertorCost(om.ExplicitComponent):
     Options
     -------
     cost_per_area : float
-        MUSD/m**2, Cost per square meter. Default is 0.114.
+        MUSD/m**2, Cost per square meter.
 
     Notes
     -----
@@ -220,7 +220,7 @@ class DivertorCost(om.ExplicitComponent):
        https://doi.org/10.13182/FST15-157.
     """
     def initialize(self):
-        self.options.declare('cost_per_area', default=0.114)
+        self.options.declare('cost_per_area')
 
     def setup(self):
         self.cpa = self.options['cost_per_area']
@@ -250,7 +250,7 @@ class AuxHeatingCost(om.ExplicitComponent):
     Options
     -------
     cost_per_watt : float
-        USD/W, Cost of aux heating. Default is 5.3.
+        USD/W, Cost of aux heating.
 
     Notes
     -----
@@ -265,7 +265,7 @@ class AuxHeatingCost(om.ExplicitComponent):
        https://doi.org/10.13182/FST15-157.
     """
     def initialize(self):
-        self.options.declare('cost_per_watt', default=5.3)
+        self.options.declare('cost_per_watt')
 
     def setup(self):
         self.cpw = self.options['cost_per_watt']
@@ -309,8 +309,6 @@ class AnnualAuxHeatingCost(om.ExplicitComponent):
 
     def setup(self):
         self.cc = self.options['annual_aux_heating_costing']
-        if self.cc is None:
-            self.cc = {'f_spares': 1.1, 'annual_aux_heating_factor': 0.1}
         self.add_input("C_aux", units="MUSD")
         self.add_output("C_aa", units="MUSD/a", ref=10)
 
@@ -407,21 +405,11 @@ class FusionIslandCost(om.ExplicitComponent):
        https://doi.org/10.13182/FST15-157.
     """
     def initialize(self):
-        self.options.declare('fusion_island_costing', default=None)
+        self.options.declare('fusion_island_costing', default=None, types=dict)
 
     def setup(self):
         self.cc = self.options['fusion_island_costing']
-        if self.cc is None:
-            self.cc = {
-                'c_Pt': 0.221,
-                'd_Pt': 4150,
-                'e_Pt': 0.6,
-                'm_pc': 1.5,
-                'm_sg': 1.25,
-                'm_st': 1.0,
-                'm_aux': 1.1,
-                'fudge': 1.0
-            }
+        #  todo: raise a proper error
         self.add_input("P_t", units="MW")
         self.add_input("Cpc", units="GUSD")
         self.add_input("Csg", units="GUSD")
@@ -558,19 +546,6 @@ class CapitalCost(om.ExplicitComponent):
 
     def setup(self):
         self.cc = self.options['capital_cost_coeffs']
-        if self.cc is None:
-            self.cc = {
-                'f_cont': 1.15,
-                'c_e1': 0.900,
-                'c_e2': 0.900,
-                'c_e3': 1200,
-                'd_Pt': 4150,
-                'e_Pt': 0.6,
-                'c_V': 0.839,
-                'd_V': 5100,
-                'e_V': 0.67,
-                'fudge': 1.0
-            }
         self.add_input("P_e", units="MW")
         self.add_input("P_t", units="MW")
         self.add_input("V_FI", units="m**3")
@@ -688,10 +663,6 @@ class DeuteriumCost(om.ExplicitComponent):
 
     def setup(self):
         self.cc = self.options['deuterium_cost_coeffs']
-        if self.cc is None:
-            self.cc = {
-                'C_deu_per_kg': 10000,
-            }
         self.add_input("P_fus", units="MW")
         self.add_input("f_av")
         self.add_output("C_deuterium", units="MUSD/a", ref=0.5)
@@ -743,7 +714,7 @@ class MiscReplacements(om.ExplicitComponent):
         supplied, coefficients identical to those in [1]_ are used. The
         dictionary provided must have values for all these keys:
 
-        F_CRO  : float
+        F_CR0  : float
             1/a, Constant dollar fixed charge rate; default is 0.078.
         C_misc: float
             MUSD, Capital cost of miscellaneous scheduled-replaceable items.
@@ -752,9 +723,9 @@ class MiscReplacements(om.ExplicitComponent):
 
     Notes
     -----
-    The original paper uses C_fa = 0.4 + 24 f_CRO. The new paper [1]_ uses an
+    The original paper uses C_fa = 0.4 + 24 f_CR0. The new paper [1]_ uses an
     inflation factor of 2.19 from 1983 to 2010, but also says C_fa = 7.5 M
-    with f_CRO = 0.078. I'm not sure how this is consistent.
+    with f_CR0 = 0.078. I'm not sure how this is consistent.
 
     Here the default C_misc is from multiplying 24 * 2.2.
 
@@ -770,20 +741,15 @@ class MiscReplacements(om.ExplicitComponent):
 
     def setup(self):
         self.cc = self.options['misc_cost_coeffs']
-        if self.cc is None:
-            self.cc = {
-                'f_CRO': 0.078,
-                'C_misc': 52.8,
-            }
         self.add_input("C_fuel", units="MUSD/a", val=0.8)
         self.add_output("C_fa", units="MUSD/a", ref=10)
 
     def compute(self, inputs, outputs):
         cc = self.cc
-        f_CRO = cc['f_CRO']
+        f_CR0 = cc['f_CR0']
         C_misc = cc['C_misc']
         C_fuel = inputs['C_fuel']
-        C_fa = C_fuel + f_CRO * C_misc
+        C_fa = C_fuel + f_CR0 * C_misc
         outputs['C_fa'] = C_fa
 
     def setup_partials(self):
@@ -874,7 +840,7 @@ class AveragedAnnualBlanketCost(om.ExplicitComponent):
             Contigency factor for failures. Default is 1.1.
         f_spares : float
             Factor for spares. Default is 1.1.
-        F_CRO  : float
+        F_CR0  : float
             1/a, Constant dollar fixed charge rate; default is 0.078.
         fudge  : float
             Overall fudge factor; default is 1.0.
@@ -891,13 +857,6 @@ class AveragedAnnualBlanketCost(om.ExplicitComponent):
 
     def setup(self):
         self.cc = self.options['blanket_cost_coeffs']
-        if self.cc is None:
-            self.cc = {
-                'f_failures': 1.1,
-                'f_spares': 1.1,
-                'F_CRO': 0.078,
-                'fudge': 1.0,
-            }
         self.add_input("C_bl", units="MUSD", val=0.0)
         self.add_input("f_av", val=1.0)
         self.add_input("F_wn", units="MW*a/m**2")
@@ -915,7 +874,7 @@ class AveragedAnnualBlanketCost(om.ExplicitComponent):
         p_wn = inputs["p_wn"]
         n_years = inputs["N_years"]
 
-        initial_bl = cc['f_spares'] * C_bl * cc['F_CRO']
+        initial_bl = cc['f_spares'] * C_bl * cc['F_CR0']
         outputs["Initial blanket"] = initial_bl
         # averaged cost of scheduled blanket replacement
         avg_sched_repl = (f_av * n_years * p_wn / F_wn - 1) * C_bl / n_years
@@ -926,7 +885,7 @@ class AveragedAnnualBlanketCost(om.ExplicitComponent):
     def setup_partials(self):
         cc = self.cc
         self.declare_partials("Initial blanket", ["C_bl"],
-                              val=cc['F_CRO'] * cc['f_spares'])
+                              val=cc['F_CR0'] * cc['f_spares'])
         self.declare_partials("Avg blanket repl",
                               ["C_bl", "f_av", "p_wn", "F_wn", "N_years"])
         self.declare_partials("C_ba",
@@ -995,7 +954,7 @@ class AveragedAnnualDivertorCost(om.ExplicitComponent):
             Contigency factor for failures. Default is 1.2.
         f_spares : float
             Factor for spares. Default is 1.1.
-        F_CRO  : float
+        F_CR0  : float
             1/a, Constant dollar fixed charge rate; default is 0.078.
         fudge  : float
             Overall fudge factor; default is 1.0.
@@ -1012,13 +971,6 @@ class AveragedAnnualDivertorCost(om.ExplicitComponent):
 
     def setup(self):
         self.cc = self.options['divertor_cost_coeffs']
-        if self.cc is None:
-            self.cc = {
-                'f_failures': 1.2,
-                'f_spares': 1.1,
-                'F_CRO': 0.078,
-                'fudge': 1.0,
-            }
         self.add_input("C_tt", units="MUSD", val=0.0)
         self.add_input("f_av", val=1.0)
         self.add_input("F_tt", units="MW*a/m**2")
@@ -1036,7 +988,7 @@ class AveragedAnnualDivertorCost(om.ExplicitComponent):
         p_tt = inputs["p_tt"]
         n_years = inputs["N_years"]
 
-        initial_tt = cc['f_spares'] * C_tt * cc['F_CRO']
+        initial_tt = cc['f_spares'] * C_tt * cc['F_CR0']
         outputs["Initial divertor"] = initial_tt
         # averaged cost of scheduled divertor replacement
         avg_sched_repl = (f_av * n_years * p_tt / F_tt - 1) * C_tt / n_years
@@ -1047,7 +999,7 @@ class AveragedAnnualDivertorCost(om.ExplicitComponent):
     def setup_partials(self):
         cc = self.cc
         self.declare_partials("Initial divertor", ["C_tt"],
-                              val=cc['F_CRO'] * cc['f_spares'])
+                              val=cc['F_CR0'] * cc['f_spares'])
         self.declare_partials("Avg divertor repl",
                               ["C_tt", "f_av", "p_tt", "F_tt", "N_years"])
         self.declare_partials("C_ta",
@@ -1133,12 +1085,6 @@ class FixedOMCost(om.ExplicitComponent):
 
     def setup(self):
         self.cc = self.options["fixed_om_cost_coeffs"]
-        if self.cc is None:
-            self.cc = {
-                "base_Pe": 1200,
-                "base_OM": 108,
-                "fudge": 1.0,
-            }
         self.add_input("P_e", units="MW")
         self.add_output("C_OM", units="MUSD/a", ref=100)
 
@@ -1327,10 +1273,10 @@ class CostOfElectricity(om.ExplicitComponent):
         supplied, coefficients identical to those in [1]_ are used. The
         dictionary provided must have values for all these keys:
 
-        F_CRO  : float
-            1/a, Constant dollar fixed charge rate; default is 0.078.
+        F_CR0  : float
+            1/a, Constant dollar fixed charge rate.
         fudge  : float
-            Overall fudge factor; default is 1.0.
+            Overall fudge factor.
         waste_charge : float
             mUSD/kW/h, Cost of waste disposal
 
@@ -1346,8 +1292,6 @@ class CostOfElectricity(om.ExplicitComponent):
 
     def setup(self):
         self.cc = self.options['coe_cost_coeffs']
-        if self.cc is None:
-            self.cc = {'F_CRO': 0.078, 'fudge': 1.0, 'waste_charge': 0.5}
         self.add_input("C_CO", units="MUSD", val=0.0)
         self.add_input("C_F", units="MUSD/a", val=0.0)
         self.add_input("C_OM", units="MUSD/a", val=0.0)
@@ -1364,7 +1308,7 @@ class CostOfElectricity(om.ExplicitComponent):
         Pe = inputs["P_e"]
         f_av = inputs["f_av"]
 
-        numerator = mega * (C_CO * cc['F_CRO'] + C_F + C_OM)
+        numerator = mega * (C_CO * cc['F_CR0'] + C_F + C_OM)
         h_per_y = 8760
         electricity_produced = Pe * h_per_y * f_av
         coe = numerator / electricity_produced + cc['waste_charge']
@@ -1380,16 +1324,16 @@ class CostOfElectricity(om.ExplicitComponent):
         C_OM = inputs["C_OM"]
         Pe = inputs["P_e"]
         f_av = inputs["f_av"]
-        F_CRO = cc['F_CRO']
+        F_CR0 = cc['F_CR0']
         h_per_y = 8760
         fudge = cc['fudge']
 
-        J["COE", "C_CO"] = fudge * F_CRO * mega / (h_per_y * f_av * Pe)
+        J["COE", "C_CO"] = fudge * F_CR0 * mega / (h_per_y * f_av * Pe)
         J["COE", "C_F"] = fudge * mega / (h_per_y * f_av * Pe)
         J["COE", "C_OM"] = fudge * mega / (h_per_y * f_av * Pe)
-        J["COE", "P_e"] = -fudge * mega * ((C_F + C_OM + C_CO * F_CRO) /
+        J["COE", "P_e"] = -fudge * mega * ((C_F + C_OM + C_CO * F_CR0) /
                                            (h_per_y * f_av * Pe**2))
-        J["COE", "f_av"] = -fudge * mega * ((C_F + C_OM + C_CO * F_CRO) /
+        J["COE", "f_av"] = -fudge * mega * ((C_F + C_OM + C_CO * F_CR0) /
                                             (h_per_y * f_av**2 * Pe))
 
 
@@ -1504,10 +1448,52 @@ class GeneromakCosting(om.Group):
         exact_generomak = self.options['exact_generomak']
         exact_generomak = True
 
-        # cost_pars = self.options['costing_parameters']
+        default_cost_pars = {
+            "Finance.F_CR0": 0.078,
+            "Deuterium.cost_per_mass": 10000,  # USD/kg
+            "PrimaryCoils.cost_per_vol": 1.66,  # MUSD/m^3
+            "Blanket.cost_per_vol": 0.75,  # MUSD/m^3
+            "Blanket.f_failures": 1.1,
+            "Blanket.f_spares": 1.1,
+            "Blanket.fudge": 1.0,
+            "Divertor.cost_per_area": 0.114,  # MUSD/m^2
+            "Divertor.f_failures": 1.2,
+            "Divertor.f_spares": 1.1,
+            "Divertor.fudge": 1.0,
+            "Structure.cost_per_vol": 0.36,  # MUSD/m^3
+            "ShieldWithGaps.cost_per_vol": 0.29,  # MUSD/m^3
+            "AuxHeating.cost_per_watt": 5.3,  # MUSD/W
+            "AuxHeating.f_spares": 1.1,
+            "AuxHeating.ann_maint_fact": 0.1,
+            "ReferencePlant.d_Pt": 4150,  # MW
+            "ReferencePlant.e_Pt": 0.6,
+            "ReferencePlant.d_Pe": 1200,  # MW
+            "FusionIsland.c_Pt": 0.221,  # GUSD
+            "FusionIsland.m_pc": 1.5,
+            "FusionIsland.m_sg": 1.25,
+            "FusionIsland.m_st": 1.0,
+            "FusionIsland.fudge": 1.0,
+            "CapitalCost.contingency": 1.15,
+            "CapitalCost.c_e1": 0.900,  # GUSD
+            "CapitalCost.c_e2": 0.900,  # GUSD
+            "CapitalCost.c_V": 0.839,  # GUST
+            "CapitalCost.d_V": 5100,  # m^3
+            "CapitalCost.e_V": 0.67,
+            "CapitalCost.fudge": 1.0,
+            "MiscReplacements.c_misc": 52.8,  # MUSD/a
+            "FixedOM.base_cost": 108,  # MUSD/a
+            "FixedOM.fudge": 1.0,
+            "COE.waste_charge": 0.5,  # mUSD/kW/h
+            "COE.fudge": 1.0
+        }
 
+        cost_pars = self.options['costing_parameters']
+        # replace any updates
+        cost_pars = default_cost_pars
+
+        pc_cost_per_vol = cost_pars["PrimaryCoils.cost_per_vol"]
         self.add_subsystem("primary_coilset",
-                           PrimaryCoilSetCost(),
+                           PrimaryCoilSetCost(cost_per_volume=pc_cost_per_vol),
                            promotes_inputs=["V_pc"],
                            promotes_outputs=["Cpc"])
 
@@ -1523,35 +1509,41 @@ class GeneromakCosting(om.Group):
                                            V_st={'units': 'm**3'}),
                                promotes_inputs=["V_st"])
 
+        sg_cost_per_vol = cost_pars["ShieldWithGaps.cost_per_vol"]
         self.add_subsystem("shielding",
-                           ShieldWithGapsCost(),
+                           ShieldWithGapsCost(cost_per_volume=sg_cost_per_vol),
                            promotes_inputs=["V_sg"],
                            promotes_outputs=["Csg"])
+        bl_cost_per_vol = cost_pars["Blanket.cost_per_vol"]
         self.add_subsystem("blanket",
-                           BlanketCost(),
+                           BlanketCost(cost_per_volume=bl_cost_per_vol),
                            promotes_inputs=["V_bl"],
                            promotes_outputs=["C_bl"])
+        dv_cost_per_area = cost_pars["Divertor.cost_per_area"]
         self.add_subsystem("divertor",
-                           DivertorCost(),
+                           DivertorCost(cost_per_area=dv_cost_per_area),
                            promotes_inputs=["A_tt"],
                            promotes_outputs=["C_tt"])
 
+        st_cost_per_vol = cost_pars["Structure.cost_per_vol"]
         self.add_subsystem("coil_structure",
-                           StructureCost(),
+                           StructureCost(cost_per_volume=st_cost_per_vol),
                            promotes_outputs=["Cst"])
         # In the exact generomak, the structure volume is calculated.
         if not exact_generomak:
             self.promotes("coil_structure", inputs=["V_st"])
 
+        aux_cost_per_w = cost_pars["AuxHeating.cost_per_watt"]
         self.add_subsystem("aux_h",
-                           AuxHeatingCost(),
+                           AuxHeatingCost(cost_per_watt=aux_cost_per_w),
                            promotes_inputs=["P_aux"],
                            promotes_outputs=["C_aux"])
 
         # Assume the only 'fuel' is deuterium. Note: this leaves out Li, but
         # that's considered to be part of the blankets(?).
+        deu_cc = {"C_deu_per_kg": cost_pars["Deuterium.cost_per_mass"]}
         self.add_subsystem("ann_d_cost",
-                           DeuteriumCost(),
+                           DeuteriumCost(deuterium_cost_coeffs=deu_cc),
                            promotes_inputs=["P_fus", "f_av"])
 
         if exact_generomak:
@@ -1562,22 +1554,55 @@ class GeneromakCosting(om.Group):
             self.add_subsystem("misc", ivc, promotes_outputs=["C_fa"])
         else:
             # This allows a variation due to the price of buying deuterium.
+            misc_cc = {
+                'f_CR0': cost_pars["Finance.F_CR0"],
+                'C_misc': cost_pars["MiscReplacements.c_misc"]
+            }
             self.add_subsystem("misc",
-                               MiscReplacements(),
+                               MiscReplacements(misc_cost_coeffs=misc_cc),
                                promotes_outputs=["C_fa"])
             self.connect("ann_d_cost.C_deuterium", "misc.C_fuel")
 
-        self.add_subsystem("annual_aux",
-                           AnnualAuxHeatingCost(),
-                           promotes_inputs=["C_aux"],
-                           promotes_outputs=["C_aa"])
+        ann_aux_cc = {
+            'f_spares': cost_pars["AuxHeating.f_spares"],
+            'annual_aux_heating_factor': cost_pars["AuxHeating.ann_maint_fact"]
+        }
+        self.add_subsystem(
+            "annual_aux",
+            AnnualAuxHeatingCost(annual_aux_heating_costing=ann_aux_cc),
+            promotes_inputs=["C_aux"],
+            promotes_outputs=["C_aa"])
+
+        fi_cc = {
+            'c_Pt': cost_pars["FusionIsland.c_Pt"],
+            'd_Pt': cost_pars["ReferencePlant.d_Pt"],
+            'e_Pt': cost_pars["ReferencePlant.e_Pt"],
+            'm_pc': cost_pars["FusionIsland.m_pc"],
+            'm_sg': cost_pars["FusionIsland.m_sg"],
+            'm_st': cost_pars["FusionIsland.m_st"],
+            'm_aux': cost_pars["AuxHeating.f_spares"],
+            'fudge': cost_pars["FusionIsland.fudge"],
+        }
         self.add_subsystem(
             "fusion_island",
-            FusionIslandCost(),
+            FusionIslandCost(fusion_island_costing=fi_cc),
             promotes_inputs=["P_t", "Cpc", "Csg", "Cst", "C_aux"],
             promotes_outputs=["C_FI"])
+
+        cap_cc = {
+            'f_cont': cost_pars["CapitalCost.contingency"],
+            'c_e1': cost_pars["CapitalCost.c_e1"],
+            'c_e2': cost_pars["CapitalCost.c_e2"],
+            'c_e3': cost_pars["ReferencePlant.d_Pe"],
+            'd_Pt': cost_pars["ReferencePlant.d_Pt"],
+            'e_Pt': cost_pars["ReferencePlant.e_Pt"],
+            'c_V': cost_pars["CapitalCost.c_V"],
+            'd_V': cost_pars["CapitalCost.d_V"],
+            'e_V': cost_pars["CapitalCost.e_V"],
+            'fudge': cost_pars["CapitalCost.fudge"],
+        }
         self.add_subsystem("plant_capital",
-                           CapitalCost(),
+                           CapitalCost(capital_cost_coeffs=cap_cc),
                            promotes_inputs=["C_FI", "V_FI", "P_t"],
                            promotes_outputs=["C_D"])
         self.add_subsystem("capitalization_factor",
@@ -1592,21 +1617,43 @@ class GeneromakCosting(om.Group):
                            TotalCapitalCost(),
                            promotes_inputs=["C_D", "f_CAPO", "f_IND"],
                            promotes_outputs=["C_CO"])
+
+        ann_bl_cc = {
+            'f_failures': cost_pars["Blanket.f_failures"],
+            'f_spares': cost_pars["Blanket.f_spares"],
+            'F_CR0': cost_pars["Finance.F_CR0"],
+            'fudge': cost_pars["Blanket.fudge"],
+        }
         self.add_subsystem(
             "ann_blanket_cost",
-            AveragedAnnualBlanketCost(),
+            AveragedAnnualBlanketCost(blanket_cost_coeffs=ann_bl_cc),
             promotes_inputs=["f_av", "N_years", "p_wn", "C_bl", "F_wn"],
             promotes_outputs=["C_ba"])
+
+        ann_dv_cc = {
+            'f_failures': cost_pars["Divertor.f_failures"],
+            'f_spares': cost_pars["Divertor.f_spares"],
+            'F_CR0': cost_pars["Finance.F_CR0"],
+            'fudge': cost_pars["Divertor.fudge"],
+        }
         self.add_subsystem(
             "ann_divertor_cost",
-            AveragedAnnualDivertorCost(),
+            AveragedAnnualDivertorCost(divertor_cost_coeffs=ann_dv_cc),
             promotes_inputs=["f_av", "N_years", "p_tt", "C_tt", "F_tt"],
             promotes_outputs=["C_ta"])
+
         self.add_subsystem("fuel_cycle_cost",
                            FuelCycleCost(),
                            promotes_inputs=["C_ba", "C_ta", "C_aa", "C_fa"],
                            promotes_outputs=["C_F"])
-        self.add_subsystem("omcost", FixedOMCost(), promotes_outputs=["C_OM"])
+        fom_cc = {
+            "base_Pe": cost_pars["ReferencePlant.d_Pe"],
+            "base_OM": cost_pars["FixedOM.base_cost"],
+            "fudge": cost_pars["FixedOM.fudge"],
+        }
+        self.add_subsystem("omcost",
+                           FixedOMCost(fixed_om_cost_coeffs=fom_cc),
+                           promotes_outputs=["C_OM"])
 
         if exact_generomak:
             # use the _net_ electric generation only. This ignores the cost of
@@ -1622,9 +1669,14 @@ class GeneromakCosting(om.Group):
             self.promotes("plant_capital", inputs=["P_e"])
             self.promotes("omcost", inputs=["P_e"])
 
+        coe_cc = {
+            'F_CR0': cost_pars["Finance.F_CR0"],
+            'waste_charge': cost_pars["COE.waste_charge"],
+            'fudge': cost_pars["COE.fudge"],
+        }
         self.add_subsystem(
             "coe",
-            CostOfElectricity(),
+            CostOfElectricity(coe_cost_coeffs=coe_cc),
             promotes_inputs=["C_CO", "C_F", ("P_e", "P_net"), "f_av", "C_OM"],
             promotes_outputs=["COE"])
 

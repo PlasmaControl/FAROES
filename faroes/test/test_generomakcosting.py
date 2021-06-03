@@ -10,8 +10,17 @@ class TestFusionIslandCost(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
 
-        prob.model = gc.FusionIslandCost()
-
+        fi_cc = {
+            'c_Pt': 0.221,
+            'd_Pt': 4150,
+            'e_Pt': 0.6,
+            'm_pc': 1.5,
+            'm_sg': 1.25,
+            'm_st': 1.0,
+            'm_aux': 1.1,
+            'fudge': 1.0,
+        }
+        prob.model = gc.FusionIslandCost(fusion_island_costing=fi_cc)
         prob.setup(force_alloc_complex=True)
         prob.set_val("P_t", 2000, units="MW")
         prob.set_val("Cpc", 500, units="MUSD")
@@ -31,7 +40,7 @@ class TestAuxHeatingCost(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
 
-        prob.model = gc.AuxHeatingCost()
+        prob.model = gc.AuxHeatingCost(cost_per_watt=5.3)
 
         prob.setup(force_alloc_complex=True)
         prob.set_val("P_aux", 50, units="MW")
@@ -48,7 +57,8 @@ class TestPrimaryCoilSetCost(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
 
-        prob.model = gc.PrimaryCoilSetCost()
+        cost_per_vol = 1.66  # MUSD / m^3
+        prob.model = gc.PrimaryCoilSetCost(cost_per_volume=cost_per_vol)
 
         prob.setup(force_alloc_complex=True)
         prob.set_val("V_pc", 30, units="m**3")
@@ -65,7 +75,8 @@ class TestStructureCost(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
 
-        prob.model = gc.StructureCost()
+        cost_per_vol = 0.36  # MUSD / m^3
+        prob.model = gc.StructureCost(cost_per_volume=cost_per_vol)
 
         prob.setup(force_alloc_complex=True)
         prob.set_val("V_st", 30, units="m**3")
@@ -99,7 +110,8 @@ class TestBlanketCost(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
 
-        prob.model = gc.BlanketCost()
+        cost_per_vol = 0.75  # MUSD / m^3
+        prob.model = gc.BlanketCost(cost_per_volume=cost_per_vol)
 
         prob.setup(force_alloc_complex=True)
         prob.set_val("V_bl", 40, units="m**3")
@@ -116,7 +128,8 @@ class TestShieldWithGapsCost(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
 
-        prob.model = gc.ShieldWithGapsCost()
+        cost_per_vol = 0.29  # MUSD / m^3
+        prob.model = gc.ShieldWithGapsCost(cost_per_volume=cost_per_vol)
 
         prob.setup(force_alloc_complex=True)
         prob.set_val("V_sg", 40, units="m**3")
@@ -133,7 +146,8 @@ class TestDeuteriumCost(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
 
-        prob.model = gc.DeuteriumCost()
+        deu_cc = {"C_deu_per_kg": 10000.0}
+        prob.model = gc.DeuteriumCost(deuterium_cost_coeffs=deu_cc)
 
         prob.setup(force_alloc_complex=True)
         prob.set_val("P_fus", 1500, units="MW")
@@ -150,9 +164,19 @@ class TestDeuteriumCost(unittest.TestCase):
 class TestCapitalCost(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
-
-        prob.model = gc.CapitalCost()
-
+        cap_cc = {
+            'f_cont': 1.15,
+            'c_e1': 0.9,
+            'c_e2': 0.9,
+            'c_e3': 1200,
+            'd_Pt': 4150,
+            'e_Pt': 0.6,
+            'c_V': 0.839,
+            'd_V': 5100,
+            'e_V': 0.67,
+            'fudge': 1.0,
+        }
+        prob.model = gc.CapitalCost(capital_cost_coeffs=cap_cc)
         prob.setup(force_alloc_complex=True)
         prob.set_val("P_t", 2000, units="MW")
         prob.set_val("P_e", 1000, units="MW")
@@ -190,8 +214,15 @@ class TestFuelCycleCost(unittest.TestCase):
 class TestAveragedAnnualBlanketCost(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
+        ann_bl_cc = {
+            'f_failures': 1.1,
+            'f_spares': 1.1,
+            'F_CR0': 0.078,
+            'fudge': 1.0,
+        }
 
-        prob.model = gc.AveragedAnnualBlanketCost()
+        prob.model = gc.AveragedAnnualBlanketCost(
+            blanket_cost_coeffs=ann_bl_cc)
 
         prob.setup(force_alloc_complex=True)
 
@@ -212,8 +243,15 @@ class TestAveragedAnnualBlanketCost(unittest.TestCase):
 class TestAveragedAnnualDivertorCost(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
+        ann_dv_cc = {
+            'f_failures': 1.2,
+            'f_spares': 1.1,
+            'F_CR0': 0.078,
+            'fudge': 1.0,
+        }
 
-        prob.model = gc.AveragedAnnualDivertorCost()
+        prob.model = gc.AveragedAnnualDivertorCost(
+            divertor_cost_coeffs=ann_dv_cc)
 
         prob.setup(force_alloc_complex=True)
 
@@ -234,8 +272,13 @@ class TestAveragedAnnualDivertorCost(unittest.TestCase):
 class TestCostOfElectricity(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
+        coe_cc = {
+            'F_CR0': 0.078,
+            'waste_charge': 0.5,
+            'fudge': 1.0,
+        }
 
-        prob.model = gc.CostOfElectricity()
+        prob.model = gc.CostOfElectricity(coe_cost_coeffs=coe_cc)
 
         prob.setup(force_alloc_complex=True)
 
@@ -257,7 +300,12 @@ class TestFixedOMCost(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
 
-        prob.model = gc.FixedOMCost()
+        fom_cc = {
+            "base_Pe": 1200,
+            "base_OM": 108,
+            "fudge": 1.0,
+        }
+        prob.model = gc.FixedOMCost(fixed_om_cost_coeffs=fom_cc)
 
         prob.setup(force_alloc_complex=True)
 
@@ -275,7 +323,8 @@ class TestMiscReplacements(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
 
-        prob.model = gc.MiscReplacements()
+        misc_cc = {'f_CR0': 0.078, 'C_misc': 52.8}
+        prob.model = gc.MiscReplacements(misc_cost_coeffs=misc_cc)
 
         prob.setup(force_alloc_complex=True)
 
@@ -309,21 +358,22 @@ class TestTotalCapitalCost(unittest.TestCase):
         assert_check_partials(check)
 
 
-class IndirectChargesFactor(om.ExplicitComponent):
-    r"""Owner's cost proportional to construction time
+class TestIndirectChargesFactor(unittest.TestCase):
+    def setUp(self):
+        prob = om.Problem()
 
-    Equation (28) of [1]_.
+        prob.model = gc.IndirectChargesFactor()
 
-    Inputs
-    ------
-    T_constr : float
-        a, Construction time
+        prob.setup(force_alloc_complex=True)
 
-    Outputs
-    -------
-    f_IND : float
-        Indirect charges factor
-    """
+        prob.set_val("T_constr", 5, units="a")
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
 
 
 if __name__ == '__main__':
