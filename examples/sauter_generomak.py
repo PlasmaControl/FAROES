@@ -349,7 +349,7 @@ class Machine(om.Group):
         self.connect("geometry.blanket_sh.Shielding factor",
                      "maglife.Shielding factor")
 
-        costing = GeneromakCosting()
+        costing = GeneromakCosting(config=config)
         self.add_subsystem("costing", costing)
         self.connect("geometry.cryostat.V", "costing.V_FI")
         self.connect("magnet_quantities.V_set", "costing.V_pc")
