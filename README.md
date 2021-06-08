@@ -13,7 +13,7 @@ Fusion Analysis, Research, and Optimization for Energy Systems
 The latter three can be installed automatically using the `setup.py` file.
 
 # Installation
-Download the repo, `cd` to the folder and run `pip install -e setup.py`. 
+Download the repo, `cd` to the folder and run `pip install -e .`. This will download and install requirements and install FAROES in 'editable' mode.
 
 # Recommended packages
 The two below can be installed on linux using the script available here: https://github.com/OpenMDAO/build_pyoptsparse/
