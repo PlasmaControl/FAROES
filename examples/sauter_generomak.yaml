@@ -216,12 +216,9 @@ plasma:
     core radiated power fraction: {value: 0.8}
     power fraction to outer divertor: {value: 0.8}
     number of divertors: {value: 2}
-    poloidal tilt at plate: {value: 23.0, units: deg}
-    total B field incidence angle: {value: 1.0, units: deg}
-    poloidal flux expansion: {value: 22.0}
     SOL width multiplier: 1.0
 
-    divertor:
+    divertor geometry:
       model: LinearDelta
       # options:
       # SF: snowflake
@@ -239,4 +236,10 @@ plasma:
       # available options:
       #   poloidal angle
       #   total angle
-      peak heat flux model: poloidal angle
+    peak heat flux:
+      model: poloidal angle
+      poloidal angle:
+        poloidal flux expansion: {value: 22.0}
+        poloidal tilt at plate: {value: 23.0, units: deg}
+      total angle:
+        total B field incidence angle: {value: 1.0, units: deg}

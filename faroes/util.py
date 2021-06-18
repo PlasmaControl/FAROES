@@ -441,11 +441,11 @@ class OffsetCurveWithLimiter(om.ExplicitComponent):
         xo1 = x_o[case1]
         xo2 = x_o[case2]
 
-        dxo1n_dxmin = (np.exp(b * (x_min - xo1)) /
-                       (1 + np.exp(b * (x_min - xo1))))
+        dxo1n_dxmin = (np.exp(b * (x_min - xo1)) / (1 + np.exp(b *
+                                                               (x_min - xo1))))
         dxo1n_dxo1 = 1 - dxo1n_dxmin
-        dxo2n_dxo2 = (np.exp(b * (xo2 - x_min)) /
-                      (1 + np.exp(b * (xo2 - x_min))))
+        dxo2n_dxo2 = (np.exp(b * (xo2 - x_min)) / (1 + np.exp(b *
+                                                              (xo2 - x_min))))
         dxo2n_dxmin = 1 - dxo2n_dxo2
 
         dxo_dx[case1] = dxo1n_dxo1 * dxo_dx[case1]
@@ -684,6 +684,79 @@ class Softmax(om.ExplicitComponent):
 
         J['z', 'x'] = dz_dx
         J['z', 'y'] = dz_dy
+
+
+class PowerScalingLaw(om.ExplicitComponent):
+    r"""Configurable power scaling law
+
+    .. math::
+
+       \mathrm{out} / u_\mathrm{out} = c_0 (a/u_a)^{c_a} (b/u_b)^{c_b} \ldots
+
+    where :math:`c_0` is an initial constant, :math:`a, b` are variables,
+    :math:`u_a, u_b` are units of their respective variables, and
+    :math:`c_a, c_b` are power law exponents for their respective variables.
+
+    Input variables must be non-negative.
+    """
+    NEGATIVE_TERM = "Term '%s' is non-positive in " + \
+        "the scaling law calculation. Its value was %f."
+
+    def initialize(self):
+        self.options.declare("const", default="c0", types=str)
+        self.options.declare("output", default="out", types=str)
+        self.options.declare("ref", default=1.0, types=float)
+        self.options.declare("lower", default=0.0, types=float)
+        self.options.declare("terms", default=None, types=dict)
+        self.options.declare("term_units", default=None, types=dict)
+
+    def setup(self):
+        self.CONST = self.options["const"]
+        self.OUTPUT = self.options["output"]
+        ref = self.options["ref"]
+        lower = self.options["lower"]
+        terms = self.options["terms"].copy()
+        term_units = self.options["term_units"].copy()
+
+        for k in terms.keys():
+            if k != self.CONST:
+                self.add_input(k, units=term_units[k])
+
+        self.constant = terms.pop(self.CONST)
+        self.varterms = terms
+
+        self.add_output(self.OUTPUT,
+                        lower=lower,
+                        units=term_units[self.CONST],
+                        ref=ref)
+
+    def compute(self, inputs, outputs):
+        out = self.constant
+
+        for k, v in self.varterms.items():
+            term = inputs[k]
+            if term <= 0:
+                raise om.AnalysisError(self.NEGATIVE_TERM % (k, term))
+            out *= term**v
+
+        outputs[self.OUTPUT] = out
+
+    def setup_partials(self):
+        for k in self.varterms.keys():
+            self.declare_partials(self.OUTPUT, k)
+
+    def partial(self, inputs, J, var):
+        doutdv = self.constant
+        for k, v in self.varterms.items():
+            if k != var:
+                doutdv *= inputs[k]**v
+            else:
+                doutdv *= v * inputs[k]**(v - 1)
+        J[self.OUTPUT, var] = doutdv
+
+    def compute_partials(self, inputs, J):
+        for k in self.varterms.keys():
+            self.partial(inputs, J, k)
 
 
 class PolygonalTorusVolume(om.ExplicitComponent):

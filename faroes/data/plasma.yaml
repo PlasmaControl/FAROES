@@ -29,12 +29,20 @@ SOL:
   core radiated power fraction: {value: 0.8}
   power fraction to outer divertor: {value: 0.8}
   number of divertors: {value: 2}
-  poloidal tilt at plate: {value: 23.0, units: deg}
-  total B field incidence angle: {value: 1.0, units: deg}
-  poloidal flux expansion: {value: 22.0}
+  # options are:
+  # Goldston HD
+  # Horacek A1
+  # Horacek D1
+  # Horacek D2
+  # Horacek F2
+  # Horacek P1
+  # Eich Eq7
+  # Eich Reg14
+  # User
+  heat flux decay length model: Goldston HD
   SOL width multiplier: 1.0
 
-  divertor:
+  divertor geometry:
     model: SF
     # options:
     # SF: snowflake
@@ -51,7 +59,13 @@ SOL:
       outer-inner width: 0.25
       delta factor: 1.0
 
-    # available options:
-    #   poloidal angle
-    #   total angle
-    peak heat flux model: poloidal angle
+  # available options:
+  #   poloidal angle
+  #   total angle
+  peak heat flux:
+    model: poloidal angle
+    poloidal angle:
+      poloidal flux expansion: {value: 22.0}
+      poloidal tilt at plate: {value: 23.0, units: deg}
+    total angle:
+      total B field incidence angle: {value: 1.0, units: deg}

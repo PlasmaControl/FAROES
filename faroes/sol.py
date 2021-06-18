@@ -2,6 +2,7 @@ import openmdao.api as om
 from faroes.configurator import UserConfigurator, Accessor
 from scipy.constants import pi
 from scipy.constants import kilo
+from faroes.util import PowerScalingLaw
 
 import numpy as np
 
@@ -27,6 +28,10 @@ class SOLProperties(om.Group):
     f_fluxexp : float
         Poloidal flux expansion factor
     """
+    POLOIDAL_ANGLE_MODEL = "poloidal angle"
+    TOTAL_ANGLE_MODEL = "total angle"
+    BAD_MODEL = "Only 'poloidal angle' and 'total angle' are supported"
+
     def initialize(self):
         self.options.declare("config", default=None)
 
@@ -51,21 +56,32 @@ class SOLProperties(om.Group):
                        "power fraction to outer divertor",
                        component_name="f_outer")
 
-        acc.set_output(ivc,
-                       f,
-                       "poloidal tilt at plate",
-                       component_name="θ_pol",
-                       units="rad")
-        acc.set_output(ivc,
-                       f,
-                       "total B field incidence angle",
-                       component_name="θ_tot",
-                       units="rad")
-        acc.set_output(ivc,
-                       f,
-                       "poloidal flux expansion",
-                       component_name="f_fluxexp")
         acc.set_output(ivc, f, "SOL width multiplier")
+
+        loc = ["plasma", "SOL", "peak heat flux"]
+        config = self.options["config"].accessor(loc)
+        model = config(["model"])
+
+        if model == self.POLOIDAL_ANGLE_MODEL:
+            f = acc.accessor(loc + [model])
+            acc.set_output(ivc,
+                           f,
+                           "poloidal tilt at plate",
+                           component_name="θ_pol",
+                           units="rad")
+            acc.set_output(ivc,
+                           f,
+                           "poloidal flux expansion",
+                           component_name="f_fluxexp")
+        elif model == self.TOTAL_ANGLE_MODEL:
+            f = acc.accessor(loc + [model])
+            acc.set_output(ivc,
+                           f,
+                           "total B field incidence angle",
+                           component_name="θ_tot",
+                           units="rad")
+        else:
+            raise ValueError(self.BAD_MODEL)
         self.add_subsystem("ivc", ivc, promotes=["*"])
 
 
@@ -126,7 +142,8 @@ class StrikePointRadius(om.ExplicitComponent):
         self.add_input("R0", units="m")
         self.add_input("a", units="m")
         self.add_input("δ", val=0)
-        config = self.options["config"].accessor(["plasma", "SOL", "divertor"])
+        config = self.options["config"].accessor(
+            ["plasma", "SOL", "divertor geometry"])
         model = config(["model"])
         self.model = model
         if model == "SFD" or model == "SF":
@@ -193,6 +210,223 @@ class StrikePointRadius(om.ExplicitComponent):
             pass
 
 
+class HoracekSOLWidth(om.Group):
+    r"""The outer midplane heat flux width
+
+    .. math ::
+
+       \lambda_q^\mathrm{omp} / \mathrm{mm} = C_0
+          \left(R_0/\mathrm{m}\right)^{C_{R}}
+          \left(\epsilon\right)^{C_{\epsilon}}
+          \left(S_c/\mathrm{m}^2\right)^{C_{S_c}}
+          \left(S_{LCFS}/\mathrm{m}^2\right)^{C_{S_{LCFS}}}
+          \left(B_\phi/\mathrm{T}\right)^{C_{B_{\phi}}}
+          \left(I_p/\mathrm{MA}\right)^{C_{I_p}}
+          \left(q_{95}\right)^{C_{q95}}
+          \left(q_\mathrm{cyl}\right)^{C_{q_{cyl}}}
+          \left(P_\mathrm{SOL}/\mathrm{MW}\right)^{C_{P_{SOL}}}
+          \left(f_\mathrm{Gw}\right)^{C_{f_{Gw}}}
+          \left(\frac{\left<p\right>\right}{\mathrm{atm})^{C_{\left<p\right>}}
+
+    This Component constructs a power law equation based on a set of exponents
+    from a configuration file. Not all the possible inputs (which depend on the
+    choice of scaling law) will be constructed.
+
+    Inputs
+    ------
+    R0 : float
+        m, major radius.
+    ε : float
+        Inverse aspect ratio.
+    S_c : float
+        m**2, Cross sectional area of the plasma.
+    S_LCFS : float
+        m**2, Outer surface area of LCFS.
+    Bφ : float
+        T, vacuum toroidal field.
+    Ip : float
+        MA, Plasma current.
+    B_pol : float
+        T, Poloidal field at the outer midplane
+    q95 : float
+        Near-edge safety factor.
+    q_cyl : float
+        Cylindrical safety factor. Also called q*.
+    P_sol : float
+        MW, Non-radiation power through the LCFS.
+    f_Gw: float
+        Greenwald fraction.
+    <p> : float
+        atm, average plasma pressure.
+
+    Outputs
+    -------
+    λq : float
+        mm, Outer midplane heat flux decay length
+
+    References
+    ----------
+    .. [1] Horacek, J. et al.
+       Scaling of L-Mode Heat Flux for ITER and COMPASS-U Divertors,
+       Based on Five Tokamaks.
+       Nucl. Fusion 2020, 60 (6), 066016.
+       https://doi.org/10.1088/1741-4326/ab7e47.
+
+    Notes
+    -----
+    Developer notes: this class structure is somewhat copied from
+    the confinement time law. The two could be generalized and united.
+    """
+
+    CONST = "c0"
+    BAD_TERM = """Unknown term '%s' in SOL power width scaling.
+    Valid terms are %s """
+    NEGATIVE_TERM = "Term '%s' is non-positive in " + \
+        "_the confinement time calculation. Its value was %f."
+
+    def initialize(self):
+        self.options.declare("config", default=None)
+
+    def setup(self):
+        self.OUTPUT = "λq"
+
+        config = self.options["config"]
+        model_acc = config.accessor(["plasma", "SOL"])
+        scaling = model_acc(["heat flux decay length model"])
+
+        fit_acc = config.accessor(["fits", "heat flux decay length"])
+        terms = fit_acc([scaling]).copy()
+
+        valid_terms = {
+            self.CONST: "mm",
+            "R0": "m",
+            "ε": None,
+            "S_c": "m**2",
+            "S_LCFS": "m**2",
+            "Bφ": "T",
+            "Ip": "A",
+            "B_pol": "T",
+            "q95": None,
+            "q_cyl": None,
+            "P_sol": "MW",
+            "f_Gw": None,
+            "<p>": "atm",
+        }
+
+        for k, v in terms.items():
+            if k not in valid_terms.keys():
+                raise ValueError(self.BAD_TERM % (k, valid_terms))
+
+        self.add_subsystem("law",
+                           PowerScalingLaw(terms=terms,
+                                           term_units=valid_terms,
+                                           const=self.CONST,
+                                           output=self.OUTPUT,
+                                           lower=1e-3),
+                           promotes_inputs=["*"],
+                           promotes_outputs=["*"])
+
+        # Send terms that are not in the scaling law to an 'ignore' function
+
+        # some terms must be renamed because greek, etc, is not compabile with
+        # ExecComps
+        renames = {"ε": "epsilon", "<p>": "p_avg"}
+        ignore_terms = {}
+        ignore_equation = "ignore = 0.0"
+        promotes_list = []
+        for k, v in valid_terms.items():
+            if k != self.CONST and k not in terms.keys():
+                kp = k
+                if k in renames.keys():
+                    kp = renames[k]
+                    promotes_list += [(kp, k)]
+                ignore_terms[kp] = {"units": valid_terms[k]}
+                ignore_equation += " + 0.0 * " + kp
+
+        promotes_list.append("*")
+
+        if len(ignore_terms) > 0:
+            self.add_subsystem("ignore",
+                               om.ExecComp([ignore_equation], **ignore_terms),
+                               promotes_inputs=promotes_list)
+
+
+class SpreadingWidthEstimate(om.ExplicitComponent):
+    r"""Integral heat flux spreading width
+
+    This is a rough estimate for the heat flux spreading.
+    I just take it as half of λq.
+    """
+    def setup(self):
+        self.add_input("λq", units='mm')
+        self.add_output("S", val=0, units='mm')
+        self.const = 0.5
+
+    def compute(self, inputs, outputs):
+        outputs["S"] = self.const * inputs["λq"]
+
+    def setup_partials(self):
+        self.declare_partials("S", "λq", val=self.const)
+
+
+class LambdaInt(om.ExplicitComponent):
+    r"""The integral SOL power flux width
+
+    This quantity is in units of width-at-the-midplane
+    and is inversely proportional to peak heat fluxes on the target.
+
+    .. math::
+
+       \lambda_\mathrm{int} = \lambda_q + 1.64 S
+
+    Inputs
+    ------
+    λq : float
+        mm, Power flux width at the midplane
+    S : float
+        mm, Width of a gaussian spreading parameter
+    Inputs
+    ------
+    λint : float
+        mm, 'Integral' power flux width at midplane
+
+    Notes
+    -----
+    This is an approximation for the peak heat flux of the Eich fitting
+    function [2]_. It is derived in the appendix of [1]_. Eich's work
+    addresses H-mode SOL physics.
+
+    References
+    ----------
+    .. [1] Makowski, M. A., et al.
+       Analysis of a Multi-Machine Database on Divertor Heat Fluxes.
+       Physics of Plasmas 2012, 19 (5), 056122.
+       https://doi.org/10.1063/1.4710517.
+
+    .. [2] Eich, T.; Sieglin, B.; Scarabosio, A.; Fundamenski, W.;
+       Goldston, R. J.; Herrmann, A.; ASDEX Upgrade Team.
+       Inter-ELM Power Decay Length for JET and ASDEX Upgrade:
+       Measurement and Comparison with Heuristic Drift-Based Model.
+       Physical Review Letters 2011, 107 (21).
+       https://doi.org/10.1103/PhysRevLett.107.215001.
+    """
+    def setup(self):
+        self.add_input("λq", units="mm")
+        self.add_input("S", val=0.0, units="mm")
+        self.add_output("λint", units="mm", lower=1e-4)
+        self.const = 1.64
+
+    def compute(self, inputs, outputs):
+        λq = inputs["λq"]
+        S = inputs["S"]
+        outputs["λint"] = λq + self.const * S
+
+    def setup_partials(self):
+        c = self.const
+        self.declare_partials("λint", "λq", val=1)
+        self.declare_partials("λint", "S", val=c)
+
+
 class GoldstonHDSOL(om.ExplicitComponent):
     r"""
 
@@ -233,7 +467,7 @@ class GoldstonHDSOL(om.ExplicitComponent):
     Bt : float
         T, Vacuum toroidal field on-axis
     Ip : float
-        MA, Plasma current
+        A, Plasma current
     P_sol : float
         W, Power into SOL
     Z_eff : float
@@ -248,8 +482,8 @@ class GoldstonHDSOL(om.ExplicitComponent):
     T_sep : float
         eV, Midplane seperatrix temperature
     λ : float
-        mm, SOL width, assuming that ion magnetic drift determines the net
-        particle transport
+        mm, midplane integral SOL width,
+        assuming that ion magnetic drift determines the net particle transport
 
     References
     ----------
@@ -341,7 +575,7 @@ class PeakHeatFlux(om.ExplicitComponent):
     Notes
     -----
     Which model is used is configured via
-    :code:`plasma:SOL:divertor:peak heat flux model`
+    :code:`plasma:SOL:divertor:peak heat flux:model`
     and the choices are either :code:`poloidal angle` or :code:`total angle`.
 
     Inputs
@@ -357,8 +591,8 @@ class PeakHeatFlux(om.ExplicitComponent):
     f_fluxexp : float
         Factor by which power is spread out due to flux expansion.
         (Typically greater than 1.)
-    λ_sol : float
-        m, SOL width
+    λ_int : float
+        m, Integral SOL width
     q_star : float
         Normalized safety factor
     θ_pol : float
@@ -374,8 +608,9 @@ class PeakHeatFlux(om.ExplicitComponent):
     q_max : float
         MW/m**2, Peak heat flux
     """
-    POLOIDAL_ANGLE_MODEL = 1
-    TOTAL_ANGLE_MODEL = 2
+    POLOIDAL_ANGLE_MODEL = "poloidal angle"
+    TOTAL_ANGLE_MODEL = "total angle"
+    MODELS = [POLOIDAL_ANGLE_MODEL, TOTAL_ANGLE_MODEL]
     BAD_MODEL = "Only 'poloidal angle' and 'total angle' are supported"
 
     def initialize(self):
@@ -385,21 +620,19 @@ class PeakHeatFlux(om.ExplicitComponent):
         if self.options['config'] is None:
             raise ValueError("PeakHeatFlux requries a config file")
 
-        config = self.options["config"].accessor(["plasma", "SOL", "divertor"])
-        model = config(["peak heat flux model"])
-        if model == "poloidal angle":
-            self.model = self.POLOIDAL_ANGLE_MODEL
-        elif model == "total angle":
-            self.model = self.TOTAL_ANGLE_MODEL
-        else:
+        config = self.options["config"].accessor(["plasma", "SOL"])
+        model = config(["peak heat flux", "model"])
+        if not any(model == m for m in self.MODELS):
             raise ValueError(self.BAD_MODEL)
+        else:
+            self.model = model
 
         self.add_input("R_strike", units="m")
         self.add_input("κ")
         self.add_input("P_sol", units="MW")
         self.add_input("f_outer")
         self.add_input("f_fluxexp")
-        self.add_input("λ_sol", units="mm")
+        self.add_input("λ_int", units="mm")
         self.add_input("q_star")
         self.add_input("θ_pol", units="rad")
         self.add_input("θ_tot", units="rad")
@@ -413,7 +646,7 @@ class PeakHeatFlux(om.ExplicitComponent):
         P_sol = inputs["P_sol"]
         f_out = inputs["f_outer"]
         f_fluxexp = inputs["f_fluxexp"]
-        λ_sol = inputs["λ_sol"] / kilo
+        λ_int = inputs["λ_int"] / kilo
         q_star = inputs["q_star"]
         θ_pol = inputs["θ_pol"]
         θ_tot = inputs["θ_tot"]
@@ -421,18 +654,18 @@ class PeakHeatFlux(om.ExplicitComponent):
 
         if self.model == self.POLOIDAL_ANGLE_MODEL:
             q_max = P_sol * f_out * np.sin(θ_pol) / (N_div * 2 * pi * Rs *
-                                                     f_fluxexp * λ_sol)
+                                                     f_fluxexp * λ_int)
             outputs["q_max"] = q_max
         elif self.model == self.TOTAL_ANGLE_MODEL:
             q_max = P_sol * q_star * np.sin(θ_tot) * f_out / (N_div * 2 * pi *
-                                                              Rs * κ * λ_sol)
+                                                              Rs * κ * λ_int)
             outputs["q_max"] = q_max
         else:
             raise ValueError(self.BAD_MODEL)
 
     def setup_partials(self):
         self.declare_partials("q_max",
-                              ["R_strike", "P_sol", "f_outer", "λ_sol"],
+                              ["R_strike", "P_sol", "f_outer", "λ_int"],
                               method="cs")
         self.declare_partials("q_max", ["N_div"], method="cs")
         if self.model == self.POLOIDAL_ANGLE_MODEL:
@@ -469,18 +702,51 @@ class SOLAndDivertor(om.Group):
                            StrikePointRadius(config=config),
                            promotes_inputs=["*"],
                            promotes_outputs=["R_strike"])
-        self.add_subsystem("HD",
-                           GoldstonHDSOL(),
-                           promotes_inputs=["*"],
-                           promotes_outputs=["T_sep", ("λ", "λ_HD")])
-        self.add_subsystem("lambda_q",
-                           om.ExecComp("lambda_q = lambda_q_HD * fudge_factor",
-                                       lambda_q={"units": "mm"},
-                                       lambda_q_HD={"units": "mm"}),
-                           promotes_inputs=[("lambda_q_HD", "λ_HD"),
+
+        model_accessor = config.accessor(["plasma", "SOL"])
+        model = model_accessor(["heat flux decay length model"])
+        if model == "Goldston HD":
+            self.add_subsystem("power_sol_width",
+                               GoldstonHDSOL(),
+                               promotes_inputs=["*"],
+                               promotes_outputs=["T_sep", ("λ", "λq")])
+
+            # make an 'ignore' subsystem to catch unused variables
+            ignore_eq = "ignore = 0 * (eps + p_avg + f_Gw + B_pol + q95 + S_c)"
+            self.add_subsystem("ignore",
+                               om.ExecComp([ignore_eq],
+                                           p_avg={'units': 'atm'},
+                                           B_pol={'units': 'T'},
+                                           S_c={'units': 'm**2'}),
+                               promotes_inputs=[("eps", "ε"), ("p_avg", "<p>"),
+                                                "*"])
+
+        else:
+            self.add_subsystem("power_sol_width",
+                               HoracekSOLWidth(config=config),
+                               promotes_inputs=[("Bφ", "Bt"),
+                                                ("q_cyl", "q_star"), "*"],
+                               promotes_outputs=["λq"])
+            # For consistency with Menard,
+            # the spreading of the Goldston HD model is 0
+            self.add_subsystem("spreading",
+                               SpreadingWidthEstimate(),
+                               promotes_inputs=["λq"],
+                               promotes_outputs=["S"])
+
+        self.add_subsystem("integral_sol_width",
+                           LambdaInt(),
+                           promotes_inputs=["λq", "S"],
+                           promotes_outputs=["λint"])
+
+        self.add_subsystem("lambda_int",
+                           om.ExecComp("lambda_out = lambda_in * fudge_factor",
+                                       lambda_in={"units": "mm"},
+                                       lambda_out={"units": "mm"}),
+                           promotes_inputs=[("lambda_in", "λint"),
                                             ("fudge_factor",
                                              "SOL width multiplier")],
-                           promotes_outputs=[("lambda_q", "λ_sol")])
+                           promotes_outputs=[("lambda_out", "λ_int")])
         self.add_subsystem("peak_heat_flux",
                            PeakHeatFlux(config=config),
                            promotes_inputs=["*"],
@@ -497,10 +763,25 @@ if __name__ == "__main__":
     prob.set_val("κ", 2.74)
     prob.set_val("R0", 3.0, units="m")
     prob.set_val("a", 1.875, units="m")
+    prob.set_val("ε", 0.625)
+    prob.set_val("f_Gw", 0.8)
     prob.set_val("Bt", 2.094, units="T")
     prob.set_val("Ip", 14.67, units="MA")
     prob.set_val("P_heat", 119.06, units="MW")
     prob.set_val("q_star", 3.56)
+
+    # ITER numbers for validation with Horacek
+    prob.set_val("Bt", 5.3, units="T")
+    prob.set_val("B_pol", 1.14, units="T")
+    prob.set_val("<p>", 0.86, units='atm')
+    prob.set_val("q95", 1.7)
+    prob.set_val("q_star", 1.6)
+    prob.set_val("ε", 0.28)
+    prob.set_val("Ip", 12.00, units="MA")
+    prob.set_val("S_c", 13.8, units="m**2")
+    prob.set_val("f_Gw", 0.33)
+    prob.set_val("R0", 6.5, units="m")
+    prob.set_val("P_heat", 90.0, units="MW")
 
     prob.run_driver()
 

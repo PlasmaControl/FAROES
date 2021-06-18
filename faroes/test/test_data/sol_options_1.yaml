@@ -1,6 +1,6 @@
 plasma:
   SOL:
-    divertor:
+    divertor geometry:
       model: SF
       # options:
       # SF: snowflake
@@ -11,4 +11,5 @@ plasma:
       SXD:
         outer strike point radius multiplier:
           value: 1.6
-      peak heat flux model: poloidal angle
+    peak heat flux:
+      model: poloidal angle

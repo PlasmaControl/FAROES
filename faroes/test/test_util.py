@@ -349,6 +349,37 @@ class TestSoftmax(unittest.TestCase):
         assert_near_equal(z, expected, tolerance=1e-6)
 
 
+class TestPowerScalingLaw(unittest.TestCase):
+    def setUp(self):
+
+        prob = om.Problem()
+        terms = {'c0': 10.0, 'a': 2, 'b': 0.5}
+        term_units = {'c0': 'mm', 'a': 'm', 'b': 'T'}
+        output = 'cow'
+
+        psl = util.PowerScalingLaw(terms=terms,
+                                   term_units=term_units,
+                                   output=output)
+
+        prob.model = psl
+        prob.setup(force_alloc_complex=True)
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+    def test_values(self):
+        prob = self.prob
+        prob.set_val("a", 2, units='m')
+        prob.set_val("b", 4, units='T')
+        prob.run_driver()
+        expected = 80
+        y = prob.get_val("cow", units="mm")
+        assert_near_equal(y, expected, tolerance=1e-5)
+
+
 class TestPolygonalTorusVolume(unittest.TestCase):
     def setUp(self):
         x = [2, 2, 1, 1]

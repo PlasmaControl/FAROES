@@ -62,3 +62,51 @@ no-wall β_N scaling with ε:
   # This is a 'special key' that chooses the Menard Hybrid scaling.
   MenardHybrid:
     value: {}
+
+
+# midplane heat flux decay length, λq
+# Terms:
+#    <p> in atm
+#    Ip in MA
+#    S_c in m^2
+#    Bφ in T
+#    B_pol in T
+#    S_LCFS in m^2
+#    P_sol in MW
+#    R0 in m
+#    β is dimensionless; is βT0 = 2μ0 <p>/B0^2
+heat flux decay length:
+  Horacek A1:
+    value: {c0: 1.82, q95: -0.43, "<p>": -0.48}
+    reference: >
+      Horacek, J. et al.
+      Scaling of L-Mode Heat Flux for ITER and COMPASS-U Divertors,
+      Based on Five Tokamaks.
+      Nucl. Fusion 2020, 60 (6), 066016.
+      https://doi.org/10.1088/1741-4326/ab7e47.
+  Horacek D1:
+    value: {c0: 2800, ε: 1.03, f_Gw: 0.48, Ip: -0.35, S_c: 0.35}
+  Horacek D2:
+    value: {c0: 27.5, Bφ: -0.19, q_cyl: 0.28, ε: 1.11, f_Gw: 0.71}
+  Horacek F2:
+    value: {c0: 12.1, Bφ: -0.2, q95: 0.52, ε: 0.42, f_Gw: 0.9}
+  Eich Eq7: &horacekP1
+    value: {c0: 1.37, Bφ: -0.55, P_sol: 0.2, q_cyl: 1.17, R0: 0.1}
+    reference: >
+      Eich, T., et al. Empiricial Scaling of Inter-ELM Power Widths in ASDEX Upgrade and JET.
+      Journal of Nuclear Materials 2013, 438, S72–S77.
+      https://doi.org/10.1016/j.jnucmat.2013.01.011.
+  # This is an H-mode power width.
+  Eich Reg14:
+    value: {c0: 0.63, B_pol: -1.19}
+    reference: >
+      Table 3, Regression 14 of
+      Eich, T. et al.
+      Scaling of the Tokamak near the Scrape-off Layer H-Mode Power Width
+      and Implications for ITER.
+      Nuclear Fusion 2013, 53 (9), 093031.
+      https://doi.org/10.1088/0029-5515/53/9/093031.
+  # Horacek's P1 is a Eich's Eq7
+  Horacek P1: *horacekP1
+  User:
+    value: {}

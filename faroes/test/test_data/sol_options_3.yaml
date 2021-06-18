@@ -1,6 +1,6 @@
 plasma:
   SOL:
-    divertor:
+    divertor geometry:
       model: LinearDelta
       # options:
       # SF: snowflake
@@ -16,4 +16,5 @@ plasma:
         outer-inner width: 0.25
         delta factor: 1
 
-      peak heat flux model: total angle
+    peak heat flux:
+      model: total angle
