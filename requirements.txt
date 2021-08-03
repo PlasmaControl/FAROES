@@ -1,4 +1,4 @@
-openmdao[all] >= 3.8
+openmdao[all] == 3.9
 Sphinx >= 3.3.0
 sphinx-automodapi >= 0.13
 ruamel.yaml >= 0.16
