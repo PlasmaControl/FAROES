@@ -10,6 +10,7 @@ Welcome to FAROES's documentation!
    plasma
    sol
    magnets
+   radiation
 
 This is a test
 
