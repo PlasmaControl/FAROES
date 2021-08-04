@@ -6,7 +6,7 @@ Fusion Analysis, Research, and Optimization for Energy Systems
 # Installation requirements
 * `numpy`
 * `scipy`
-* `openmdao >= 3.8.0`. Can be installed with `pip install openmdao[all]`.
+* `openmdao == 3.9.0`. Can be installed with `pip install "openmdao[all]==3.9.0"`.
 * `ruamel >= 0.16`, a yaml parser.
 * [plasmapy](https://www.plasmapy.org/).
 
