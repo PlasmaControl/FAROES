@@ -27,6 +27,4 @@ Convenience Groups
 
 .. autoclass:: faroes.elliptical_plasma.MenardPlasmaGeometry
 
-.. autoclass:: faroes.sauter_plasma.SauterPlasmaGeometry
-
 .. autoclass:: faroes.sauter_plasma.SauterPlasmaGeometryMarginalKappa

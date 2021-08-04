@@ -249,7 +249,7 @@ class Bremsstrahlung(om.Group):
     r"""
 
     Computes the Bremsstrahlung radiation for a plasma distribution based on
-    the profile and triangularity functions. 
+    the profile and triangularity functions.
 
     Notes
     ------

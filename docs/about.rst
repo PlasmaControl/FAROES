@@ -1,6 +1,6 @@
-#######
+######
 FAROES
-#######
+######
 
 FAROES stands for Fusion Analysis, Research, and Optimization for Energy Systems.
 

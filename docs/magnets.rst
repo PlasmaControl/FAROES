@@ -1,10 +1,15 @@
 TF magnets
 ==========
 
-Magnet Geometry
----------------
+Inboard Magnet Geometry
+-----------------------
 
-.. autoclass:: faroes.simple_tf_magnet.MagnetGeometry
+.. autoclass:: faroes.simple_tf_magnet.InboardMagnetGeometry
+
+Outboard Magnet Geometry
+------------------------
+
+.. autoclass:: faroes.simple_tf_magnet.OutboardMagnetGeometry
 
 MagnetCurrent
 -------------
