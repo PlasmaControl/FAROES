@@ -1,38 +1,40 @@
+from faroes.sauter_plasma import SauterGeometry
+import faroes.units  # noqa: F401
+
 import openmdao.api as om
 from scipy.constants import pi
-from faroes.sauter_plasma import SauterGeometry
-from numpy import exp, linspace
+import numpy as np
 
 
 class SynchrotronFit(om.ExplicitComponent):
-    r"""Transparency factor computation for use in Synchrotron
+    r"""Estimated transparency factor for Synchrotron radiation
 
     Inputs
     ------
     A : float
-        None, Aspect ratio (R0 / a0)
+        Aspect ratio (R0 / a0)
     a0 : float
         m, minor radius
     κ : float
-        None, Elongation of plasma distribution
+        Elongation of plasma distribution
 
     αn : float
-        None, exponent in density profile (peaking parameter)
+        Exponent in density profile (peaking parameter)
     αT : float
-        None, exponent in temperature profile (peaking parameter)
+        Exponent in temperature profile (peaking parameter)
     βT : float
-        None, exponent for ρ in temperature profile (peaking parameter)
+        Exponent for ρ in temperature profile (peaking parameter)
 
     Bt : float
         T, toroidal magnetic field
     pa : float
-        None, optical thickness of plasma
+        Optical thickness of the plasma
     r : float
-        None, wall reflectivity
+        Wall reflectivity
     n0 : float
-        10**20 * m**(-3), density at center
+        n20, Density on axis
     T0 : float
-        keV, temperature at center
+        keV, Temperature on axis
 
 
     Outputs
@@ -53,15 +55,13 @@ class SynchrotronFit(om.ExplicitComponent):
     Note that here the edge electron temperature, Ta, is fixed to 1 keV.
     This profile is similar to the pedestal profile with the pedestal
     at the edge.
-    The optical thickness of the plasma, as given in [1]_, is
-
-    .. math::
-
-       p_a = 6.04 \times 10^3 \frac{an_0}{B_t}.
 
     References
     ----------
-    .. [1] F. Albajar et al 2001 Nucl. Fusion 41 665
+    .. [1] Albajar, F.; Johner, J.; Granata, G.
+       Improved Calculation of Synchrotron Radiation Losses in Realistic
+       Tokamak Plasmas. Nucl. Fusion 2001, 41 (6), 665–678.
+       https://doi.org/10.1088/0029-5515/41/6/301.
 
     """
 
@@ -77,7 +77,7 @@ class SynchrotronFit(om.ExplicitComponent):
         self.add_input("Bt", units="T", desc="toroidal magnetic field")
         self.add_input("pa", desc="optical thickness")
         self.add_input("r", desc="wall reflectivity")
-        self.add_input("n0", units="10**20 * m**(-3)", desc="center density")
+        self.add_input("n0", units="n20", desc="center density")
         self.add_input("T0", units="keV", desc="center temperature")
 
         self.add_output("P", units="MW", desc="transparency factor")
@@ -100,7 +100,7 @@ class SynchrotronFit(om.ExplicitComponent):
         term1 = (αn + 3.87 * αT + 1.46)**(-0.79) * (1.98 + αT)**1.36 * βT**2.14
         term2 = (βT**1.53 + 1.87 * αT - 0.16)**(-1.33)
         K = term1 * term2
-        G = 0.93 * (1 + 0.85 * exp(-0.82 * A))
+        G = 0.93 * (1 + 0.85 * np.exp(-0.82 * A))
         factor1 = 3.84 * 10**(-8) * (1 - r)**(1 / 2) * A * a0**(2.38) * κ**0.79
         factor2 = Bt**2.62 * n0**0.38 * T0 * (16 + T0)**2.61
         factor3 = (1 + 0.12 * T0 / pa**0.41)**(-1.51)
@@ -129,13 +129,13 @@ class SynchrotronFit(om.ExplicitComponent):
         term1 = (αn + 3.87 * αT + 1.46)**(-0.79) * (1.98 + αT)**1.36 * βT**2.14
         term2 = (βT**1.53 + 1.87 * αT - 0.16)**(-1.33)
         K = term1 * term2
-        G = 0.93 * (1 + 0.85 * exp(-0.82 * A))
+        G = 0.93 * (1 + 0.85 * np.exp(-0.82 * A))
         factor1 = 3.84 * 10**(-8) * (1 - r)**(1 / 2) * A * a0**(2.38) * κ**0.79
         factor2 = Bt**2.62 * n0**0.38 * T0 * (16 + T0)**2.61
         factor3 = (1 + 0.12 * T0 / pa**0.41)**(-1.51)
 
         a1 = 3.84 * 10**(-8) * (1 - r)**(1 / 2) * a0**(2.38) * κ**0.79
-        g1 = 0.93 * 0.85 * -0.82 * exp(-0.82 * A)
+        g1 = 0.93 * 0.85 * -0.82 * np.exp(-0.82 * A)
         J["P", "A"] = (a1 * G + factor1 * g1) * factor2 * factor3 * K
 
         f1 = 3.84 * 10**(-8) * (1 - r)**(0.5) * A * 2.38 * a0**(1.38) * κ**0.79
@@ -179,7 +179,7 @@ class SynchrotronFit(om.ExplicitComponent):
 
 
 class Synchrotron(om.Group):
-    r"""Model for synchrotron radiation for elliptical plasma (no triangularity)
+    r"""Model for synchrotron radiation
 
     Notes
     -----
@@ -193,22 +193,28 @@ class Synchrotron(om.Group):
 
     where K and G are profile and aspect ratio factors, respectively.
 
-    Implements previously-mentioned equation for optical thickness based on
-    input values.
+    The optical thickness of the plasma, as given in [1]_, is
+
+    .. math::
+
+       p_a = 6.04 \times 10^3 \frac{an_0}{B_t}.
+
     In this group, additional option for implementation of triangularity is
     implemented. This is based on the potentially plausible assumption that the
     relationship between synchrotron power and surface area is approximately
-    linear.
+    linear. This should challenged and tested in further work.
 
     References
     ----------
-    .. [1] F. Albajar et al 2001 Nucl. Fusion 41 665
+    .. [1] Albajar, F.; Johner, J.; Granata, G.
+       Improved Calculation of Synchrotron Radiation Losses in Realistic
+       Tokamak Plasmas. Nucl. Fusion 2001, 41 (6), 665–678.
+       https://doi.org/10.1088/0029-5515/41/6/301.
 
     """
 
     def initialize(self):
-        self.options.declare("config", default=None)
-        self.options.declare("implement_triangularity", default="y")
+        self.options.declare("implement_triangularity", default=True)
 
     def setup(self):
         triangularity = self.options["implement_triangularity"]
@@ -219,12 +225,12 @@ class Synchrotron(om.Group):
         self.add_subsystem("optical_thickness",
                            om.ExecComp([optical_string],
                                        a0={"units": "m"},
-                                       n0={"units": "10**20 * m**(-3)"},
+                                       n0={"units": "n20"},
                                        Bt={"units": "T"}),
                            promotes_inputs=["a0", "n0", "Bt"],
                            promotes_outputs=["pa"])
 
-        if triangularity == "y":
+        if triangularity:
             self.add_subsystem("synchrotron_fit",
                                SynchrotronFit(),
                                promotes_inputs=["A", "a0", "κ", "αn",
@@ -232,7 +238,7 @@ class Synchrotron(om.Group):
                                                 "r", "n0", "T0"],
                                promotes_outputs=[("P", "P0")])
 
-            θ = linspace(0, 2 * pi, 10, endpoint=False)
+            θ = np.linspace(0, 2 * pi, 1, endpoint=False)
             self.add_subsystem("ivc",
                                om.IndepVarComp("θ", val=θ),
                                promotes_outputs=["*"])
@@ -264,7 +270,7 @@ class Synchrotron(om.Group):
                                promotes_inputs=["P0", "S", "S0"],
                                promotes_outputs=["P"])
 
-        elif triangularity == "n":
+        else:
             self.add_subsystem("synchrotron_fit",
                                SynchrotronFit(),
                                promotes_inputs=["A", "a0", "κ", "αn",
@@ -278,23 +284,23 @@ class Synchrotron(om.Group):
 
 if __name__ == '__main__':
     prob = om.Problem()
-    prob.model = Synchrotron(implement_triangularity="y")
+    prob.model = Synchrotron(implement_triangularity=False)
 
-    prob.setup(force_alloc_complex=True)
-    prob.set_val("A", 5 / 2)
-    prob.set_val("a0", 2)
-    prob.set_val("κ", 1)
-    prob.set_val("δ", 0.3)
+    prob.setup()
+    prob.set_val("A", 3)
+    prob.set_val("a0", 2.7, units='m')
+    prob.set_val("κ", 1.9)
+    prob.set_val("δ", 0.0)
 
     prob.set_val("αn", 2)
     prob.set_val("αT", 3)
     prob.set_val("βT", 2)
 
-    prob.set_val("Bt", 5)
-    prob.set_val("r", 0.5)
-    prob.set_val("n0", 2)
-    prob.set_val("T0", 5)
+    prob.set_val("Bt", 6.8, units='T')
+    prob.set_val("r", 0.0)
+    prob.set_val("n0", 1.36, units='n20')
+    prob.set_val("T0", 45, units='keV')
 
     prob.run_driver()
-    all_inputs = prob.model.list_inputs(values=True)
-    all_outputs = prob.model.list_outputs(values=True)
+    all_inputs = prob.model.list_inputs(values=True, units=True)
+    all_outputs = prob.model.list_outputs(values=True, units=True)

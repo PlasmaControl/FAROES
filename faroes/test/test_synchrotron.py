@@ -1,13 +1,13 @@
 import faroes.synchrotron as sy
 import openmdao.api as om
-import unittest
 from openmdao.utils.assert_utils import assert_check_partials
 from openmdao.utils.assert_utils import assert_near_equal
+import unittest
 
 
 class TestSynchrotronFit(unittest.TestCase):
     r"""
-    Tests if derivatives of synchrtron fit are equivalent under
+    Tests if derivatives of synchrotron fit are equivalent under
     analytical and numerical calculations.
     """
 
@@ -43,7 +43,7 @@ class TestSynchrotronFit(unittest.TestCase):
 class TestSynchrotron(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
-        prob.model = sy.Synchrotron(implement_triangularity="n")
+        prob.model = sy.Synchrotron(implement_triangularity=False)
         prob.setup(force_alloc_complex=True)
         prob.set_val("A", 5 / 2)
         prob.set_val("a0", 2)
@@ -59,7 +59,7 @@ class TestSynchrotron(unittest.TestCase):
         self.prob = prob
 
         prob1 = om.Problem()
-        prob1.model = sy.Synchrotron(implement_triangularity="y")
+        prob1.model = sy.Synchrotron(implement_triangularity=True)
         prob1.setup(force_alloc_complex=True)
         prob1.set_val("A", 5 / 2)
         prob1.set_val("a0", 2)
