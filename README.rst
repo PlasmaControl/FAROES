@@ -2,11 +2,19 @@
 FAROES
 ******
 
-.. image:: https://github.com/cfe316/FAROES/workflows/pytests/badge.svg
+FAROES is "Fusion Analysis, Research, and Optimization for Energy Systems". It is a Python package for optimizing fusion power plants.
+
+|forthebadge made-with-python|
+
+|builds|
+
+.. |forthebadge made-with-python| image:: http://ForTheBadge.com/images/badges/made-with-python.svg
+   :target: https://www.python.org/
+
+.. |builds| image:: https://github.com/cfe316/FAROES/workflows/pytests/badge.svg
    :target: https://github.com/cfe316/FAROES/workflows/pytests/badge
    :alt: Pytests build status
 
-Fusion Analysis, Research, and Optimization for Energy Systems
 
 Requirements
 ------------
@@ -28,3 +36,4 @@ The two below can be installed on linux using the script available here: https:/
 
 * ``pyoptsparse`` (https://github.com/mdolab/pyoptsparse) in order to access the ``pyOptSparseDriver`` which allows use of more powerful optimizers like ``IPOPT``.
 * ``IPOPT``. This is optimizer seems to perform a bit better than the implemntations of ``COBYLA`` or ``SLSQP`` which are included with ``scipy``.
+
