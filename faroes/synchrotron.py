@@ -40,10 +40,21 @@ class SynchrotronFit(om.ExplicitComponent):
     Outputs
     ------
     P : float
-        MW, transparency factor
+        MW, synchrotron fit power
 
     Notes
     ------
+    Calculates synchrotron radiation from fit from Albajar [1]_ (p. 674),
+    given by:
+
+    .. math::
+       P_{syn, r} = &3.84 \times 10^{-8}(1-r)^{1/2} Ra^{1.38}\kappa^{0.79} \\
+           &\times B_t^{2.62}n_0^{0.38}T_0(16+T_0)^{2.61} \\
+           &\times \left(1+0.12\frac{T_0}{p_a^{0.41}}\right)^{-1.51} \\
+           &\times K(\alpha_n, \alpha_T, \beta_T) G(A)
+
+    where K and G are profile and aspect ratio factors, respectively.
+
     βT used here is not the β of a plasma (ratio of plasma pressure to
     magnetic pressure). Rather, it is a peaking parameter in the
     temperature profile as Albajar [1]_ writes:
@@ -183,26 +194,16 @@ class Synchrotron(om.Group):
 
     Notes
     -----
-    Calculates synchrotron radiation from fit from Albajar [1]_, given by:
-
-    .. math::
-       P_{syn, r} = &3.84 \times 10^{-8}(1-r)^{1/2} Ra^{1.38}\kappa^{0.79} \\
-           &\times B_t^{2.62}n_0^{0.38}T_0(16+T_0)^{2.61} \\
-           &\times \left(1+0.12\frac{T_0}{p_a^{0.41}}\right)^{-1.51} \\
-           &\times K(\alpha_n, \alpha_T, \beta_T) G(A)
-
-    where K and G are profile and aspect ratio factors, respectively.
-
-    The optical thickness of the plasma, as given in [1]_, is
+    The optical thickness of the plasma, as given in [1]_ (p. 674), is
 
     .. math::
 
        p_a = 6.04 \times 10^3 \frac{an_0}{B_t}.
 
     In this group, additional option for implementation of triangularity is
-    implemented. This is based on the potentially plausible assumption that the
+    included. This is based on the potentially plausible assumption that the
     relationship between synchrotron power and surface area is approximately
-    linear. This should challenged and tested in further work.
+    linear. This should be challenged and tested in further work.
 
     References
     ----------
@@ -292,14 +293,14 @@ if __name__ == '__main__':
     prob.set_val("κ", 1.9)
     prob.set_val("δ", 0.0)
 
-    prob.set_val("αn", 2)
-    prob.set_val("αT", 3)
-    prob.set_val("βT", 2)
+    prob.set_val("αn", 8)
+    prob.set_val("αT", 8)
+    prob.set_val("βT", 5)
 
     prob.set_val("Bt", 6.8, units='T')
-    prob.set_val("r", 0.0)
+    prob.set_val("r", 0.8)
     prob.set_val("n0", 1.36, units='n20')
-    prob.set_val("T0", 45, units='keV')
+    prob.set_val("T0", 45.2, units='keV')
 
     prob.run_driver()
     all_inputs = prob.model.list_inputs(values=True, units=True)
