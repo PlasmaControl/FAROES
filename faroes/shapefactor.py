@@ -17,7 +17,7 @@ class ConstProfile(om.ExplicitComponent):
     distribution.
 
     Here, constant (temperature and density) profiles imply
-    
+
     .. math::
        f(\rho) = f_0.
 
@@ -86,14 +86,14 @@ class ParabProfileConstTriang(om.ExplicitComponent):
     distribution.
 
     Here, parabolic (temperature and density) profiles imply
-    
+
     .. math::
        f(\rho) = f_0 (1-\rho^2)^\alpha.
 
     and constant triangularity means
-    
+
     .. math::
-       \delta(\rho) = \delta_0. 
+       \delta(\rho) = \delta_0.
 
 
     Inputs
@@ -175,14 +175,14 @@ class ParabProfileLinearTriang(om.ExplicitComponent):
     distribution.
 
     Here, parabolic (temperature and density) profiles imply
-    
+
     .. math::
        f(\rho) = f_0 (1-\rho^2)^\alpha.
 
     and linear triangularity means
-    
+
     .. math::
-       \delta(\rho) = \delta_0 \rho. 
+       \delta(\rho) = \delta_0 \rho.
 
 
     Inputs

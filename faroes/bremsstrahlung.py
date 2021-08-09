@@ -17,12 +17,12 @@ class PedestalProfileConstTriang(om.ExplicitComponent):
        S = \frac{\int n(\rho)^2T(\rho)^{1/2} dV}{a_0^3}.
 
     This is related to the Bremsstrahlung power by
-    
+
     .. math::
        P = C a_0^3 S Z_{\text{eff}}.
 
     Here, pedestal profiles imply
-    
+
     .. math::
        n(\rho) &= n_{ped} + (n_0 - n_{ped})\left(1-\frac{\rho^2}
            {\rho_{ped}^2}\right) \text{ , }
@@ -39,7 +39,7 @@ class PedestalProfileConstTriang(om.ExplicitComponent):
            \qquad \rho_{ped} \le \rho \le 1. \\
 
     Constant triangularity means
-    
+
     .. math::
        \delta(\rho) = \delta_0.
 
@@ -172,12 +172,12 @@ class PedestalProfileLinearTriang(om.ExplicitComponent):
        S = \frac{\int n(\rho)^2T(\rho)^{1/2} dV}{a_0^3}.
 
     This is related to the Bremsstrahlung power by
-    
+
     .. math::
        P = C a_0^3 S Z_{\text{eff}}.
 
     Here, pedestal profiles imply
-    
+
     .. math::
        n(\rho) &= n_{ped} + (n_0 - n_{ped})\left(1-\frac{\rho^2}
            {\rho_{ped}^2}\right) \text{ , }
@@ -191,10 +191,10 @@ class PedestalProfileLinearTriang(om.ExplicitComponent):
            \qquad  0 \le \rho \le \rho_{ped} \\
                &= T_1 + (T_{ped} - T_1)\frac{1-\rho}{1-\rho_{ped}}
                \text{ , }
-           \qquad \rho_{ped} \le \rho \le 1. \\           
+           \qquad \rho_{ped} \le \rho \le 1. \\
 
     Linear triangularity means
-    
+
     .. math::
        \delta(\rho) = \delta_0\rho.
 
@@ -415,11 +415,11 @@ class Bremsstrahlung(om.Group):
                                            P={"units": "W"}),
                                promotes=["*"])
 
-            ignore_eq1 = "ignore = 0 * (alpha + alphan + alphaT + beta + "
+            ignore_eq1 = "ignore = 0 * (alphan + alphaT + beta + "
             ignore_eq2 = "rhopedn + rhopedT + nped + n1 + Tped + T1)"
-            inputs_to_promote = [("alpha", "α"), ("alphan", "αn"),
-                                 ("alphaT", "αT"), ("beta", "β"),
-                                 ("rhopedn", "ρpedn"), ("rhopedT", "ρpedT"),
+            inputs_to_promote = [("alphan", "αn"), ("alphaT", "αT"),
+                                 ("beta", "β"), ("rhopedn", "ρpedn"),
+                                 ("rhopedT", "ρpedT"),
                                  "nped", "n1", "Tped", "T1"]
             self.add_subsystem("ignore",
                                om.ExecComp([ignore_eq1 + ignore_eq2],
@@ -524,5 +524,6 @@ if __name__ == '__main__':
     prob.set_val("T1", 5)
 
     prob.run_driver()
+
     all_inputs = prob.model.list_inputs(values=True)
     all_outputs = prob.model.list_outputs(values=True)

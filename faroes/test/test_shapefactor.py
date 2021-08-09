@@ -69,7 +69,8 @@ class TestShapeFactorParabLinear(unittest.TestCase):
 
     def test_partials(self):
         prob = self.prob
-        check = prob.check_partials(out_stream=None, method='fd', step=1e-4, form="central")
+        check = prob.check_partials(out_stream=None, method='fd',
+                                    step=1e-4, form="central")
         assert_check_partials(check, atol=3.5e-05, rtol=1e-05)
 
         prob.run_driver()

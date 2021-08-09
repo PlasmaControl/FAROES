@@ -27,7 +27,7 @@ class SynchrotronFit(om.ExplicitComponent):
 
     .. math::
        G(A) = 0.93[1+0.85\text{exp}(-0.82A)].
-    
+
 
     Inputs
     ------

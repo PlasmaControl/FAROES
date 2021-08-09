@@ -35,7 +35,8 @@ class TestPedestalEqualsParabolic(unittest.TestCase):
         prob1.set_val("A", 5 / 2)
         prob1.set_val("δ0", 0.2)
         prob1.set_val("κ", 1)
-        prob1.set_val("α", 2)
+        prob1.set_val("αn", 0.8)
+        prob1.set_val("αT", 0.8)
         prob1.set_val("a0", 5)
         prob1.set_val("Zeff", 4)
         prob1.set_val("n0", 2e20)
@@ -71,7 +72,8 @@ class TestPedestalEqualsParabolic(unittest.TestCase):
         prob3.set_val("A", 5 / 2)
         prob3.set_val("δ0", 0.2)
         prob3.set_val("κ", 1)
-        prob3.set_val("α", 2)
+        prob3.set_val("αn", 0.8)
+        prob3.set_val("αT", 0.8)
         prob3.set_val("a0", 5)
         prob3.set_val("Zeff", 4)
         prob3.set_val("n0", 2e20)
@@ -106,17 +108,17 @@ class TestPedestal(unittest.TestCase):
         prob.set_val("κ", 1)
         prob.set_val("a0", 5)
         prob.set_val("Zeff", 4)
-        prob.set_val("n0", 2e20)
-        prob.set_val("T0", 2, units="keV")
+        prob.set_val("n0", 5e20)
+        prob.set_val("T0", 3, units="keV")
         prob.set_val("αn", 0.8)
         prob.set_val("αT", 0.8)
         prob.set_val("β", 1.5)
         prob.set_val("ρpedn", 0.5)
         prob.set_val("ρpedT", 0.5)
-        prob.set_val("nped", 3e20)
-        prob.set_val("n1", 4e20)
+        prob.set_val("nped", 4e20)
+        prob.set_val("n1", 3e20)
         prob.set_val("Tped", 2.5, units="keV")
-        prob.set_val("T1", 3.5, units="keV")
+        prob.set_val("T1", 2, units="keV")
         self.prob = prob
 
         prob1 = om.Problem()
@@ -128,28 +130,28 @@ class TestPedestal(unittest.TestCase):
         prob1.set_val("κ", 1)
         prob1.set_val("a0", 5)
         prob1.set_val("Zeff", 4)
-        prob1.set_val("n0", 2e20)
-        prob1.set_val("T0", 2, units="keV")
+        prob1.set_val("n0", 5e20)
+        prob1.set_val("T0", 3, units="keV")
         prob1.set_val("αn", 0.8)
         prob1.set_val("αT", 0.8)
         prob1.set_val("β", 1.5)
         prob1.set_val("ρpedn", 0.5)
         prob1.set_val("ρpedT", 0.5)
-        prob1.set_val("nped", 3e20)
-        prob1.set_val("n1", 4e20)
+        prob1.set_val("nped", 4e20)
+        prob1.set_val("n1", 3e20)
         prob1.set_val("Tped", 2.5, units="keV")
-        prob1.set_val("T1", 3.5, units="keV")
+        prob1.set_val("T1", 2, units="keV")
         self.prob1 = prob1
 
     def test_value_constant(self):
         prob = self.prob
         prob.run_driver()
-        assert_near_equal(prob.get_val("P"), 9.80328159e+09, tolerance=1e-4)
+        assert_near_equal(prob.get_val("P"), 2.85096313e+09, tolerance=1e-4)
 
     def test_value_linear(self):
         prob1 = self.prob1
         prob1.run_driver()
-        assert_near_equal(prob1.get_val("P"), 9.77669231e+09, tolerance=1e-4)
+        assert_near_equal(prob1.get_val("P"), 2.85796304e+09, tolerance=1e-4)
 
 
 if __name__ == '__main__':
