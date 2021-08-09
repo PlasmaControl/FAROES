@@ -141,33 +141,35 @@ class SimpleBSZRadiation(om.Group):
     Inputs
     ------
     A : float
-        None, Aspect ratio (R0 / a0)
-    δ0 : float
-        None, Triangularity of border curve of plasma distribution
+        Aspect ratio
+    minor_radius : float
+        m, Plasma horizontal minor radius 'a'
     κ : float
-        None, Elongation of plasma distribution shape
+        Plasma elongation
+    δ0 : float
+        Triangularity of the LCFS
+    Bt : float
+        T, Toroidal field on axis
+    P_heat : float
+        MW, Total heating power into the core: α and external
     αn : float
-        None, Exponent in density profile
+        Exponent in density profile
     αT : float
-        None, Exponent in temperature profile
+        Exponent in temperature profile
     β : float
-        None, Exponent in temperature profile
-    ρpedn : float
-        None, value of normalized radius at density pedestal top
-    ρpedT : float
-        None, value of normalized radius at temperature pedestal top
+        Exponent in temperature profile
     n0 : float
         m**(-3), Electron density on axis
-    nped : float
-        m**(-3), density at pedestal top
-    n1 : float
-        m**(-3), density at separatix
     T0 : float
-        keV, temperature at center
-    Tped : float
-        keV, temperature at pedestal top
-    T1 : float
-        keV, temperature at separatix
+        keV, Electron temperature on axis
+    Z_eff : float
+        Plasma effective charge
+    Outputs
+    -------
+    P_rad : float
+        MW, Core radiated power
+    P_loss : float
+        MW, Non-radiated power through the seperatrix.
 
     Notes
     -----
@@ -180,18 +182,6 @@ class SimpleBSZRadiation(om.Group):
         P_\mathrm{core,imp,rad} = f_\mathrm{rad} * P_\mathrm{heat}
         P_\mathrm{loss} = P_\mathrm{heat} - P_\mathrm{rad}
 
-    Inputs
-    ------
-    P_heat : float
-        MW, total heating power into the core: alpha and external
-
-    Outputs
-    -------
-    P_rad : float
-        MW, Radiated power
-    P_loss : float
-        MW, power lost down the thermal gradient.
-            Non-radiated power.
     """
     def initialize(self):
         self.options.declare('config', default=None)
@@ -241,6 +231,7 @@ class SimpleBSZRadiation(om.Group):
             promotes=["*"],
         )
 
+        # settings for parabolic profile sanity
         self.set_input_defaults("A", 2.0)
         self.set_input_defaults("δ", 0.0)
         self.set_input_defaults("n0", 1.1, units='n20')
@@ -260,19 +251,20 @@ if __name__ == "__main__":
     prob.model = SimpleBSZRadiation(config=uc)
     prob.setup()
 
-    prob.set_val("P_heat", 1000)
     prob.set_val("A", 3.18)
     prob.set_val("minor_radius", 2.66, units='m')
     prob.set_val("κ", 1.8)
-    prob.set_val("Z_eff", 2.0)
     prob.set_val("δ", 0.34)
+    prob.set_val("Bt", 5.53, units="T")
 
+    prob.set_val("Z_eff", 2.0)
+
+    prob.set_val("P_heat", 1000)
     prob.set_val("n0", 1.1, units="n20")
     prob.set_val("T0", 30, units="keV")
     prob.set_val("αn", 0.5)
     prob.set_val("αT", 1.1)
-    prob.set_val("Bt", 5.53, units="T")
 
     prob.run_driver()
     prob.model.list_inputs(values=True, print_arrays=True, units=True)
-    # prob.model.list_outputs(values=True, print_arrays=True)
+    prob.model.list_outputs(values=True, print_arrays=True)
