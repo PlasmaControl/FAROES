@@ -37,8 +37,8 @@ class ConstProfile(om.ExplicitComponent):
         None, shape factor
     """
     def setup(self):
-        self.add_input("A", desc="aspect ratio")
-        self.add_input("δ0", desc="LCFS triangularity")
+        self.add_input("A", val=2., desc="aspect ratio")
+        self.add_input("δ0", val=0., desc="LCFS triangularity")
         self.add_input("κ", desc="elongation")
 
         self.add_output("S", desc="shape factor")
@@ -111,8 +111,8 @@ class ParabProfileConstTriang(om.ExplicitComponent):
         None, shape factor
     """
     def setup(self):
-        self.add_input("A", desc="major radius")
-        self.add_input("δ0", desc="border triangularity")
+        self.add_input("A", val=2., desc="major radius")
+        self.add_input("δ0", val=0., desc="border triangularity")
         self.add_input("κ", desc="elongation")
         self.add_input("α", desc="exponent for profiles")
 
@@ -198,8 +198,8 @@ class ParabProfileLinearTriang(om.ExplicitComponent):
         None, shape factor
     """
     def setup(self):
-        self.add_input("A", desc="major radius")
-        self.add_input("δ0", desc="border triangularity")
+        self.add_input("A", val=2., desc="major radius")
+        self.add_input("δ0", val=0., desc="border triangularity")
         self.add_input("κ", desc="elongation")
         self.add_input("α", desc="exponent for profiles")
 

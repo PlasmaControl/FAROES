@@ -91,8 +91,8 @@ class PedestalProfileConstTriang(om.ExplicitComponent):
 
     """
     def setup(self):
-        self.add_input("A", desc="major radius")
-        self.add_input("δ0", desc="border triangularity")
+        self.add_input("A", val=2., desc="major radius")
+        self.add_input("δ0", val=0., desc="border triangularity")
         self.add_input("κ", desc="elongation")
 
         self.add_input("αn", desc="density peaking parameter")
@@ -142,16 +142,14 @@ class PedestalProfileConstTriang(om.ExplicitComponent):
             elif ρpedn < ρ <= 1:
                 dens = n1 + (nped - n1) * (1 - ρ) / (1 - ρpedn)
             else:
-                # if ρpedn < ρ <= 1
-                dens = n1 + (nped - n1) * (1 - ρ)/(1 - ρpedn)
+                raise ValueError(f"{ρ} must be between 0 and 1.")
 
             if 0 <= ρ <= ρpedT:
                 temp = Tped + (T0 - Tped) * (1 - ρ**β / (ρpedT**β))**αT
             elif ρpedT < ρ <= 1:
                 temp = T1 + (Tped - T1) * (1 - ρ) / (1 - ρpedT)
             else:
-                # if ρpedT < ρ <= 1
-                temp = T1 + (Tped - T1) * (1 - ρ)/(1 - ρpedT)
+                raise ValueError(f"{ρ} must be between 0 and 1.")
 
             return dVdρ * dens**2 * temp**(1 / 2)
 
@@ -249,8 +247,8 @@ class PedestalProfileLinearTriang(om.ExplicitComponent):
 
     """
     def setup(self):
-        self.add_input("A", desc="major radius")
-        self.add_input("δ0", desc="border triangularity")
+        self.add_input("A", val=2., desc="major radius")
+        self.add_input("δ0", val=0., desc="border triangularity")
         self.add_input("κ", desc="elongation")
 
         self.add_input("αn", desc="density peaking parameter")
@@ -326,6 +324,53 @@ class Bremsstrahlung(om.Group):
 
     Computes the Bremsstrahlung radiation for a plasma distribution based on
     the profile and triangularity functions.
+    For the parabolic and constant profiles, the calculation of Bremsstrahlung
+    power from the shapefactor, S, is given by
+
+    .. math::
+       P = Ca_0^3 Z_{\text{eff}}n_0^2\sqrt{T_0}\cdot S.
+
+    Inputs
+    ------
+    A : float
+        None, Aspect ratio (R0 / a0)
+    δ0 : float
+        None, Triangularity of border curve of plasma distribution
+    κ : float
+        None, Elongation of plasma distribution shape
+    αn : float
+        None, exponent in density profile (peaking parameter)
+    αT : float
+        None, exponent in temperature profile (peaking parameters)
+    β : float
+        None, second exponent in temperature profile (chosen freely by user)
+    ρpedn : float
+        None, value of normalized radius at density pedestal top,
+        only applicable when implementing pedestal profiles
+    ρpedT : float
+        None, value of normalized radius at temperature pedestal top,
+        only applicable when implementing pedestal profiles
+    n0 : float
+        m**(-3), density at center
+    nped : float
+        m**(-3), density at pedestal top,
+        only applicable when implementing pedestal profiles
+    n1 : float
+        m**(-3), density at separatix,
+        only applicable when implementing pedestal profiles
+    T0 : float
+        keV, temperature at center
+    Tped : float
+        keV, temperature at pedestal top,
+        only applicable when implementing pedestal profiles
+    T1 : float
+        keV, temperature at separatix,
+        only applicable when implementing pedestal profiles
+
+    Outputs
+    -------
+    P : float
+       W, Bremsstrahlung radiation power
 
     Notes
     ------
@@ -334,7 +379,7 @@ class Bremsstrahlung(om.Group):
 
     .. math::
 
-       c = \frac{32e^6 \sqrt{2k}}{3(4 \pi \epsilon_0)^3
+       C = \frac{32e^6 \sqrt{2k}}{3(4 \pi \epsilon_0)^3
            m_e^{3/2} c^3 \hbar \sqrt{\pi}} = 5.355 \cdot 10^{-37}
 
     References
@@ -345,7 +390,6 @@ class Bremsstrahlung(om.Group):
 
     """
     def initialize(self):
-        self.options.declare("config", default=None)
         self.options.declare("profile", default="constant")
         self.options.declare("triangularity", default="constant")
 
@@ -361,7 +405,7 @@ class Bremsstrahlung(om.Group):
                                promotes_inputs=["A", "δ0", "κ"],
                                promotes_outputs=["S"])
 
-            brems_eq = "P=S * a0**3 * Zeff**2 * n0**2 * T0**(1/2) * "
+            brems_eq = "P=S * a0**3 * Zeff * n0**2 * T0**(1/2) * "
             self.add_subsystem("brems",
                                om.ExecComp(brems_eq + str(self.c),
                                            a0={"units": "m"},
@@ -370,11 +414,11 @@ class Bremsstrahlung(om.Group):
                                            P={"units": "W"}),
                                promotes=["*"])
 
-            ignore_eq1 = "ignore = 0 * (alpha + alphan + alphaT + beta + "
+            ignore_eq1 = "ignore = 0 * (alphan + alphaT + beta + "
             ignore_eq2 = "rhopedn + rhopedT + nped + n1 + Tped + T1)"
-            inputs_to_promote = [("alpha", "α"), ("alphan", "αn"),
-                                 ("alphaT", "αT"), ("beta", "β"),
-                                 ("rhopedn", "ρpedn"), ("rhopedT", "ρpedT"),
+            inputs_to_promote = [("alphan", "αn"), ("alphaT", "αT"),
+                                 ("beta", "β"), ("rhopedn", "ρpedn"),
+                                 ("rhopedT", "ρpedT"),
                                  "nped", "n1", "Tped", "T1"]
             self.add_subsystem("ignore",
                                om.ExecComp([ignore_eq1 + ignore_eq2],
@@ -385,6 +429,12 @@ class Bremsstrahlung(om.Group):
                                promotes_inputs=inputs_to_promote)
 
         elif profile == "parabolic":
+            self.add_subsystem("alpha",
+                               om.ExecComp("alpha= 2 * alphan + alphaT / 2"),
+                               promotes_inputs=[("alphan", "αn"),
+                                                ("alphaT", "αT")],
+                               promotes_outputs=[("alpha", "α")])
+
             if triangularity == "constant":
                 self.add_subsystem("parab_profile_const_triang",
                                    ParabProfileConstTriang(),
@@ -396,7 +446,7 @@ class Bremsstrahlung(om.Group):
                                    promotes_inputs=["A", "δ0", "κ", "α"],
                                    promotes_outputs=["S"])
 
-            brems_eq = "P=S * a0**3 * Zeff**2 * n0**2 * T0**(1/2) * "
+            brems_eq = "P=S * a0**3 * Zeff * n0**2 * T0**(1/2) * "
             self.add_subsystem("brems",
                                om.ExecComp(brems_eq + str(self.c),
                                            a0={"units": "m"},
@@ -437,7 +487,7 @@ class Bremsstrahlung(om.Group):
                                        "T0", "Tped", "T1"
                                    ],
                                    promotes_outputs=["S"])
-            brems_eq = "P=S * a0**3 * Zeff**2 * "
+            brems_eq = "P=S * a0**3 * Zeff * "
             self.add_subsystem("brems",
                                om.ExecComp(brems_eq + str(self.c),
                                            a0={"units": "m"},
@@ -445,20 +495,15 @@ class Bremsstrahlung(om.Group):
                                            P={"units": "W"}),
                                promotes=["*"])
 
-            self.add_subsystem("ignore",
-                               om.ExecComp("ignore=0 * alpha"),
-                               promotes_inputs=[("alpha", "α")])
-
 
 if __name__ == '__main__':
     prob = om.Problem()
-    prob.model = Bremsstrahlung(profile="pedestal", triangularity="constant")
+    prob.model = Bremsstrahlung(profile="parabolic", triangularity="constant")
 
     prob.setup(force_alloc_complex=True)
     prob.set_val("A", 5 / 2)
     prob.set_val("δ0", 0.2)
     prob.set_val("κ", 1)
-    prob.set_val("α", 2)
 
     prob.set_val("a0", 5)
     prob.set_val("Zeff", 4)
@@ -478,5 +523,6 @@ if __name__ == '__main__':
     prob.set_val("T1", 5)
 
     prob.run_driver()
+
     all_inputs = prob.model.list_inputs(values=True)
     all_outputs = prob.model.list_outputs(values=True)
