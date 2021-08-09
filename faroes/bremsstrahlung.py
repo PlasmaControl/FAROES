@@ -10,6 +10,40 @@ from faroes.shapefactor import ParabProfileLinearTriang
 class PedestalProfileConstTriang(om.ExplicitComponent):
     r"""Model for pedestal profiles and constant triangularity
 
+    Computes the "shapefactor", S, for pedestal temperature and density
+    profiles and constant triangularity, given by
+
+    .. math::
+       S = \frac{\int n(\rho)^2T(\rho)^{1/2} dV}{a_0^3}.
+
+    This is related to the Bremsstrahlung power by
+    
+    .. math::
+       P = C a_0^3 S Z_{\text{eff}}.
+
+    Here, pedestal profiles imply
+    
+    .. math::
+       n(\rho) &= n_{ped} + (n_0 - n_{ped})\left(1-\frac{\rho^2}
+           {\rho_{ped}^2}\right) \text{ , }
+           \qquad 0 \le \rho \le \rho_{ped} \\
+               &= n_1 + (n_{ped} - n_1)\frac{1-\rho}{1-\rho_{ped}}
+               \text{ , }
+           \qquad \rho_{ped} \le \rho \le 1. \\
+
+       T(\rho) &= T_{ped} + (T_0 - T_{ped})\left(1-\frac{\rho^{\beta_T}}
+           {\rho_{ped}^{\beta_T}}\right) \text{ , }
+           \qquad  0 \le \rho \le \rho_{ped} \\
+               &= T_1 + (T_{ped} - T_1)\frac{1-\rho}{1-\rho_{ped}}
+               \text{ , }
+           \qquad \rho_{ped} \le \rho \le 1. \\
+
+    Constant triangularity means
+    
+    .. math::
+       \delta(\rho) = \delta_0.
+
+
     Inputs
     ------
     A : float
@@ -58,8 +92,8 @@ class PedestalProfileConstTriang(om.ExplicitComponent):
     """
 
     def setup(self):
-        self.add_input("A", desc="major radius")
-        self.add_input("δ0", desc="border triangularity")
+        self.add_input("A", val=2., desc="major radius")
+        self.add_input("δ0", val=0., desc="border triangularity")
         self.add_input("κ", desc="elongation")
 
         self.add_input("αn", desc="density peaking parameter")
@@ -106,15 +140,17 @@ class PedestalProfileConstTriang(om.ExplicitComponent):
 
             if 0 <= ρ <= ρpedn:
                 dens = nped + (n0 - nped) * (1 - ρ**2 / (ρpedn**2))**αn
-            else:
-                # if ρpedn < ρ <= 1
+            elif ρpedn < ρ <= 1:
                 dens = n1 + (nped - n1) * (1 - ρ)/(1 - ρpedn)
+            else:
+                raise ValueError(f"{ρ} must be between 0 and 1.")
 
             if 0 <= ρ <= ρpedT:
                 temp = Tped + (T0 - Tped) * (1 - ρ**β / (ρpedT**β))**αT
-            else:
-                # if ρpedT < ρ <= 1
+            elif ρpedT < ρ <= 1:
                 temp = T1 + (Tped - T1) * (1 - ρ)/(1 - ρpedT)
+            else:
+                raise ValueError(f"{ρ} must be between 0 and 1.")
 
             return dVdρ * dens**2 * temp**(1 / 2)
 
@@ -128,6 +164,40 @@ class PedestalProfileConstTriang(om.ExplicitComponent):
 
 class PedestalProfileLinearTriang(om.ExplicitComponent):
     r"""Model for pedestal profiles and constant triangularity
+
+    Computes the "shapefactor", S, for pedestal temperature and density
+    profiles and linear triangularity, given by
+
+    .. math::
+       S = \frac{\int n(\rho)^2T(\rho)^{1/2} dV}{a_0^3}.
+
+    This is related to the Bremsstrahlung power by
+    
+    .. math::
+       P = C a_0^3 S Z_{\text{eff}}.
+
+    Here, pedestal profiles imply
+    
+    .. math::
+       n(\rho) &= n_{ped} + (n_0 - n_{ped})\left(1-\frac{\rho^2}
+           {\rho_{ped}^2}\right) \text{ , }
+           \qquad 0 \le \rho \le \rho_{ped} \\
+               &= n_1 + (n_{ped} - n_1)\frac{1-\rho}{1-\rho_{ped}}
+               \text{ , }
+           \qquad \rho_{ped} \le \rho \le 1. \\
+
+       T(\rho) &= T_{ped} + (T_0 - T_{ped})\left(1-\frac{\rho^{\beta_T}}
+           {\rho_{ped}^{\beta_T}}\right) \text{ , }
+           \qquad  0 \le \rho \le \rho_{ped} \\
+               &= T_1 + (T_{ped} - T_1)\frac{1-\rho}{1-\rho_{ped}}
+               \text{ , }
+           \qquad \rho_{ped} \le \rho \le 1. \\           
+
+    Linear triangularity means
+    
+    .. math::
+       \delta(\rho) = \delta_0\rho.
+
 
     Inputs
     ------
@@ -178,8 +248,8 @@ class PedestalProfileLinearTriang(om.ExplicitComponent):
     """
 
     def setup(self):
-        self.add_input("A", desc="major radius")
-        self.add_input("δ0", desc="border triangularity")
+        self.add_input("A", val=2., desc="major radius")
+        self.add_input("δ0", val=0., desc="border triangularity")
         self.add_input("κ", desc="elongation")
 
         self.add_input("αn", desc="density peaking parameter")
@@ -229,11 +299,15 @@ class PedestalProfileLinearTriang(om.ExplicitComponent):
                 dens = nped + (n0 - nped) * (1 - ρ**2 / (ρpedn**2))**αn
             elif ρpedn < ρ <= 1:
                 dens = n1 + (nped - n1) * (1 - ρ)/(1 - ρpedn)
+            else:
+                raise ValueError(f"{ρ} must be between 0 and 1.")
 
             if 0 <= ρ <= ρpedT:
                 temp = Tped + (T0 - Tped) * (1 - ρ**β / (ρpedT**β))**αT
             elif ρpedT < ρ <= 1:
                 temp = T1 + (Tped - T1) * (1 - ρ)/(1 - ρpedT)
+            else:
+                raise ValueError(f"{ρ} must be between 0 and 1.")
 
             return dVdρ * dens**2 * temp**(1 / 2)
 
@@ -250,6 +324,58 @@ class Bremsstrahlung(om.Group):
 
     Computes the Bremsstrahlung radiation for a plasma distribution based on
     the profile and triangularity functions.
+    For the parabolic and constant profiles, the calculation of Bremsstrahlung
+    power from the shapefactor, S, is given by
+
+    .. math::
+       P = Ca_0^3 Z_{\text{eff}}n_0^2\sqrt{T_0}\cdot S.
+
+    Inputs
+    ------
+    A : float
+        None, Aspect ratio (R0 / a0)
+    δ0 : float
+        None, Triangularity of border curve of plasma distribution
+    κ : float
+        None, Elongation of plasma distribution shape
+    α : float
+        None, exponent in density and temperature profiles.
+        Equivalent to αn + αT in parabolic and constant profile cases
+    αn : float
+        None, exponent in density profile (peaking parameter).
+        Only applicable when implementing pedestal profiles
+    αT : float
+        None, exponent in temperature profile (peaking parameters).
+        Only applicable when implementing pedestal profiles
+    β : float
+        None, second exponent in temperature profile (chosen freely by user)
+    ρpedn : float
+        None, value of normalized radius at density pedestal top.
+        Only applicable when implementing pedestal profiles
+    ρpedT : float
+        None, value of normalized radius at temperature pedestal top.
+        Only applicable when implementing pedestal profiles
+    n0 : float
+        m**(-3), density at center
+    nped : float
+        m**(-3), density at pedestal top.
+        Only applicable when implementing pedestal profiles
+    n1 : float
+        m**(-3), density at separatix.
+        Only applicable when implementing pedestal profiles
+    T0 : float
+        keV, temperature at center
+    Tped : float
+        keV, temperature at pedestal top.
+        Only applicable when implementing pedestal profiles
+    T1 : float
+        keV, temperature at separatix.
+        Only applicable when implementing pedestal profiles
+
+    Outputs
+    -------
+    P : float
+       W, Bremsstrahlung radiation power
 
     Notes
     ------
@@ -258,7 +384,7 @@ class Bremsstrahlung(om.Group):
 
     .. math::
 
-       c = \frac{32e^6 \sqrt{2k}}{3(4 \pi \epsilon_0)^3
+       C = \frac{32e^6 \sqrt{2k}}{3(4 \pi \epsilon_0)^3
            m_e^{3/2} c^3 \hbar \sqrt{\pi}} = 5.355 \cdot 10^{-37}
 
     References
@@ -270,8 +396,6 @@ class Bremsstrahlung(om.Group):
     """
 
     def initialize(self):
-        self.options.declare("config", default=None)
-        self.options.declare("profile", default="constant")
         self.options.declare("triangularity", default="constant")
 
     def setup(self):
@@ -286,7 +410,7 @@ class Bremsstrahlung(om.Group):
                                promotes_inputs=["A", "δ0", "κ"],
                                promotes_outputs=["S"])
 
-            brems_eq = "P=S * a0**3 * Zeff**2 * n0**2 * T0**(1/2) * "
+            brems_eq = "P=S * a0**3 * Zeff * n0**2 * T0**(1/2) * "
             self.add_subsystem("brems",
                                om.ExecComp(brems_eq + str(self.c),
                                            a0={"units": "m"},
@@ -321,7 +445,7 @@ class Bremsstrahlung(om.Group):
                                    promotes_inputs=["A", "δ0", "κ", "α"],
                                    promotes_outputs=["S"])
 
-            brems_eq = "P=S * a0**3 * Zeff**2 * n0**2 * T0**(1/2) * "
+            brems_eq = "P=S * a0**3 * Zeff * n0**2 * T0**(1/2) * "
             self.add_subsystem("brems",
                                om.ExecComp(brems_eq + str(self.c),
                                            a0={"units": "m"},
@@ -363,7 +487,7 @@ class Bremsstrahlung(om.Group):
                                                     "nped", "n1", "T0",
                                                     "Tped", "T1"],
                                    promotes_outputs=["S"])
-            brems_eq = "P=S * a0**3 * Zeff**2 * "
+            brems_eq = "P=S * a0**3 * Zeff * "
             self.add_subsystem("brems",
                                om.ExecComp(brems_eq + str(self.c),
                                            a0={"units": "m"},
