@@ -338,39 +338,34 @@ class Bremsstrahlung(om.Group):
         None, Triangularity of border curve of plasma distribution
     κ : float
         None, Elongation of plasma distribution shape
-    α : float
-        None, exponent in density and temperature profiles.
-        Equivalent to αn + αT in parabolic and constant profile cases
     αn : float
-        None, exponent in density profile (peaking parameter).
-        Only applicable when implementing pedestal profiles
+        None, exponent in density profile (peaking parameter)
     αT : float
-        None, exponent in temperature profile (peaking parameters).
-        Only applicable when implementing pedestal profiles
+        None, exponent in temperature profile (peaking parameters)
     β : float
         None, second exponent in temperature profile (chosen freely by user)
     ρpedn : float
-        None, value of normalized radius at density pedestal top.
-        Only applicable when implementing pedestal profiles
+        None, value of normalized radius at density pedestal top,
+        only applicable when implementing pedestal profiles
     ρpedT : float
-        None, value of normalized radius at temperature pedestal top.
-        Only applicable when implementing pedestal profiles
+        None, value of normalized radius at temperature pedestal top,
+        only applicable when implementing pedestal profiles
     n0 : float
         m**(-3), density at center
     nped : float
-        m**(-3), density at pedestal top.
-        Only applicable when implementing pedestal profiles
+        m**(-3), density at pedestal top,
+        only applicable when implementing pedestal profiles
     n1 : float
-        m**(-3), density at separatix.
-        Only applicable when implementing pedestal profiles
+        m**(-3), density at separatix,
+        only applicable when implementing pedestal profiles
     T0 : float
         keV, temperature at center
     Tped : float
-        keV, temperature at pedestal top.
-        Only applicable when implementing pedestal profiles
+        keV, temperature at pedestal top,
+        only applicable when implementing pedestal profiles
     T1 : float
-        keV, temperature at separatix.
-        Only applicable when implementing pedestal profiles
+        keV, temperature at separatix,
+        only applicable when implementing pedestal profiles
 
     Outputs
     -------
@@ -396,6 +391,7 @@ class Bremsstrahlung(om.Group):
     """
 
     def initialize(self):
+        self.options.declare("profile", default="constant")
         self.options.declare("triangularity", default="constant")
 
     def setup(self):
@@ -434,6 +430,12 @@ class Bremsstrahlung(om.Group):
                                promotes_inputs=inputs_to_promote)
 
         elif profile == "parabolic":
+            self.add_subsystem("alpha",
+                               om.ExecComp("alpha= 2 * alphan + alphaT / 2"),
+                               promotes_inputs=[("alphan", "αn"),
+                                                ("alphaT", "αT")],
+                               promotes_outputs=[("alpha", "α")])
+
             if triangularity == "constant":
                 self.add_subsystem("parab_profile_const_triang",
                                    ParabProfileConstTriang(),
@@ -454,10 +456,9 @@ class Bremsstrahlung(om.Group):
                                            P={"units": "W"}),
                                promotes=["*"])
 
-            ignore_eq1 = "ignore = 0 * (alphan + alphaT + beta + "
-            ignore_eq2 = "rhopedn + rhopedT + nped + n1 + Tped + T1)"
-            inputs_to_promote = [("alphan", "αn"), ("alphaT", "αT"),
-                                 ("beta", "β"), ("rhopedn", "ρpedn"),
+            ignore_eq1 = "ignore = 0 * (beta + rhopedn + rhopedT +"
+            ignore_eq2 = "nped + n1 + Tped + T1)"
+            inputs_to_promote = [("beta", "β"), ("rhopedn", "ρpedn"),
                                  ("rhopedT", "ρpedT"),
                                  "nped", "n1", "Tped", "T1"]
             self.add_subsystem("ignore",
@@ -495,20 +496,15 @@ class Bremsstrahlung(om.Group):
                                            P={"units": "W"}),
                                promotes=["*"])
 
-            self.add_subsystem("ignore",
-                               om.ExecComp("ignore=0 * alpha"),
-                               promotes_inputs=[("alpha", "α")])
-
 
 if __name__ == '__main__':
     prob = om.Problem()
-    prob.model = Bremsstrahlung(profile="pedestal", triangularity="constant")
+    prob.model = Bremsstrahlung(profile="parabolic", triangularity="constant")
 
     prob.setup(force_alloc_complex=True)
     prob.set_val("A", 5 / 2)
     prob.set_val("δ0", 0.2)
     prob.set_val("κ", 1)
-    prob.set_val("α", 2)
 
     prob.set_val("a0", 5)
     prob.set_val("Zeff", 4)
