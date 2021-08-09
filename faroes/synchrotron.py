@@ -7,7 +7,26 @@ import numpy as np
 
 
 class SynchrotronFit(om.ExplicitComponent):
-    r"""Estimated transparency factor for Synchrotron radiation
+    r"""Estimated power for Synchrotron radiation
+
+    Calculates synchrotron radiation from fit from Albajar [1]_ (p. 674),
+    given by:
+
+    .. math::
+       P_{syn, r} = &3.84 \times 10^{-8}(1-r)^{1/2} Ra^{1.38}\kappa^{0.79} \\
+           &\times B_t^{2.62}n_0^{0.38}T_0(16+T_0)^{2.61} \\
+           &\times \left(1+0.12\frac{T_0}{p_a^{0.41}}\right)^{-1.51} \\
+           &\times K(\alpha_n, \alpha_T, \beta_T) G(A)
+
+    where K and G are profile and aspect ratio factors, respectively
+
+    .. math::
+       K(\alpha_n, \alpha_T, \beta_T) =&(\alpha_n+3.87\alpha_T+1.46)^{-0.79}\\
+           &\times (1.98 + \alpha_T)^{1.36}\beta_T^{2.14}\\
+           &\times (\beta_T^{1.53}+1.87\alpha_T-0.16)^{-1.33},\\
+
+    .. math::
+       G(A) = 0.93[1+0.85\text{exp}(-0.82A)].
 
     Inputs
     ------

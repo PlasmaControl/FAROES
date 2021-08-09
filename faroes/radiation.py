@@ -201,24 +201,16 @@ class SimpleBSZRadiation(om.Group):
         self.add_subsystem("props",
                            CoreRadiationProperties(config=config),
                            promotes_outputs=[("radiation fraction", "f_rad")])
-        self.add_subsystem("bremsAlpha",
-                           om.ExecComp("alpha = 2 * alphan + alphat/2",
-                                       alphan={'value': 2},
-                                       alphat={'value': 1.5}),
-                           promotes_inputs={("alphan", "αn"),
-                                            ("alphat", "αT")})
-
         self.add_subsystem("brems",
                            Bremsstrahlung(profile='parabolic',
                                           triangularity='constant'),
                            promotes_inputs=[
                                "A", ("a0", "minor_radius"), ("δ0", "δ"), "κ",
                                ("Zeff", "Z_eff"), "n0", "T0", ("β", "βT"),
-                               "n1", "T1", "nped", "Tped"
+                               "n1", "T1", "nped", "Tped", "αn", "αT"
                            ],
                            promotes_outputs=[("P", "P_brems")])
 
-        self.connect("bremsAlpha.alpha", "brems.α")
         self.add_subsystem("synch",
                            Synchrotron(),
                            promotes_inputs=[
@@ -249,6 +241,7 @@ class SimpleBSZRadiation(om.Group):
             promotes=["*"],
         )
 
+        self.set_input_defaults("A", 2.0)
         self.set_input_defaults("δ", 0.0)
         self.set_input_defaults("n0", 1.1, units='n20')
         self.set_input_defaults("αn", 0.5)

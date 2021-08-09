@@ -10,6 +10,40 @@ from faroes.shapefactor import ParabProfileLinearTriang
 class PedestalProfileConstTriang(om.ExplicitComponent):
     r"""Model for pedestal profiles and constant triangularity
 
+    Computes the "shapefactor", S, for pedestal temperature and density
+    profiles and constant triangularity, given by
+
+    .. math::
+       S = \frac{\int n(\rho)^2T(\rho)^{1/2} dV}{a_0^3}.
+
+    This is related to the Bremsstrahlung power by
+
+    .. math::
+       P = C a_0^3 S Z_{\text{eff}}.
+
+    Here, pedestal profiles imply
+
+    .. math::
+       n(\rho) &= n_{ped} + (n_0 - n_{ped})\left(1-\frac{\rho^2}
+           {\rho_{ped}^2}\right) \text{ , }
+           \qquad 0 \le \rho \le \rho_{ped} \\
+               &= n_1 + (n_{ped} - n_1)\frac{1-\rho}{1-\rho_{ped}}
+               \text{ , }
+           \qquad \rho_{ped} \le \rho \le 1. \\
+
+       T(\rho) &= T_{ped} + (T_0 - T_{ped})\left(1-\frac{\rho^{\beta_T}}
+           {\rho_{ped}^{\beta_T}}\right) \text{ , }
+           \qquad  0 \le \rho \le \rho_{ped} \\
+               &= T_1 + (T_{ped} - T_1)\frac{1-\rho}{1-\rho_{ped}}
+               \text{ , }
+           \qquad \rho_{ped} \le \rho \le 1. \\
+
+    Constant triangularity means
+
+    .. math::
+       \delta(\rho) = \delta_0.
+
+
     Inputs
     ------
     A : float
@@ -56,7 +90,6 @@ class PedestalProfileConstTriang(om.ExplicitComponent):
     power calculation, c, that will result in the units W / m**(-3) for S.
 
     """
-
     def setup(self):
         self.add_input("A", desc="major radius")
         self.add_input("δ0", desc="border triangularity")
@@ -106,12 +139,16 @@ class PedestalProfileConstTriang(om.ExplicitComponent):
 
             if 0 <= ρ <= ρpedn:
                 dens = nped + (n0 - nped) * (1 - ρ**2 / (ρpedn**2))**αn
+            elif ρpedn < ρ <= 1:
+                dens = n1 + (nped - n1) * (1 - ρ) / (1 - ρpedn)
             else:
                 # if ρpedn < ρ <= 1
                 dens = n1 + (nped - n1) * (1 - ρ)/(1 - ρpedn)
 
             if 0 <= ρ <= ρpedT:
                 temp = Tped + (T0 - Tped) * (1 - ρ**β / (ρpedT**β))**αT
+            elif ρpedT < ρ <= 1:
+                temp = T1 + (Tped - T1) * (1 - ρ) / (1 - ρpedT)
             else:
                 # if ρpedT < ρ <= 1
                 temp = T1 + (Tped - T1) * (1 - ρ)/(1 - ρpedT)
@@ -121,13 +158,48 @@ class PedestalProfileConstTriang(om.ExplicitComponent):
         outputs["S"] = quad(integrand, 0, 1)[0]
 
     def setup_partials(self):
-        self.declare_partials("S", ["A", "δ0", "κ", "αn", "αT",
-                                    "β", "ρpedn", "ρpedT", "n0",
-                                    "nped", "n1", "T0", "Tped", "T1"])
+        self.declare_partials("S", [
+            "A", "δ0", "κ", "αn", "αT", "β", "ρpedn", "ρpedT", "n0", "nped",
+            "n1", "T0", "Tped", "T1"
+        ], method='fd')
 
 
 class PedestalProfileLinearTriang(om.ExplicitComponent):
     r"""Model for pedestal profiles and constant triangularity
+
+    Computes the "shapefactor", S, for pedestal temperature and density
+    profiles and linear triangularity, given by
+
+    .. math::
+       S = \frac{\int n(\rho)^2T(\rho)^{1/2} dV}{a_0^3}.
+
+    This is related to the Bremsstrahlung power by
+
+    .. math::
+       P = C a_0^3 S Z_{\text{eff}}.
+
+    Here, pedestal profiles imply
+
+    .. math::
+       n(\rho) &= n_{ped} + (n_0 - n_{ped})\left(1-\frac{\rho^2}
+           {\rho_{ped}^2}\right) \text{ , }
+           \qquad 0 \le \rho \le \rho_{ped} \\
+               &= n_1 + (n_{ped} - n_1)\frac{1-\rho}{1-\rho_{ped}}
+               \text{ , }
+           \qquad \rho_{ped} \le \rho \le 1. \\
+
+       T(\rho) &= T_{ped} + (T_0 - T_{ped})\left(1-\frac{\rho^{\beta_T}}
+           {\rho_{ped}^{\beta_T}}\right) \text{ , }
+           \qquad  0 \le \rho \le \rho_{ped} \\
+               &= T_1 + (T_{ped} - T_1)\frac{1-\rho}{1-\rho_{ped}}
+               \text{ , }
+           \qquad \rho_{ped} \le \rho \le 1. \\
+
+    Linear triangularity means
+
+    .. math::
+       \delta(\rho) = \delta_0\rho.
+
 
     Inputs
     ------
@@ -176,7 +248,6 @@ class PedestalProfileLinearTriang(om.ExplicitComponent):
     power calculation, c, that will result in the units W / m**(-3) for S.
 
     """
-
     def setup(self):
         self.add_input("A", desc="major radius")
         self.add_input("δ0", desc="border triangularity")
@@ -228,21 +299,26 @@ class PedestalProfileLinearTriang(om.ExplicitComponent):
             if 0 <= ρ <= ρpedn:
                 dens = nped + (n0 - nped) * (1 - ρ**2 / (ρpedn**2))**αn
             elif ρpedn < ρ <= 1:
-                dens = n1 + (nped - n1) * (1 - ρ)/(1 - ρpedn)
+                dens = n1 + (nped - n1) * (1 - ρ) / (1 - ρpedn)
+            else:
+                raise ValueError(f"{ρ} must be between 0 and 1.")
 
             if 0 <= ρ <= ρpedT:
                 temp = Tped + (T0 - Tped) * (1 - ρ**β / (ρpedT**β))**αT
             elif ρpedT < ρ <= 1:
-                temp = T1 + (Tped - T1) * (1 - ρ)/(1 - ρpedT)
+                temp = T1 + (Tped - T1) * (1 - ρ) / (1 - ρpedT)
+            else:
+                raise ValueError(f"{ρ} must be between 0 and 1.")
 
             return dVdρ * dens**2 * temp**(1 / 2)
 
         outputs["S"] = quad(integrand, 0, 1)[0]
 
     def setup_partials(self):
-        self.declare_partials("S", ["A", "δ0", "κ", "αn", "αT",
-                                    "β", "ρpedn", "ρpedT", "n0",
-                                    "nped", "n1", "T0", "Tped", "T1"])
+        self.declare_partials("S", [
+            "A", "δ0", "κ", "αn", "αT", "β", "ρpedn", "ρpedT", "n0", "nped",
+            "n1", "T0", "Tped", "T1"
+        ], method='fd')
 
 
 class Bremsstrahlung(om.Group):
@@ -268,7 +344,6 @@ class Bremsstrahlung(om.Group):
        DOI: 10.13182/FST11-A11650
 
     """
-
     def initialize(self):
         self.options.declare("config", default=None)
         self.options.declare("profile", default="constant")
@@ -330,12 +405,11 @@ class Bremsstrahlung(om.Group):
                                            P={"units": "W"}),
                                promotes=["*"])
 
-            ignore_eq1 = "ignore = 0 * (alphan + alphaT + beta + "
-            ignore_eq2 = "rhopedn + rhopedT + nped + n1 + Tped + T1)"
-            inputs_to_promote = [("alphan", "αn"), ("alphaT", "αT"),
-                                 ("beta", "β"), ("rhopedn", "ρpedn"),
-                                 ("rhopedT", "ρpedT"),
-                                 "nped", "n1", "Tped", "T1"]
+            ignore_eq1 = "ignore = 0 * (beta + rhopedn + rhopedT +"
+            ignore_eq2 = "nped + n1 + Tped + T1)"
+            inputs_to_promote = [("beta", "β"), ("rhopedn", "ρpedn"),
+                                 ("rhopedT", "ρpedT"), "nped", "n1", "Tped",
+                                 "T1"]
             self.add_subsystem("ignore",
                                om.ExecComp([ignore_eq1 + ignore_eq2],
                                            nped={"units": "m**(-3)"},
@@ -348,20 +422,20 @@ class Bremsstrahlung(om.Group):
             if triangularity == "constant":
                 self.add_subsystem("pedestal_profile_const_triang",
                                    PedestalProfileConstTriang(),
-                                   promotes_inputs=["A", "δ0", "κ",
-                                                    "αn", "αT", "β",
-                                                    "ρpedn", "ρpedT", "n0",
-                                                    "nped", "n1", "T0",
-                                                    "Tped", "T1"],
+                                   promotes_inputs=[
+                                       "A", "δ0", "κ", "αn", "αT", "β",
+                                       "ρpedn", "ρpedT", "n0", "nped", "n1",
+                                       "T0", "Tped", "T1"
+                                   ],
                                    promotes_outputs=["S"])
             elif triangularity == "linear":
                 self.add_subsystem("pedestal_profile_linear_triang",
                                    PedestalProfileLinearTriang(),
-                                   promotes_inputs=["A", "δ0", "κ",
-                                                    "αn", "αT", "β",
-                                                    "ρpedn", "ρpedT", "n0",
-                                                    "nped", "n1", "T0",
-                                                    "Tped", "T1"],
+                                   promotes_inputs=[
+                                       "A", "δ0", "κ", "αn", "αT", "β",
+                                       "ρpedn", "ρpedT", "n0", "nped", "n1",
+                                       "T0", "Tped", "T1"
+                                   ],
                                    promotes_outputs=["S"])
             brems_eq = "P=S * a0**3 * Zeff**2 * "
             self.add_subsystem("brems",

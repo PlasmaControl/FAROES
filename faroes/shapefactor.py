@@ -7,6 +7,20 @@ from scipy.special import hyp0f1, gamma, jv, digamma
 class ConstProfile(om.ExplicitComponent):
     r"""Model for constant temperature and density profiles
 
+    Computes the shapefactor, S, for constant temperature and
+    density profiles, given by
+
+    .. math::
+       S = \frac{\int dV}{a_0^3},
+
+    where a0 is the minor radius, V is the volume of the plasma
+    distribution.
+
+    Here, constant (temperature and density) profiles imply
+
+    .. math::
+       f(\rho) = f_0.
+
     Inputs
     ------
     A : float
@@ -22,7 +36,6 @@ class ConstProfile(om.ExplicitComponent):
     S : float
         None, shape factor
     """
-
     def setup(self):
         self.add_input("A", desc="aspect ratio")
         self.add_input("δ0", desc="LCFS triangularity")
@@ -61,6 +74,25 @@ class ConstProfile(om.ExplicitComponent):
 class ParabProfileConstTriang(om.ExplicitComponent):
     r"""Model for parabolic profiles and constant triangularity
 
+    Computes the shapefactor, S, for parabolic temperature and
+    density profiles, given by
+
+    .. math::
+       S = \frac{\int (1-\rho^2)^\alpha dV}{a_0^3},
+
+    where a0 is the minor radius, V is the volume of the plasma
+    distribution.
+
+    Here, parabolic (temperature and density) profiles imply
+
+    .. math::
+       f(\rho) = f_0 (1-\rho^2)^\alpha.
+
+    and constant triangularity means
+
+    .. math::
+       \delta(\rho) = \delta_0.
+
     Inputs
     ------
     A : float
@@ -78,7 +110,6 @@ class ParabProfileConstTriang(om.ExplicitComponent):
     S : float
         None, shape factor
     """
-
     def setup(self):
         self.add_input("A", desc="major radius")
         self.add_input("δ0", desc="border triangularity")
@@ -111,7 +142,7 @@ class ParabProfileConstTriang(om.ExplicitComponent):
 
         frac1 = -8 * A * (jv(1, δ0) + jv(3, δ0)) / (1 + α)
         frac2_1 = 3 * pi**(1 / 2) * (jv(0, 2 * δ0) - jv(4, 2 * δ0))
-        frac2_2 = gamma(1 + α)/(gamma(5 / 2 + α))
+        frac2_2 = gamma(1 + α) / (gamma(5 / 2 + α))
         J["S", "δ0"] = pi**2 * κ / 8 * (frac1 - frac2_1 * frac2_2)
 
         frac3 = 2 * pi**2 * A / (1 + α) * (jv(0, δ0) + jv(2, δ0))
@@ -123,12 +154,31 @@ class ParabProfileConstTriang(om.ExplicitComponent):
         frac5_2 = 16 * A * jv(2, δ0) / (1 + α)**2
         num3_1 = 3 * pi**(1 / 2) * (jv(1, 2 * δ0) + jv(3, 2 * δ0))
         num3_2 = gamma(1 + α) * (digamma(1 + α) - digamma(5 / 2 + α))
-        J["S", "α"] = pi**2 * κ / 8 * ((frac5_1 - frac5_2) -
-                                       num3_1 * num3_2 / (gamma(5 / 2 + α)))
+        J["S", "α"] = pi**2 * κ / 8 * ((frac5_1 - frac5_2) - num3_1 * num3_2 /
+                                       (gamma(5 / 2 + α)))
 
 
 class ParabProfileLinearTriang(om.ExplicitComponent):
     r"""Model for parabolic profiles and constant triangularity
+
+    Computes the shapefactor, S, for constant temperature and
+    density profiles, given by
+
+    .. math::
+       S = \frac{\int (1-\rho^2)^\alpha dV}{a_0^3},
+
+    where a0 is the minor radius, V is the volume of the plasma
+    distribution.
+
+    Here, parabolic (temperature and density) profiles imply
+
+    .. math::
+       f(\rho) = f_0 (1-\rho^2)^\alpha.
+
+    and linear triangularity means
+
+    .. math::
+       \delta(\rho) = \delta_0 \rho.
 
     Inputs
     ------
@@ -147,7 +197,6 @@ class ParabProfileLinearTriang(om.ExplicitComponent):
     S : float
         None, shape factor
     """
-
     def setup(self):
         self.add_input("A", desc="major radius")
         self.add_input("δ0", desc="border triangularity")
