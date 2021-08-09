@@ -7,7 +7,27 @@ import numpy as np
 
 
 class SynchrotronFit(om.ExplicitComponent):
-    r"""Estimated transparency factor for Synchrotron radiation
+    r"""Estimated power for Synchrotron radiation
+
+    Calculates synchrotron radiation from fit from Albajar [1]_ (p. 674),
+    given by:
+
+    .. math::
+       P_{syn, r} = &3.84 \times 10^{-8}(1-r)^{1/2} Ra^{1.38}\kappa^{0.79} \\
+           &\times B_t^{2.62}n_0^{0.38}T_0(16+T_0)^{2.61} \\
+           &\times \left(1+0.12\frac{T_0}{p_a^{0.41}}\right)^{-1.51} \\
+           &\times K(\alpha_n, \alpha_T, \beta_T) G(A)
+
+    where K and G are profile and aspect ratio factors, respectively
+
+    .. math::
+       K(\alpha_n, \alpha_T, \beta_T) =&(\alpha_n+3.87\alpha_T+1.46)^{-0.79}\\
+           &\times (1.98 + \alpha_T)^{1.36}\beta_T^{2.14}\\
+           &\times (\beta_T^{1.53}+1.87\alpha_T-0.16)^{-1.33},\\
+
+    .. math::
+       G(A) = 0.93[1+0.85\text{exp}(-0.82A)].
+    
 
     Inputs
     ------
@@ -44,17 +64,6 @@ class SynchrotronFit(om.ExplicitComponent):
 
     Notes
     ------
-    Calculates synchrotron radiation from fit from Albajar [1]_ (p. 674),
-    given by:
-
-    .. math::
-       P_{syn, r} = &3.84 \times 10^{-8}(1-r)^{1/2} Ra^{1.38}\kappa^{0.79} \\
-           &\times B_t^{2.62}n_0^{0.38}T_0(16+T_0)^{2.61} \\
-           &\times \left(1+0.12\frac{T_0}{p_a^{0.41}}\right)^{-1.51} \\
-           &\times K(\alpha_n, \alpha_T, \beta_T) G(A)
-
-    where K and G are profile and aspect ratio factors, respectively.
-
     βT used here is not the β of a plasma (ratio of plasma pressure to
     magnetic pressure). Rather, it is a peaking parameter in the
     temperature profile as Albajar [1]_ writes:
@@ -87,7 +96,7 @@ class SynchrotronFit(om.ExplicitComponent):
 
         self.add_input("Bt", units="T", desc="toroidal magnetic field")
         self.add_input("pa", desc="optical thickness")
-        self.add_input("r", desc="wall reflectivity")
+        self.add_input("r", val=0., desc="wall reflectivity")
         self.add_input("n0", units="n20", desc="center density")
         self.add_input("T0", units="keV", desc="center temperature")
 
@@ -192,6 +201,49 @@ class SynchrotronFit(om.ExplicitComponent):
 class Synchrotron(om.Group):
     r"""Model for synchrotron radiation
 
+    Calculates Synchrotron power from the fit function.
+    In this group, additional option for implementation of triangularity is
+    included. This is based on the potentially plausible assumption that the
+    relationship between synchrotron power and surface area is approximately
+    linear. This should be challenged and tested in further work.
+
+
+    Inputs
+    ------
+    A : float
+        Aspect ratio (R0 / a0)
+    a0 : float
+        m, minor radius
+    δ : float
+        Triangularity of plasma distribution
+    κ : float
+        Elongation of plasma distribution
+
+    αn : float
+        Exponent in density profile (peaking parameter)
+    αT : float
+        Exponent in temperature profile (peaking parameter)
+    βT : float
+        Exponent for ρ in temperature profile (peaking parameter)
+
+    Bt : float
+        T, toroidal magnetic field
+    pa : float
+        Optical thickness of the plasma
+    r : float
+        Wall reflectivity
+    n0 : float
+        n20, Density on axis
+    T0 : float
+        keV, Temperature on axis
+
+
+    Outputs
+    ------
+    P : float
+        MW, Synchrotron radiation power
+
+
     Notes
     -----
     The optical thickness of the plasma, as given in [1]_ (p. 674), is
@@ -200,10 +252,6 @@ class Synchrotron(om.Group):
 
        p_a = 6.04 \times 10^3 \frac{an_0}{B_t}.
 
-    In this group, additional option for implementation of triangularity is
-    included. This is based on the potentially plausible assumption that the
-    relationship between synchrotron power and surface area is approximately
-    linear. This should be challenged and tested in further work.
 
     References
     ----------
