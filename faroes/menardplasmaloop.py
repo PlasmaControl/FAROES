@@ -10,8 +10,8 @@ from faroes.fusionreaction import NBIBeamTargetFusion, TotalDTFusionRate
 from faroes.fusionreaction import SimpleFusionAlphaSource
 
 from faroes.confinementtime import ConfinementTime
-from faroes.radiation import SimpleRadiation
-from faroes.radiation import SimpleBSZRadiation
+from faroes.radiation import SimpleRadiation, SIMPLE
+from faroes.radiation import SimpleBSZRadiation, SIMPLEBSZ
 
 from faroes.plasma_beta import SpecifiedPressure
 
@@ -71,7 +71,7 @@ class MenardPlasmaLoop(om.Group):
     def setup(self):
         config = self.options['config']
 
-        acc = self.options["config"].accessor(["fits", "τe"])
+        acc = config.accessor(["fits", "τe"])
         scaling = acc(["default"])
 
         self.add_subsystem("confinementtime",
@@ -151,16 +151,30 @@ class MenardPlasmaLoop(om.Group):
         self.connect("DTfusion.P_α", "P_heat.P_alpha")
         self.connect("NBIsource.P", "P_heat.P_NBI")
 
-        self.add_subsystem("radiation", SimpleRadiation(config=config))
-        self.add_subsystem("bszradiation",
-                           SimpleBSZRadiation(config=config),
-                           promotes_inputs=[
-                               "Bt", ("A", "aspect_ratio"), "minor_radius",
-                               "δ", "κ"
-                           ])
-        self.connect("P_heat.P_heat",
-                     ["radiation.P_heat", "bszradiation.P_heat"])
-        self.connect("ZeroDPlasma.Z_eff", ["bszradiation.Z_eff"])
+        acc = config.accessor(["plasma", "radiation"])
+        rad_model = acc(['model'])
+        if rad_model == SIMPLE:
+            self.add_subsystem("radiation", SimpleRadiation(config=config))
+            self.add_subsystem("ignore",
+                               om.ExecComp("ignore = kappa"),
+                               promotes=[("kappa", "κ")])
+        elif rad_model == SIMPLEBSZ:
+            self.add_subsystem("radiation",
+                               SimpleBSZRadiation(config=config),
+                               promotes_inputs=[
+                                   "Bt",
+                                   ("A", "aspect_ratio"),
+                                   "minor_radius",
+                                   "δ",
+                                   "κ",
+                                   ("<T>", "<T_e>"),
+                                   ("<n>", "<n_e>"),
+                               ])
+            self.connect("ZeroDPlasma.Z_eff", ["radiation.Z_eff"])
+        else:
+            raise ValueError(
+                f"Only {SIMPLE} and {SIMPLEBSZ} models are implemented")
+        self.connect("P_heat.P_heat", ["radiation.P_heat"])
 
         # back-connection
         self.connect("radiation.P_loss",

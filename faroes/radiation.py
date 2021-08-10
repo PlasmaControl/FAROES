@@ -1,21 +1,34 @@
 from faroes.bremsstrahlung import Bremsstrahlung
 from faroes.synchrotron import Synchrotron
 from faroes.shapefactor import PeakingFactor
-from faroes.configurator import UserConfigurator, Accessor
+from faroes.configurator import UserConfigurator
 import faroes.units  # noqa: F401
 
 import openmdao.api as om
+
+SIMPLEBSZ = "brem-synch-simple-z"
+SIMPLE = "simple"
 
 
 class CoreRadiationProperties(om.Group):
     def initialize(self):
         self.options.declare('config', default=None)
+        self.options.declare('bszoverride', default=False)
 
     def setup(self):
         ivc = om.IndepVarComp()
-        acc = Accessor(self.options['config'])
-        f = acc.accessor(["plasma"])
-        acc.set_output(ivc, f, "radiation fraction")
+        acc = self.options['config'].accessor(['plasma', 'radiation'])
+        bszoverride = self.options['bszoverride']
+        model = acc(['model'])
+
+        if model == SIMPLEBSZ or bszoverride:
+            rf = acc([SIMPLEBSZ, 'radiation factor'])
+        elif model == SIMPLE:
+            rf = acc([model, 'radiation factor'])
+        else:
+            raise ValueError(
+                "Only 'simple' and 'simplebsz' models are implemented")
+        ivc.add_output('radiation fraction', val=rf)
         self.add_subsystem("ivc", ivc, promotes=["*"])
 
 
@@ -190,13 +203,16 @@ class SimpleBSZRadiation(om.Group):
     def setup(self):
         config = self.options["config"]
         self.add_subsystem("props",
-                           CoreRadiationProperties(config=config),
+                           CoreRadiationProperties(config=config,
+                                                   bszoverride=True),
                            promotes_outputs=[("radiation fraction", "f_rad")])
 
         self.add_subsystem("n_peaking_factor",
                            PeakingFactor(),
-                           promotes_inputs=["A", ("a0", "minor_radius"),
-                                            ("δ0", "δ"), "κ", ("α", "αn")],
+                           promotes_inputs=[
+                               "A", ("a0", "minor_radius"), ("δ0", "δ"), "κ",
+                               ("α", "αn")
+                           ],
                            promotes_outputs=[("pf", "pf_n")])
         self.add_subsystem("n_axis",
                            om.ExecComp("n0= pf_n * n_mean",
@@ -208,8 +224,10 @@ class SimpleBSZRadiation(om.Group):
 
         self.add_subsystem("T_peaking_factor",
                            PeakingFactor(),
-                           promotes_inputs=["A", ("a0", "minor_radius"),
-                                            ("δ0", "δ"), "κ", ("α", "αT")],
+                           promotes_inputs=[
+                               "A", ("a0", "minor_radius"), ("δ0", "δ"), "κ",
+                               ("α", "αT")
+                           ],
                            promotes_outputs=[("pf", "pf_T")])
         self.add_subsystem("T_axis",
                            om.ExecComp("T0= pf_T * T_mean",
@@ -242,22 +260,19 @@ class SimpleBSZRadiation(om.Group):
                            promotes_outputs=["P_coreimprad"])
 
         self.add_subsystem(
-            "P_rad",
-            om.ExecComp(["P_rad = P_brems + P_synch + P_coreimprad"],
+            "rad",
+            om.ExecComp([
+                "P_rad = P_brems + P_synch + P_coreimprad",
+                "P_loss = P_heat - (P_brems + P_synch + P_coreimprad)"
+            ],
                         P_rad={'units': 'MW'},
+                        P_heat={'units': 'MW'},
+                        P_loss={'units': 'MW'},
                         P_brems={'units': 'MW'},
                         P_synch={'units': 'MW'},
                         P_coreimprad={'units': 'MW'}),
-            promotes=["*"],
-        )
-        self.add_subsystem(
-            "P_loss",
-            om.ExecComp(["P_loss = P_heat - P_rad"],
-                        P_rad={'units': 'MW'},
-                        P_loss={'units': 'MW'},
-                        P_heat={'units': 'MW'}),
-            promotes=["*"],
-        )
+            promotes_inputs=["P_heat", "P_brems", "P_synch", "P_coreimprad"],
+            promotes_outputs=["P_rad", "P_loss"])
 
         # settings for parabolic profile sanity
         self.set_input_defaults("A", 2.0)
@@ -288,8 +303,8 @@ if __name__ == "__main__":
     prob.set_val("Z_eff", 2.0)
 
     prob.set_val("P_heat", 1000)
-    prob.set_val("n0", 1.1, units="n20")
-    prob.set_val("T0", 30, units="keV")
+    prob.set_val("<n>", 1.1, units="n20")
+    prob.set_val("<T>", 15, units="keV")
     prob.set_val("αn", 0.5)
     prob.set_val("αT", 1.1)
 
