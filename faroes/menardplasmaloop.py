@@ -11,6 +11,7 @@ from faroes.fusionreaction import SimpleFusionAlphaSource
 
 from faroes.confinementtime import ConfinementTime
 from faroes.radiation import SimpleRadiation
+from faroes.radiation import SimpleBSZRadiation
 
 from faroes.plasma_beta import SpecifiedPressure
 
@@ -35,10 +36,12 @@ class MenardPlasmaLoop(om.Group):
         m, Minor radius
     ε : float
         Inverse aspect ratio
+    κ : float
+        Elongation of the LCFS (b/a)
+    κa : float
+        Effective elongation
     δ : float
         Triangularity
-    κa : float
-        Effective kappa
     V : float
         m**3, Plasma volume
 
@@ -149,7 +152,15 @@ class MenardPlasmaLoop(om.Group):
         self.connect("NBIsource.P", "P_heat.P_NBI")
 
         self.add_subsystem("radiation", SimpleRadiation(config=config))
-        self.connect("P_heat.P_heat", "radiation.P_heat")
+        self.add_subsystem("bszradiation",
+                           SimpleBSZRadiation(config=config),
+                           promotes_inputs=[
+                               "Bt", ("A", "aspect_ratio"), "minor_radius",
+                               "δ", "κ"
+                           ])
+        self.connect("P_heat.P_heat",
+                     ["radiation.P_heat", "bszradiation.P_heat"])
+        self.connect("ZeroDPlasma.Z_eff", ["bszradiation.Z_eff"])
 
         # back-connection
         self.connect("radiation.P_loss",
@@ -231,13 +242,13 @@ if __name__ == "__main__":
             self.add_subsystem("plasmageom",
                                MenardPlasmaGeometry(config=config),
                                promotes_inputs=["R0", "A", "a"],
-                               promotes_outputs=["ε", "κa", "V"])
+                               promotes_outputs=["ε", "κ", "κa", "V"])
 
             mpl = MenardPlasmaLoop(config=config)
             self.add_subsystem("plasma",
                                mpl,
                                promotes_inputs=[("minor_radius", "a"), "R0",
-                                                "Bt", "ε", "κa", "V",
+                                                "Bt", "ε", "κ", "κa", "V",
                                                 ("aspect_ratio", "A")])
             self.connect("plasmageom.L_pol", "plasma.L_pol")
             self.connect("plasmageom.L_pol_simple", "plasma.L_pol_simple")
