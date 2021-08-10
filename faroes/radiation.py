@@ -1,5 +1,6 @@
 from faroes.bremsstrahlung import Bremsstrahlung
 from faroes.synchrotron import Synchrotron
+from faroes.shapefactor import PeakingFactor
 from faroes.configurator import UserConfigurator, Accessor
 import faroes.units  # noqa: F401
 
@@ -191,6 +192,33 @@ class SimpleBSZRadiation(om.Group):
         self.add_subsystem("props",
                            CoreRadiationProperties(config=config),
                            promotes_outputs=[("radiation fraction", "f_rad")])
+
+        self.add_subsystem("n_peaking_factor",
+                           PeakingFactor(),
+                           promotes_inputs=["A", ("a0", "minor_radius"),
+                                            ("δ0", "δ"), "κ", ("α", "αn")],
+                           promotes_outputs=[("pf", "pf_n")])
+        self.add_subsystem("n_axis",
+                           om.ExecComp("n0= pf_n * n_mean",
+                                       n0={"units": "m**(-3)"},
+                                       pf_n={"units": None},
+                                       n_mean={"units": "m**(-3)"}),
+                           promotes_inputs=["pf_n", ("n_mean", "<n>")],
+                           promotes_outputs=["n0"])
+
+        self.add_subsystem("T_peaking_factor",
+                           PeakingFactor(),
+                           promotes_inputs=["A", ("a0", "minor_radius"),
+                                            ("δ0", "δ"), "κ", ("α", "αT")],
+                           promotes_outputs=[("pf", "pf_T")])
+        self.add_subsystem("T_axis",
+                           om.ExecComp("T0= pf_T * T_mean",
+                                       T0={"units": "keV"},
+                                       pf_T={"units": None},
+                                       T_mean={"units": "keV"}),
+                           promotes_inputs=["pf_T", ("T_mean", "<T>")],
+                           promotes_outputs=["T0"])
+
         self.add_subsystem("brems",
                            Bremsstrahlung(profile='parabolic',
                                           triangularity='constant'),

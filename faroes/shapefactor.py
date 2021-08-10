@@ -1,7 +1,9 @@
-import openmdao.api as om
+from faroes.sauter_plasma import SauterGeometry
 
+import openmdao.api as om
 from scipy.constants import pi
 from scipy.special import hyp0f1, gamma, jv, digamma
+import numpy as np
 
 
 class ConstProfile(om.ExplicitComponent):
@@ -37,7 +39,7 @@ class ConstProfile(om.ExplicitComponent):
         None, shape factor
     """
     def setup(self):
-        self.add_input("A", val=2., desc="aspect ratio")
+        self.add_input("A", desc="aspect ratio")
         self.add_input("δ0", val=0., desc="LCFS triangularity")
         self.add_input("κ", desc="elongation")
 
@@ -111,7 +113,7 @@ class ParabProfileConstTriang(om.ExplicitComponent):
         None, shape factor
     """
     def setup(self):
-        self.add_input("A", val=2., desc="major radius")
+        self.add_input("A", desc="major radius")
         self.add_input("δ0", val=0., desc="border triangularity")
         self.add_input("κ", desc="elongation")
         self.add_input("α", desc="exponent for profiles")
@@ -198,7 +200,7 @@ class ParabProfileLinearTriang(om.ExplicitComponent):
         None, shape factor
     """
     def setup(self):
-        self.add_input("A", val=2., desc="major radius")
+        self.add_input("A", desc="major radius")
         self.add_input("δ0", val=0., desc="border triangularity")
         self.add_input("κ", desc="elongation")
         self.add_input("α", desc="exponent for profiles")
@@ -236,3 +238,89 @@ class ParabProfileLinearTriang(om.ExplicitComponent):
         frac3 = 2 * A * hyp0f1(2 + α, -δ0**2 / 4) / gamma(2 + α)
         frac4 = δ0 * hyp0f1(3 + α, -δ0**2) / gamma(3 + α)
         J["S", "κ"] = pi**2 * gamma(1 + α) * (frac3 - frac4)
+
+
+class PeakingFactor(om.Group):
+    r"""Computes Peaking factor
+    For a particular function, F, of ρ, the peaking factor is defined as
+    the ratio of the value at the center to the volume-average. It is given
+    by
+
+    .. math::
+       \frac{F_0}{\langle F(\rho) \rangle} = \frac{V}{S_F * a_0**3}
+
+    for constant and parabolic profiles, where V is the volume, a0 is the minor
+    radius and S is the corresponding shape factor.
+
+    Inputs
+    ------
+    A : float
+        Aspect ratio (R0 / a0)
+    a0 : float
+        m, minor radius
+    δ0 : float
+        Triangularity of plasma distribution
+    κ : float
+        Elongation of plasma distribution
+    α : float
+        None, exponent in profile
+
+    Outputs
+    -------
+    pf : float
+        None, peaking factor
+
+    Notes
+    -----
+    This current implementation is only for the case of parabolic profile
+    and constant triangularity.
+    """
+    def initialize(self):
+        self.options.declare('config', default=None)
+
+    def setup(self):
+        θ = np.linspace(0, 2 * pi, 1, endpoint=False)
+        self.add_subsystem("ivc",
+                           om.IndepVarComp("θ", val=θ),
+                           promotes_outputs=["*"])
+
+        self.add_subsystem("major_radius",
+                           om.ExecComp("R0=A * a0",
+                                       R0={"units": "m"},
+                                       A={"units": None},
+                                       a0={"units": "m"}),
+                           promotes_inputs=["A", "a0"],
+                           promotes_outputs=["R0"])
+
+        self.add_subsystem("volume",
+                           SauterGeometry(),
+                           promotes_inputs=["R0", "A", ("a", "a0"), "κ",
+                                            ("δ", "δ0"), "θ"],
+                           promotes_outputs=["V"])
+
+        self.add_subsystem("shape_factor",
+                           ParabProfileConstTriang(),
+                           promotes_inputs=["A", "δ0", "κ", "α"],
+                           promotes_outputs=["S"])
+
+        self.add_subsystem("peaking_factor",
+                           om.ExecComp("pf= V / (S * a0**3)",
+                                       V={"units": "m**3"},
+                                       a0={"units": "m"}),
+                           promotes_inputs=["V", "S", "a0"],
+                           promotes_outputs=["pf"])
+
+
+if __name__ == '__main__':
+    prob = om.Problem()
+    prob.model = PeakingFactor()
+
+    prob.setup(force_alloc_complex=True)
+    prob.set_val("A", 5 / 2)
+    prob.set_val("a0", 2)
+    prob.set_val("δ0", 0.2)
+    prob.set_val("κ", 1)
+    prob.set_val("α", 2)
+    prob.run_driver()
+    all_inputs = prob.model.list_inputs(values=True, units=True)
+    all_outputs = prob.model.list_outputs(values=True, units=True)

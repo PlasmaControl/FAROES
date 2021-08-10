@@ -83,5 +83,25 @@ class TestShapeFactorParabLinear(unittest.TestCase):
         assert_near_equal(prob.get_val("S"), 16.24507658, tolerance=1e-4)
 
 
+class TestPeakingFactor(unittest.TestCase):
+    def setUp(self):
+        prob = om.Problem()
+        prob.model = sf.PeakingFactor()
+
+        prob.setup(force_alloc_complex=True)
+        prob.set_val("A", 5 / 2)
+        prob.set_val("a0", 2)
+        prob.set_val("δ0", 0.2)
+        prob.set_val("κ", 1)
+        prob.set_val("α", 2)
+        self.prob = prob
+
+    def test_value(self):
+        prob = self.prob
+        prob.run_driver()
+        assert_near_equal(prob.get_val("pf"), 384.91690876 / (16.14463285 * 8),
+                          tolerance=1e-4)
+
+
 if __name__ == '__main__':
     unittest.main()
