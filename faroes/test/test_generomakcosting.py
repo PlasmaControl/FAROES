@@ -142,15 +142,33 @@ class TestShieldWithGapsCost(unittest.TestCase):
         assert_check_partials(check)
 
 
-class TestDeuteriumCost(unittest.TestCase):
+class TestDeuteriumVariableCost(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
 
         deu_cc = {"C_deu_per_kg": 10000.0}
-        prob.model = gc.DeuteriumCost(cost_params=deu_cc)
+        prob.model = gc.DeuteriumVariableCost(cost_params=deu_cc)
 
         prob.setup(force_alloc_complex=True)
         prob.set_val("P_fus", 1500, units="MW")
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+
+
+class TestAnnualDeuteriumCost(unittest.TestCase):
+    def setUp(self):
+        prob = om.Problem()
+
+        prob.model = gc.AnnualDeuteriumCost()
+
+        prob.setup(force_alloc_complex=True)
+        prob.set_val("C_Dv", 60, units="USD/h")
+        prob.set_val("D usage", 6, units="g/h")
         prob.set_val("f_av", 0.8, units=None)
         self.prob = prob
 
@@ -159,6 +177,7 @@ class TestDeuteriumCost(unittest.TestCase):
 
         check = prob.check_partials(out_stream=None, method='cs')
         assert_check_partials(check)
+        prob.run_driver()
 
 
 class TestCapitalCost(unittest.TestCase):
@@ -226,9 +245,9 @@ class TestAveragedAnnualBlanketCost(unittest.TestCase):
         prob.setup(force_alloc_complex=True)
 
         prob.set_val("C_bl", 20, units="MUSD")
+        prob.set_val("p_wn", 5, units="MW/m**2")
+        prob.set_val("F_wn", 15, units="MW*a/m**2")
         prob.set_val("f_av", 0.9)
-        prob.set_val("F_wn", 10, units="MW*a/m**2")
-        prob.set_val("p_wn", 10, units="MW/m**2")
         prob.set_val("N_years", 40)
         self.prob = prob
 
@@ -249,15 +268,14 @@ class TestAveragedAnnualDivertorCost(unittest.TestCase):
             'fudge': 1.0,
         }
 
-        prob.model = gc.AveragedAnnualDivertorCost(
-            cost_params=ann_dv_cc)
+        prob.model = gc.AveragedAnnualDivertorCost(cost_params=ann_dv_cc)
 
         prob.setup(force_alloc_complex=True)
 
         prob.set_val("C_tt", 20, units="MUSD")
-        prob.set_val("f_av", 0.9)
-        prob.set_val("F_tt", 10, units="MW*a/m**2")
+        prob.set_val("F_tt", 20, units="MW*a/m**2")
         prob.set_val("p_tt", 10, units="MW/m**2")
+        prob.set_val("f_av", 0.9)
         prob.set_val("N_years", 40)
         self.prob = prob
 
@@ -373,6 +391,40 @@ class TestIndirectChargesFactor(unittest.TestCase):
 
         check = prob.check_partials(out_stream=None, method='cs')
         assert_check_partials(check)
+
+
+class TestGeneromakToGenX(unittest.TestCase):
+    def setUp(self):
+        prob = om.Problem()
+        cost_params = {
+            'F_CR0': 0.078,
+            'waste_charge': 0.5,
+            'fudge': 1.0,
+        }
+
+        prob.model = gc.GeneromakToGenX(cost_params=cost_params)
+        prob.setup(force_alloc_complex=True)
+        prob.set_val('C_C0', 7, units='GUSD')
+        prob.set_val('Initial blanket', 20, units='MUSD/a')
+        prob.set_val('Initial divertor', 5, units='MUSD/a')
+
+        prob.set_val('C_aa', 29.5, units='MUSD/a')
+        prob.set_val('C_misca', 7.5, units='MUSD/a')
+        prob.set_val('C_OM', 98.59, units='MUSD/a')
+
+        prob.set_val('C_bv', 20, units='MUSD/a')
+        prob.set_val('C_tv', 10, units='MUSD/a')
+        prob.set_val('C_fv', 0.5, units='MUSD/a')
+
+        prob.set_val('P_e', 1000, units='MW')
+        self.prob = prob
+
+    def test_partials(self):
+        prob = self.prob
+
+        check = prob.check_partials(out_stream=None, method='cs')
+        assert_check_partials(check)
+        prob.run_driver()
 
 
 if __name__ == '__main__':

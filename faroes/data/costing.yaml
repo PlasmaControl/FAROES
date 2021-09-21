@@ -1,4 +1,6 @@
 costing method: Generomak
+# creates an additional subsystem for outputs in the GenX format
+GenXInterface: False
 
 Generomak:
   Finance:
@@ -40,7 +42,7 @@ Generomak:
     c_V: {value: 0.839, units: GUSD}
     d_V: {value: 5100, units: m**3}
     e_V: 0.67
-    fudge: 1.0
+    fudge: 1.0  # not implemented yet
   MiscReplacements:
     c_misc: {value: 52.8, units: MUSD/a}
   FixedOM:

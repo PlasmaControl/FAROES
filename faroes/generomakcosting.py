@@ -1,7 +1,7 @@
 from faroes.configurator import UserConfigurator
 
 import openmdao.api as om
-from scipy.constants import mega
+from scipy.constants import mega, hour, year, kilo
 
 
 class PrimaryCoilSetCost(om.ExplicitComponent):
@@ -290,7 +290,7 @@ class AnnualAuxHeatingCost(om.ExplicitComponent):
 
     Outputs
     -------
-    C_aa:float
+    C_aa: float
        MUSD/a, Averaged costs of aux heating
 
     Notes
@@ -604,22 +604,22 @@ class CapitalCost(om.ExplicitComponent):
         J["C_D", "V_FI"] = f_cont * J["C_bld", "V_FI"]
 
 
-class DeuteriumCost(om.ExplicitComponent):
-    r"""Similar to the STARFIRE report.
+class DeuteriumVariableCost(om.ExplicitComponent):
+    r"""Instantaneous variable cost for deuterium
 
-    Assumes a D-T reactor.
+    Assumes a DT reactor
 
     Inputs
     ------
     P_fus: float
-       MW, Fusion power
-    f_av: float
-       Availability factor
+        MW, Direct fusion power (DT, specifically)
 
     Outputs
     -------
-    C_deuterium: float
-       MUSD/a, Average annual deuterium cost
+    C_Dv: float
+        kUSD/h, Instantaneous deuterium cost
+    D usage : float
+        g/h, Rate of burning deuterium mass
 
     Options
     -------
@@ -628,7 +628,86 @@ class DeuteriumCost(om.ExplicitComponent):
         The dictionary provided must have values for all these keys:
 
         C_deu  : float
-            USD/kg, Price of Deuterium in $/kg.
+            kUSD/kg, Price of Deuterium in $/kg.
+
+    For a similar computation see pg 512 of Volume II of the STARFIRE report
+    [1]_.
+
+    The price of deuterium is estimated from wikipedia: it lists $13k/kg, but I
+    estimated it as $10k/kg.
+
+    Notes
+    -----
+    Mathematica code to compute the constant:
+
+    .. code-block:: Mathematica
+
+        mt = Entity["Isotope", "Hydrogen3"]["AtomicMass"];
+        md = Quantity["DeuteronMass"];
+        mn = Quantity["NeutronMass"];
+        ma = Quantity["AlphaParticleMass"];
+        me = Quantity["ElectronMass"];
+        c = Quantity["SpeedOfLight"];
+        jperkg = UnitConvert[(mt + md - mn - ma - me) c^2/md,
+          "Megajoules"/"Kilograms"]
+
+    References
+    ----------
+    .. [1] Baker, C. C.; Abdou, M. A. et al.
+       STARFIRE - A Commerical Tokamak Fusion Power Study. Volume II.
+       ANL/FPP-80-1; Argonne National Laboratory: Argonne, Illinois, 1980.
+       https://doi.org/10.2172/6633213
+    """
+    def initialize(self):
+        self.options.declare('cost_params', types=dict)
+
+    def setup(self):
+        self.cc = self.options['cost_params']
+        self.add_input("P_fus", units="MW")
+        self.add_output("D usage", units="kg/h", ref=0.01)
+        self.add_output("C_Dv", units="USD/h", ref=0.5)
+
+        # this was done by looking up the masses of D+, T, α,
+        # neutrons, and e⁻, and doing Δm c²
+        self.energy_density_d_only = 8.42840e8  # MJ per kg of D
+
+    def compute(self, inputs, outputs):
+        cc = self.cc
+        P_fus = inputs["P_fus"]
+        C_per_kg = cc['C_deu_per_kg']
+        outputs["D usage"] = P_fus * hour / self.energy_density_d_only
+        outputs["C_Dv"] = C_per_kg * outputs["D usage"]
+
+    def setup_partials(self):
+        cc = self.cc
+        C_per_kg = cc['C_deu_per_kg']
+        dDusage_dPfus = hour / self.energy_density_d_only
+        dCdeut_dPfus = C_per_kg * dDusage_dPfus
+
+        self.declare_partials("D usage", ["P_fus"], val=dDusage_dPfus)
+        self.declare_partials("C_Dv", ["P_fus"], val=dCdeut_dPfus)
+
+
+class AnnualDeuteriumCost(om.ExplicitComponent):
+    r"""Similar to the STARFIRE report.
+
+    Assumes a D-T reactor.
+
+    Inputs
+    ------
+    C_Dv: float
+       kUSD/h, Instantaneous variable cost of Deuterium
+    D usage : float
+       g/h
+    f_av: float
+       Availability factor
+
+    Outputs
+    -------
+    C_deuterium: float
+       kUSD/a, Average annual deuterium cost
+    Annual D usage: float
+       kg/a
 
     Notes
     -----
@@ -642,45 +721,39 @@ class DeuteriumCost(om.ExplicitComponent):
 
     References
     ----------
-    ..[1] Baker, C. C.; Abdou, M. A. et al.
-      STARFIRE - A Commerical Tokamak Fusion Power Study. Volume II.
-      ANL/FPP-80-1; Argonne National Laboratory: Argonne, Illinois, 1980.
-      https://doi.org/10.2172/6633213
+    .. [1] Baker, C. C.; Abdou, M. A. et al.
+       STARFIRE - A Commerical Tokamak Fusion Power Study. Volume II.
+       ANL/FPP-80-1; Argonne National Laboratory: Argonne, Illinois, 1980.
+       https://doi.org/10.2172/6633213
     """
-    def initialize(self):
-        self.options.declare('cost_params', types=dict)
-
     def setup(self):
-        self.cc = self.options['cost_params']
-        self.add_input("P_fus", units="MW")
+        self.add_input("C_Dv", units="kUSD/h")
+        self.add_input("D usage", units="g/h")
         self.add_input("f_av")
-        self.add_output("C_deuterium", units="MUSD/a", ref=0.5)
-        self.add_output("D usage", units="kg/a", ref=50)
-
-        # this was done by looking up the masses of D, T, He atoms, and
-        # neutrons, and doing Δm c²
-        self.conversion = 0.0374239  # kg per MW*y
+        self.add_output("C_deuterium", units="kUSD/a", ref=0.5)
+        self.add_output("Annual D usage", units="kg/a", ref=50)
+        self.g_per_h_to_kg_per_a = year / hour / kilo
+        self.per_h_to_per_a = year / hour
 
     def compute(self, inputs, outputs):
-        cc = self.cc
-        P_av = inputs["P_fus"] * inputs["f_av"]
-        C_per_kg = cc['C_deu_per_kg']
-        outputs["D usage"] = P_av * self.conversion
-        outputs["C_deuterium"] = C_per_kg * P_av * self.conversion / mega
+        C_Dv = inputs["C_Dv"]
+        D_use = inputs["D usage"]
+        f_av = inputs["f_av"]
+        outputs["C_deuterium"] = f_av * C_Dv * self.per_h_to_per_a
+        outputs["Annual D usage"] = f_av * D_use * self.g_per_h_to_kg_per_a
 
     def setup_partials(self):
-        self.declare_partials("D usage", ["P_fus", "f_av"])
-        self.declare_partials("C_deuterium", ["P_fus", "f_av"])
+        self.declare_partials("C_deuterium", ["C_Dv", "f_av"])
+        self.declare_partials("Annual D usage", ["D usage", "f_av"])
 
     def compute_partials(self, inputs, J):
-        cc = self.cc
+        C_Dv = inputs["C_Dv"]
+        D_use = inputs["D usage"]
         f_av = inputs["f_av"]
-        P_fus = inputs["P_fus"]
-        C_per_kg = cc['C_deu_per_kg']
-        J["C_deuterium", "P_fus"] = f_av * self.conversion * C_per_kg / mega
-        J["C_deuterium", "f_av"] = P_fus * self.conversion * C_per_kg / mega
-        J["D usage", "P_fus"] = f_av * self.conversion
-        J["D usage", "f_av"] = P_fus * self.conversion
+        J["C_deuterium", "C_Dv"] = f_av * self.per_h_to_per_a
+        J["C_deuterium", "f_av"] = C_Dv * self.per_h_to_per_a
+        J["Annual D usage", "D usage"] = f_av * self.g_per_h_to_kg_per_a
+        J["Annual D usage", "f_av"] = D_use * self.g_per_h_to_kg_per_a
 
 
 class MiscReplacements(om.ExplicitComponent):
@@ -694,7 +767,9 @@ class MiscReplacements(om.ExplicitComponent):
     Outputs
     -------
     C_fa : float
-        MUSD/a, Cost of miscellaneous scheduled replaceable items
+        MUSD/a, Cost of misc scheduled replaceable items and fuel
+    C_misca : float
+        MUSD/a, Cost of misc scheduled replaceable items
 
     Options
     -------
@@ -729,6 +804,7 @@ class MiscReplacements(om.ExplicitComponent):
         self.cc = self.options['cost_params']
         self.add_input("C_fuel", units="MUSD/a", val=0.8)
         self.add_output("C_fa", units="MUSD/a", ref=10)
+        self.add_output("C_misca", units="MUSD/a", ref=10)
 
     def compute(self, inputs, outputs):
         cc = self.cc
@@ -737,6 +813,7 @@ class MiscReplacements(om.ExplicitComponent):
         C_fuel = inputs['C_fuel']
         C_fa = C_fuel + f_CR0 * C_misc
         outputs['C_fa'] = C_fa
+        outputs['C_misca'] = f_CR0 * C_misc
 
     def setup_partials(self):
         self.declare_partials('C_fa', 'C_fuel', val=1)
@@ -801,21 +878,25 @@ class AveragedAnnualBlanketCost(om.ExplicitComponent):
     ------
     C_bl : float
         MUSD, cost of the initial blanket
-    f_av : float
-        Plant availability
     p_wn : float
         MW/m**2, Neutron wall loading
     F_wn : float
         First wall and blanket lifetime
+    f_av : float
+        Plant availability
     N_years : float
         Number of years of plant operation
 
     Outputs
     -------
-    C_ba : float
-        MUSD, Averaged annual blanket costs
+    C_bv : float
+        MUSD/a, Variable cost of blanket usage, instantaneous.
+    Initial blanket : float
+        MUSD/a: Annualized cost of the initial blanket
     Avg blanket repl : float
-        MUSD, Averaged annual blanket replacement costs
+        MUSD/a, Averaged annual blanket replacement costs
+    C_ba : float
+        MUSD/a, Averaged annual blanket costs
 
     cost_params : dict
         This is a dictionary of coefficients for the costing model.
@@ -843,61 +924,129 @@ class AveragedAnnualBlanketCost(om.ExplicitComponent):
     def setup(self):
         self.cc = self.options['cost_params']
         self.add_input("C_bl", units="MUSD", val=0.0)
-        self.add_input("f_av", val=1.0)
-        self.add_input("F_wn", units="MW*a/m**2")
         self.add_input("p_wn", units="MW/m**2")
+        self.add_input("F_wn", units="MW*a/m**2")
+        self.add_input("f_av", val=1.0)
         self.add_input("N_years")
-        self.add_output("C_ba", units="MUSD/a", lower=0, ref=100)
-        self.add_output("Initial blanket", units="MUSD", lower=0, ref=100)
-        self.add_output("Avg blanket repl", units="MUSD/a", lower=0, ref=100)
+        self.add_output("C_bv", units="MUSD/a", lower=0, ref=40)
+        self.add_output("Initial blanket", units="MUSD/a", lower=0, ref=20)
+        self.add_output("Avg blanket repl", units="MUSD/a", lower=0, ref=30)
+        self.add_output("C_ba", units="MUSD/a", lower=0, ref=50)
+
+        self.ffails = self.cc['fudge'] * self.cc['f_failures']
 
     def compute(self, inputs, outputs):
         cc = self.cc
+        ffails = self.ffails
         C_bl = inputs["C_bl"]
-        f_av = inputs["f_av"]
-        F_wn = inputs["F_wn"]
         p_wn = inputs["p_wn"]
+        F_wn = inputs["F_wn"]
+        f_av = inputs["f_av"]
         n_years = inputs["N_years"]
 
-        initial_bl = cc['f_spares'] * C_bl * cc['F_CR0']
-        outputs["Initial blanket"] = initial_bl
+        C_bv_raw = C_bl * p_wn / F_wn
+
+        outputs["C_bv"] = ffails * C_bv_raw
+
+        initial_bl = cc['f_spares'] * cc['F_CR0'] * C_bl
+        outputs["Initial blanket"] = ffails * initial_bl
         # averaged cost of scheduled blanket replacement
         avg_sched_repl = (f_av * n_years * p_wn / F_wn - 1) * C_bl / n_years
-        outputs["Avg blanket repl"] = avg_sched_repl
-        outputs["C_ba"] = cc['f_failures'] * (initial_bl +
-                                              avg_sched_repl) * cc['fudge']
+        outputs["Avg blanket repl"] = ffails * avg_sched_repl
+        outputs["C_ba"] = ffails * (initial_bl + avg_sched_repl)
 
     def setup_partials(self):
         cc = self.cc
-        self.declare_partials("Initial blanket", ["C_bl"],
-                              val=cc['F_CR0'] * cc['f_spares'])
+        dinitial_dCbl = cc['F_CR0'] * cc['f_spares'] * self.ffails
+        self.declare_partials("C_bv", ["C_bl", "p_wn", "F_wn"])
+        self.declare_partials("Initial blanket", ["C_bl"], val=dinitial_dCbl)
         self.declare_partials("Avg blanket repl",
                               ["C_bl", "f_av", "p_wn", "F_wn", "N_years"])
         self.declare_partials("C_ba",
                               ["C_bl", "f_av", "p_wn", "F_wn", "N_years"])
 
     def compute_partials(self, inputs, J):
-        cc = self.cc
+        ffails = self.ffails
         C_bl = inputs["C_bl"]
         f_av = inputs["f_av"]
-        F_wn = inputs["F_wn"]
         p_wn = inputs["p_wn"]
+        F_wn = inputs["F_wn"]
         n_years = inputs["N_years"]
 
-        J["Avg blanket repl", "C_bl"] = -1 / n_years + f_av * p_wn / F_wn
-        J["Avg blanket repl", "f_av"] = C_bl * p_wn / F_wn
-        J["Avg blanket repl", "N_years"] = C_bl / n_years**2
-        J["Avg blanket repl", "p_wn"] = C_bl * f_av / F_wn
-        J["Avg blanket repl", "F_wn"] = -C_bl * f_av * p_wn / F_wn**2
+        J["C_bv", "C_bl"] = ffails * p_wn / F_wn
+        J["C_bv", "p_wn"] = ffails * C_bl / F_wn
+        J["C_bv", "F_wn"] = -ffails * C_bl * p_wn / F_wn**2
 
-        ffails = cc['f_failures'] * cc['fudge']
+        J["Avg blanket repl",
+          "C_bl"] = ffails * (f_av * p_wn / F_wn - 1 / n_years)
+        J["Avg blanket repl", "f_av"] = ffails * C_bl * p_wn / F_wn
+        J["Avg blanket repl", "p_wn"] = f_av * J["C_bv", "p_wn"]
+        J["Avg blanket repl", "F_wn"] = f_av * J["C_bv", "F_wn"]
+        J["Avg blanket repl", "N_years"] = ffails * C_bl / n_years**2
 
-        J["C_ba", "C_bl"] = ffails * (J["Initial blanket", "C_bl"] +
-                                      J["Avg blanket repl", "C_bl"])
-        J["C_ba", "f_av"] = ffails * J["Avg blanket repl", "f_av"]
-        J["C_ba", "N_years"] = ffails * J["Avg blanket repl", "N_years"]
-        J["C_ba", "p_wn"] = ffails * J["Avg blanket repl", "p_wn"]
-        J["C_ba", "F_wn"] = ffails * J["Avg blanket repl", "F_wn"]
+        J["C_ba", "C_bl"] = (J["Initial blanket", "C_bl"] +
+                             J["Avg blanket repl", "C_bl"])
+        J["C_ba", "p_wn"] = J["Avg blanket repl", "p_wn"]
+        J["C_ba", "F_wn"] = J["Avg blanket repl", "F_wn"]
+        J["C_ba", "f_av"] = J["Avg blanket repl", "f_av"]
+        J["C_ba", "N_years"] = J["Avg blanket repl", "N_years"]
+
+
+class DivertorVariableCost(om.ExplicitComponent):
+    r"""Instantaneous variable cost of divertor usage
+
+    .. math::
+        C_{tv} = C_tt p_{tt} / F_{tt}
+
+    Inputs
+    ------
+    C_tt : float
+        MUSD, cost of the initial divertor
+    p_tt : float
+        MW/m**2, Averaged thermal load on the divertor targets
+    F_tt : float
+        MW*a/m**2, Divertor lifetime
+
+    Outputs
+    -------
+    C_tv : float
+        MUSD/a, Variable cost of divertor usage, instantaneous.
+
+    Notes
+    -----
+    This is a subelement of Equation (24) of [1]_.
+
+    References
+    ----------
+    .. [1] Sheffield, J.; Milora, S. L.
+       Generic Magnetic Fusion Reactor Revisited.
+       Fusion Science and Technology 2016, 70 (1), 14–35.
+       https://doi.org/10.13182/FST15-157.
+    """
+    def setup(self):
+        self.add_input("C_tt", units="MUSD", val=0.0)
+        self.add_input("F_tt", units="MW*a/m**2")
+        self.add_input("p_tt", units="MW/m**2")
+        self.add_output("C_tv", units="MUSD/a", lower=0, ref=100)
+
+    def compute(self, inputs, outputs):
+        C_tt = inputs["C_tt"]
+        F_tt = inputs["F_tt"]
+        p_tt = inputs["p_tt"]
+
+        outputs["C_tv"] = C_tt * p_tt / F_tt
+
+    def setup_partials(self):
+        self.declare_partials("C_tv", ["C_tt", "p_tt", "F_tt"])
+
+    def compute_partials(self, inputs, J):
+        C_tt = inputs["C_tt"]
+        F_tt = inputs["F_tt"]
+        p_tt = inputs["p_tt"]
+
+        J["C_tv", "C_tt"] = p_tt / F_tt
+        J["C_tv", "p_tt"] = C_tt / F_tt
+        J["C_tv", "F_tt"] = -C_tt * p_tt / F_tt**2
 
 
 class AveragedAnnualDivertorCost(om.ExplicitComponent):
@@ -908,27 +1057,35 @@ class AveragedAnnualDivertorCost(om.ExplicitComponent):
         C_{ta} = f_{fail} \left(f_{spare} C_{tt} F_{CR0}
                         + (f_{av} N p_{tt} / F_{tt} - 1)C_tt/N)
 
+        C_{ta} = f_{fail} \left(f_{spare} C_{tt} F_{CR0}
+                        + (f_{av} N C_{tv} - C_{tt})/N)
+
     where :math:`N` is the number of years of plant operation.
+    :math:`C_{tv}` is the instantaneous variable cost of divertor usage.
 
     Inputs
     ------
     C_tt : float
-        MUSD, cost of the initial divertor
+        MUSD, cost of the initial blanket
+    p_tt : float
+        MW/m**2, Neutron wall loading
+    F_tt : float
+        First wall and blanket lifetime
     f_av : float
         Plant availability
-    p_tt : float
-        MW/m**2, Averaged thermal load on the divertor targets
-    F_tt : float
-        MW*a/m**2, Divertor lifetime
     N_years : float
         Number of years of plant operation
 
     Outputs
     -------
-    C_ba : float
-        MUSD/a, Averaged divertor costs
+    C_tv : float
+        MUSD/a, Variable cost of divertor usage, instantaneous.
+    Initial divertor : float
+        MUSD/a: Annualized cost of the initial divertor
     Avg divertor repl : float
-        MUSD/a, Averaged divertor replacement costs
+        MUSD/a, Averaged annual divertor replacement costs
+    C_ta : float
+        MUSD/a, Averaged annual divertor costs
 
     cost_params : dict
         This is a dictionary of coefficients for the costing model.
@@ -951,66 +1108,77 @@ class AveragedAnnualDivertorCost(om.ExplicitComponent):
        https://doi.org/10.13182/FST15-157.
     """
     def initialize(self):
-        self.options.declare('cost_params', default=None)
+        self.options.declare('cost_params', types=dict)
 
     def setup(self):
         self.cc = self.options['cost_params']
         self.add_input("C_tt", units="MUSD", val=0.0)
-        self.add_input("f_av", val=1.0)
-        self.add_input("F_tt", units="MW*a/m**2")
         self.add_input("p_tt", units="MW/m**2")
+        self.add_input("F_tt", units="MW*a/m**2")
+        self.add_input("f_av", val=1.0)
         self.add_input("N_years")
-        self.add_output("C_ta", units="MUSD/a", lower=0, ref=100)
-        self.add_output("Initial divertor", units="MUSD", lower=0, ref=100)
-        self.add_output("Avg divertor repl", units="MUSD/a", lower=0, ref=100)
+        self.add_output("C_tv", units="MUSD/a", lower=0, ref=40)
+        self.add_output("Initial divertor", units="MUSD/a", lower=0, ref=20)
+        self.add_output("Avg divertor repl", units="MUSD/a", lower=0, ref=30)
+        self.add_output("C_ta", units="MUSD/a", lower=0, ref=50)
+
+        self.ffails = self.cc['fudge'] * self.cc['f_failures']
 
     def compute(self, inputs, outputs):
         cc = self.cc
+        ffails = self.ffails
         C_tt = inputs["C_tt"]
-        f_av = inputs["f_av"]
-        F_tt = inputs["F_tt"]
         p_tt = inputs["p_tt"]
+        F_tt = inputs["F_tt"]
+        f_av = inputs["f_av"]
         n_years = inputs["N_years"]
 
-        initial_tt = cc['f_spares'] * C_tt * cc['F_CR0']
-        outputs["Initial divertor"] = initial_tt
+        C_tv_raw = C_tt * p_tt / F_tt
+
+        outputs["C_tv"] = ffails * C_tv_raw
+
+        initial_tt = cc['f_spares'] * cc['F_CR0'] * C_tt
+        outputs["Initial divertor"] = ffails * initial_tt
         # averaged cost of scheduled divertor replacement
         avg_sched_repl = (f_av * n_years * p_tt / F_tt - 1) * C_tt / n_years
-        outputs["Avg divertor repl"] = avg_sched_repl
-        outputs["C_ta"] = cc['f_failures'] * (initial_tt +
-                                              avg_sched_repl) * cc['fudge']
+        outputs["Avg divertor repl"] = ffails * avg_sched_repl
+        outputs["C_ta"] = ffails * (initial_tt + avg_sched_repl)
 
     def setup_partials(self):
         cc = self.cc
-        self.declare_partials("Initial divertor", ["C_tt"],
-                              val=cc['F_CR0'] * cc['f_spares'])
+        dinitial_dCtt = cc['F_CR0'] * cc['f_spares'] * self.ffails
+        self.declare_partials("C_tv", ["C_tt", "p_tt", "F_tt"])
+        self.declare_partials("Initial divertor", ["C_tt"], val=dinitial_dCtt)
         self.declare_partials("Avg divertor repl",
                               ["C_tt", "f_av", "p_tt", "F_tt", "N_years"])
         self.declare_partials("C_ta",
                               ["C_tt", "f_av", "p_tt", "F_tt", "N_years"])
 
     def compute_partials(self, inputs, J):
-        cc = self.cc
+        ffails = self.ffails
         C_tt = inputs["C_tt"]
         f_av = inputs["f_av"]
-        F_tt = inputs["F_tt"]
         p_tt = inputs["p_tt"]
+        F_tt = inputs["F_tt"]
         n_years = inputs["N_years"]
 
-        J["Avg divertor repl", "C_tt"] = -1 / n_years + f_av * p_tt / F_tt
-        J["Avg divertor repl", "f_av"] = C_tt * p_tt / F_tt
-        J["Avg divertor repl", "N_years"] = C_tt / n_years**2
-        J["Avg divertor repl", "p_tt"] = C_tt * f_av / F_tt
-        J["Avg divertor repl", "F_tt"] = -C_tt * f_av * p_tt / F_tt**2
+        J["C_tv", "C_tt"] = ffails * p_tt / F_tt
+        J["C_tv", "p_tt"] = ffails * C_tt / F_tt
+        J["C_tv", "F_tt"] = -ffails * C_tt * p_tt / F_tt**2
 
-        ffails = cc['f_failures'] * cc['fudge']
+        J["Avg divertor repl",
+          "C_tt"] = ffails * (f_av * p_tt / F_tt - 1 / n_years)
+        J["Avg divertor repl", "f_av"] = ffails * C_tt * p_tt / F_tt
+        J["Avg divertor repl", "p_tt"] = f_av * J["C_tv", "p_tt"]
+        J["Avg divertor repl", "F_tt"] = f_av * J["C_tv", "F_tt"]
+        J["Avg divertor repl", "N_years"] = ffails * C_tt / n_years**2
 
-        J["C_ta", "C_tt"] = ffails * (J["Initial divertor", "C_tt"] +
-                                      J["Avg divertor repl", "C_tt"])
-        J["C_ta", "f_av"] = ffails * J["Avg divertor repl", "f_av"]
-        J["C_ta", "N_years"] = ffails * J["Avg divertor repl", "N_years"]
-        J["C_ta", "p_tt"] = ffails * J["Avg divertor repl", "p_tt"]
-        J["C_ta", "F_tt"] = ffails * J["Avg divertor repl", "F_tt"]
+        J["C_ta", "C_tt"] = (J["Initial divertor", "C_tt"] +
+                             J["Avg divertor repl", "C_tt"])
+        J["C_ta", "p_tt"] = J["Avg divertor repl", "p_tt"]
+        J["C_ta", "F_tt"] = J["Avg divertor repl", "F_tt"]
+        J["C_ta", "f_av"] = J["Avg divertor repl", "f_av"]
+        J["C_ta", "N_years"] = J["Avg divertor repl", "N_years"]
 
 
 class FixedOMCost(om.ExplicitComponent):
@@ -1019,7 +1187,7 @@ class FixedOMCost(om.ExplicitComponent):
     Inputs
     ------
     P_e : float
-        MW, net electric power
+        MW, electric power (net or gross, see note)
 
     Outputs
     -------
@@ -1051,6 +1219,10 @@ class FixedOMCost(om.ExplicitComponent):
     annual coolant makeup (=0), annual process material (for water and T)
     processing, annual fuel handling costs (=0), and annual miscellaneous costs
     (training, requalification of operators, rent of equipment, travel).
+
+    The two Sheffield papers appear to scale this cost with the net electric
+    power, but it would be more appropriate to scale with the gross power,
+    since that will determine the size of turbines, buildings, cooling, etc.
 
     References
     ----------
@@ -1503,6 +1675,8 @@ class GeneromakCosting(om.Group):
     def setup(self):
         exact_generomak = self.options['exact_generomak']
         config = self.options['config']
+        f = config.accessor(["costing"])
+        genx_interface = f(["GenXInterface"])
         f = config.accessor(["costing", "Generomak"])
         cost_pars = self.reformat_cost_parameters(f)
 
@@ -1557,16 +1731,25 @@ class GeneromakCosting(om.Group):
         # Assume the only 'fuel' is deuterium. Note: this leaves out Li, but
         # that's considered to be part of the blankets(?).
         deu_cc = {"C_deu_per_kg": cost_pars["Deuterium.cost_per_mass"]}
+        self.add_subsystem("d_cost_var",
+                           DeuteriumVariableCost(cost_params=deu_cc),
+                           promotes_inputs=["P_fus"])
         self.add_subsystem("ann_d_cost",
-                           DeuteriumCost(cost_params=deu_cc),
-                           promotes_inputs=["P_fus", "f_av"])
+                           AnnualDeuteriumCost(),
+                           promotes_inputs=["f_av"])
+        self.connect("d_cost_var.C_Dv", "ann_d_cost.C_Dv")
+        self.connect("d_cost_var.D usage", "ann_d_cost.D usage")
 
         if exact_generomak:
             # The 2016 Generomak paper uses a constant 7.5M for miscellaneous
             # costs.
             ivc = om.IndepVarComp()
             ivc.add_output("C_fa", units="MUSD/a", val=7.5)
-            self.add_subsystem("misc", ivc, promotes_outputs=["C_fa"])
+            ivc.add_output("C_misca", units="MUSD/a",
+                           val=7.5)  # yes, the same.
+            self.add_subsystem("misc",
+                               ivc,
+                               promotes_outputs=["C_fa", "C_misca"])
         else:
             # This allows a variation due to the price of buying deuterium.
             misc_cc = {
@@ -1575,7 +1758,7 @@ class GeneromakCosting(om.Group):
             }
             self.add_subsystem("misc",
                                MiscReplacements(cost_params=misc_cc),
-                               promotes_outputs=["C_fa"])
+                               promotes_outputs=["C_misca", "C_fa"])
             self.connect("ann_d_cost.C_deuterium", "misc.C_fuel")
 
         ann_aux_cc = {
@@ -1641,7 +1824,7 @@ class GeneromakCosting(om.Group):
         self.add_subsystem(
             "ann_blanket_cost",
             AveragedAnnualBlanketCost(cost_params=ann_bl_cc),
-            promotes_inputs=["f_av", "N_years", "p_wn", "C_bl", "F_wn"],
+            promotes_inputs=["f_av", "N_years", "C_bl", "p_wn", "F_wn"],
             promotes_outputs=["C_ba"])
 
         ann_dv_cc = {
@@ -1653,7 +1836,7 @@ class GeneromakCosting(om.Group):
         self.add_subsystem(
             "ann_divertor_cost",
             AveragedAnnualDivertorCost(cost_params=ann_dv_cc),
-            promotes_inputs=["f_av", "N_years", "p_tt", "C_tt", "F_tt"],
+            promotes_inputs=["f_av", "N_years", "C_tt", "F_tt", "p_tt"],
             promotes_outputs=["C_ta"])
 
         self.add_subsystem("fuel_cycle_cost",
@@ -1694,6 +1877,188 @@ class GeneromakCosting(om.Group):
             promotes_inputs=["C_C0", "C_F", ("P_e", "P_net"), "f_av", "C_OM"],
             promotes_outputs=["COE"])
 
+        if genx_interface:
+            self.add_subsystem("GenXInterface",
+                               GeneromakToGenX(cost_params=coe_cc),
+                               promotes_inputs=[
+                                   "C_C0", ("P_e", "P_net"), "C_aa", "C_misca",
+                                   "C_OM"
+                               ])
+            self.connect("ann_blanket_cost.C_bv", "GenXInterface.C_bv")
+            self.connect("ann_blanket_cost.Initial blanket",
+                         "GenXInterface.Initial blanket")
+            self.connect("ann_divertor_cost.C_tv", "GenXInterface.C_tv")
+            self.connect("ann_divertor_cost.Initial divertor",
+                         "GenXInterface.Initial divertor")
+            # in the exact formulation, C_misca contains the fuel cost
+            if not exact_generomak:
+                self.connect("d_cost_var.C_Dv",
+                             "GenXInterface.C_fv")
+
+
+#################################################
+# Interface from Generomak costing to GenX inputs
+
+class GeneromakToGenX(om.ExplicitComponent):
+    r"""Outputs metrics used by GenX
+
+    Inputs
+    ------
+
+    C_C0 : float
+        MUSD, total capital cost
+    Initial blanket : float
+        MUSD/a, annualized cost of the initial blanket
+    Initial divertor : float
+        MUSD/a, annualized cost of the initial divertor
+
+    C_aa: float
+       MUSD/a, Averaged costs of aux heating
+    C_misca : float
+       MUSD/a, Miscellaneous replacements
+    C_OM : float
+       MUSD/a, 'other' fixed operations and maintenance
+
+    C_bv : float
+        USD/h, variable cost of blanket usage
+    C_tv : float
+        USD/h, variable cost of divertor usage
+    C_fv : float
+        USD/h, variable cost of fuel
+
+
+    P_e : float
+        MW, Electric power output
+
+    Outputs
+    -------
+    Inv_Cost_per_MWyr : float
+        MUSD/MW/a, Annualized investment cost per MW.
+    Fixed_OM_Cost_per_MWyr : float
+        MUSD/MW/a, Operations and maintenance cost
+    Var_OM_Cost_per_MWh : float
+        USD/MW/h, Instantaneous variable cost, not including downtime
+           for repairs.
+
+    Notes
+    -----
+    The three outputs use exact GenX nomenclature.
+
+    Options
+    -------
+    cost_params : dict
+        This is a dictionary of coefficients for the costing model.
+        The dictionary provided must have values for all these keys:
+
+        F_CR0  : float
+            1/a, Constant dollar fixed charge rate.
+        fudge  : float
+            Overall fudge factor.
+        waste_charge : float
+            mUSD/kW/h, Cost of waste disposal
+    """
+    def initialize(self):
+        self.options.declare('cost_params', default=None)
+
+    def setup(self):
+        self.cc = self.options['cost_params']
+        self.add_input('C_C0', units='USD', val=0.0)
+        self.add_input('Initial blanket', units='USD/a', val=0.0)
+        self.add_input('Initial divertor', units='USD/a', val=0.0)
+
+        self.add_input('C_aa', units='USD/a', val=0.0)
+        self.add_input('C_misca', units='USD/a', val=0.0)
+        self.add_input('C_OM', units='USD/a', val=0.0)
+
+        self.add_input('C_bv', units='USD/h', val=0.0)
+        self.add_input('C_tv', units='USD/h', val=0.0)
+        self.add_input('C_fv', units='USD/h', val=0.0)
+
+        self.add_input('P_e', units='MW')
+
+        self.add_output('Inv_Cost_per_MWyr',
+                        units='USD/MW/a',
+                        ref=100000)
+        self.add_output('Fixed_OM_Cost_per_MWyr',
+                        units='USD/MW/a',
+                        lower=0,
+                        ref=10000)
+        self.add_output('Var_OM_Cost_per_MWh',
+                        units='USD/MW/h',
+                        lower=0,
+                        ref=10)
+
+    def compute(self, inputs, outputs):
+        cc = self.cc
+        f_cr0 = cc['F_CR0']
+        fudge = cc['fudge']
+
+        c_c0 = inputs['C_C0']
+        initial_blanket = inputs['Initial blanket']
+        initial_divertor = inputs['Initial divertor']
+
+        c_aa = inputs['C_aa']
+        c_misca = inputs['C_misca']
+        c_om = inputs['C_OM']
+
+        c_bv = inputs['C_bv']
+        c_tv = inputs['C_tv']
+        c_fv = inputs['C_fv']
+
+        pe = inputs['P_e']
+
+        inv = (c_c0 * f_cr0 + initial_blanket + initial_divertor) / pe
+        fom = (c_aa + c_misca + c_om) / pe
+        vom = (c_bv + c_tv + c_fv) / pe + cc['waste_charge']
+
+        outputs['Inv_Cost_per_MWyr'] = fudge * inv
+        outputs['Fixed_OM_Cost_per_MWyr'] = fudge * fom
+        outputs['Var_OM_Cost_per_MWh'] = fudge * vom
+
+    def setup_partials(self):
+        self.declare_partials(
+            'Inv_Cost_per_MWyr',
+            ['C_C0', 'Initial blanket', 'Initial divertor', 'P_e'])
+        self.declare_partials('Fixed_OM_Cost_per_MWyr',
+                              ['C_aa', 'C_misca', 'C_OM', 'P_e'])
+        self.declare_partials('Var_OM_Cost_per_MWh',
+                              ['C_bv', 'C_tv', 'C_fv', 'P_e'])
+
+    def compute_partials(self, inputs, J):
+        cc = self.cc
+        c_c0 = inputs['C_C0']
+        bla1 = inputs['Initial blanket']
+        div1 = inputs['Initial divertor']
+
+        c_aa = inputs['C_aa']
+        c_misca = inputs['C_misca']
+        c_om = inputs['C_OM']
+
+        c_bv = inputs['C_bv']
+        c_tv = inputs['C_tv']
+        c_fv = inputs['C_fv']
+
+        pe = inputs['P_e']
+        fudge = cc['fudge']
+        f_cr0 = cc['F_CR0']
+
+        J['Inv_Cost_per_MWyr', 'C_C0'] = fudge * f_cr0 / pe
+        J['Inv_Cost_per_MWyr', 'Initial blanket'] = fudge / pe
+        J['Inv_Cost_per_MWyr', 'Initial divertor'] = fudge / pe
+        J['Inv_Cost_per_MWyr',
+          'P_e'] = -fudge * (c_c0 * f_cr0 + bla1 + div1) / pe**2
+
+        J['Fixed_OM_Cost_per_MWyr', 'C_aa'] = fudge / pe
+        J['Fixed_OM_Cost_per_MWyr', 'C_misca'] = fudge / pe
+        J['Fixed_OM_Cost_per_MWyr', 'C_OM'] = fudge / pe
+        J['Fixed_OM_Cost_per_MWyr',
+          'P_e'] = -fudge * (c_aa + c_misca + c_om) / pe**2
+
+        J['Var_OM_Cost_per_MWh', 'C_bv'] = fudge / pe
+        J['Var_OM_Cost_per_MWh', 'C_tv'] = fudge / pe
+        J['Var_OM_Cost_per_MWh', 'C_fv'] = fudge / pe
+        J['Var_OM_Cost_per_MWh', 'P_e'] = -fudge * (c_bv + c_tv + c_fv) / pe**2
+
 
 if __name__ == '__main__':
     prob = om.Problem()
@@ -1711,26 +2076,26 @@ if __name__ == '__main__':
     prob.set_val("V_bl", 321, units='m**3')
     prob.set_val("A_tt", 60, units='m**2')
 
-    # # power levels
+    # power levels
     prob.set_val("P_aux", 50, units='MW')
     prob.set_val("P_fus", 2250, units="MW")
     prob.set_val("P_t", 2570, units="MW")
     prob.set_val("P_e", 1157, units="MW")
     prob.set_val("P_net", 1000, units="MW")
 
-    # # blanket and divertor power fluxes
+    # blanket and divertor power fluxes
     prob.set_val("p_wn", 3, units='MW/m**2')
     prob.set_val("p_tt", 10, units="MW/m**2")
     prob.set_val("F_wn", 15, units="MW*a/m**2")
     prob.set_val("F_tt", 10, units="MW*a/m**2")
 
-    # # fraction of year with fusion
+    # fraction of year with fusion
     prob.set_val("f_av", 0.8)
 
-    # # plant lifetime
+    # plant lifetime
     prob.set_val("N_years", 30)
 
-    # # construction time
+    # construction time
     prob.set_val("T_constr", 6, units='a')
 
     prob.run_driver()
