@@ -2,7 +2,9 @@
 FAROES
 ******
 
-FAROES is "Fusion Analysis, Research, and Optimization for Energy Systems". It is a Python package for optimizing fusion power plants.
+FAROES is "Fusion Analysis, Research, and Optimization for Energy Systems". It is a Python package for optimizing fusion power plants, and especially for optimizing properties like their capital cost or levelized cost of energy. It is built in a modular fashion to allow user-developers to modify or add equations or analyses of their own design.
+It uses the OpenMDAO framework (openmdao.org) to provide interfaces to third-party nonlinear solvers and optimizers, especially gradient-based optimizers. The framework has advanced logging features to record solution data and metadata.
+This framework also allows users to easily specify the design variables, constraints, and optimization targets, or to define their own.
 
 |forthebadge made-with-python|
 
