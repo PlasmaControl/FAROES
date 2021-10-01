@@ -18,7 +18,7 @@ class SlowingThermalizationTime(om.ExplicitComponent):
     W/Wc : float
         Initial beam energy to critical energy
     ts : float
-        s, Ion-electron slowing down time (Spitzer, 1962)
+        s, Ion-electron velocity slowing down time (Spitzer, 1962)
 
     Outputs
     -------
@@ -133,6 +133,21 @@ class FastParticleHeatingFractions(om.ExplicitComponent):
 class SlowingTimeOnElectrons(om.ExplicitComponent):
     r"""Slowing time of ions on electrons, from Spitzer
 
+    The velocity slowing time is defined such that
+
+    .. math::
+
+       du/dt = - u / \tau_s.
+
+    Where :math:`u` is the average ion speed.  The energy slowing time is
+
+    .. math::
+
+       dW/dt = -W / \tau_{s,w}.
+
+    Since :math:`(d/dt) (1/2)m u^2 = m u du/dt` it is easy to show that
+    :math:`\tau_{s} = 2 \tau_{s,e}`.
+
     Inputs
     ------
     At : float
@@ -149,9 +164,11 @@ class SlowingTimeOnElectrons(om.ExplicitComponent):
     Outputs
     -------
     ts : float
-       s, Slowing time of subthermal ions on eletrons
+       s, Velocity slowing time of subthermal ions on electrons.
           Subthermal means that the ions are moving slower
           than electron thermal velocities.
+    tsw : float
+       s, Energy slowing time of subthermal ions on electrons.
 
     Notes
     -----
@@ -205,7 +222,12 @@ class SlowingTimeOnElectrons(om.ExplicitComponent):
         self.add_input("At", units="u", desc="Test particle mass")
         self.add_input("logΛe", desc="Collision log of test ion on e⁻")
         self.add_input("Zt", val=1, desc="Test particle charge")
-        self.add_output("ts", units="s", desc="Slowing time of ions on e⁻")
+        self.add_output("ts",
+                        units="s",
+                        desc="Velocity slowing time of ions on e⁻")
+        self.add_output("tsw",
+                        units="s",
+                        desc="Energy slowing time of ions on e⁻")
 
     def compute(self, inputs, outputs):
         ne = inputs["ne"]
@@ -215,9 +237,11 @@ class SlowingTimeOnElectrons(om.ExplicitComponent):
         logLe = inputs["logΛe"]
         ts = self.c * At * Te**(3 / 2) / (ne * Zt**2 * logLe)
         outputs["ts"] = ts
+        outputs["tsw"] = ts / 2
 
     def setup_partials(self):
         self.declare_partials('ts', ['ne', 'Te', 'At', 'logΛe', 'Zt'])
+        self.declare_partials('tsw', ['ne', 'Te', 'At', 'logΛe', 'Zt'])
 
     def compute_partials(self, inputs, J):
         ne = inputs["ne"]
@@ -231,6 +255,11 @@ class SlowingTimeOnElectrons(om.ExplicitComponent):
         J["ts", "At"] = self.c * Te**(3 / 2) / (ne * Zt**2 * logLe)
         J["ts", "logΛe"] = -self.c * At * Te**(3 / 2) / (ne * Zt**2 * logLe**2)
         J["ts", "Zt"] = -2 * self.c * At * Te**(3 / 2) / (ne * Zt**3 * logLe)
+        J["tsw", "ne"] = J["ts", "ne"] / 2
+        J["tsw", "Te"] = J["ts", "Te"] / 2
+        J["tsw", "At"] = J["ts", "At"] / 2
+        J["tsw", "logΛe"] = J["ts", "logΛe"] / 2
+        J["tsw", "Zt"] = J["ts", "Zt"] / 2
 
 
 class AverageEnergyWhileSlowing(om.ExplicitComponent):
