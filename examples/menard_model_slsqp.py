@@ -185,53 +185,46 @@ if __name__ == "__main__":
 
     ivc = om.IndepVarComp()
     ivc.add_output("a", units="m")
-    prob.model.add_subsystem("ivc", ivc, promotes_outputs=["*"])
+    model.add_subsystem("ivc", ivc, promotes_outputs=["*"])
 
     prob.driver = om.ScipyOptimizeDriver()
     prob.driver.options['disp'] = True
 
     prob.driver.options['optimizer'] = 'SLSQP'
 
-    prob.model.add_design_var('geometry.radial_build.CS ΔR',
-                              lower=0.10,
-                              upper=1.0,
-                              ref=0.50,
-                              units='m')
-    prob.model.add_design_var('geometry.radial_build.ib_tf.Δr_s',
-                              lower=0.05,
-                              upper=1.0,
-                              ref=0.3,
-                              units='m')
-    prob.model.add_design_var('geometry.radial_build.ib_tf.Δr_m',
-                              lower=0.05,
-                              upper=1.0,
-                              ref=0.3,
-                              units='m')
-    prob.model.add_design_var('a', lower=0.9, upper=2, units='m')
-    prob.model.add_design_var('geometry.radial_build.ob.gap thickness',
-                              lower=0.00,
-                              upper=1.0,
-                              ref=0.3,
-                              units='m')
-    prob.model.add_design_var('magnets.j_HTS',
-                              lower=10,
-                              upper=200,
-                              ref=100,
-                              units="MA/m**2")
+    model.add_design_var('geometry.radial_build.CS ΔR',
+                         lower=0.10,
+                         upper=1.0,
+                         units='m')
+    model.add_design_var('geometry.radial_build.ib_tf.Δr_s',
+                         lower=0.05,
+                         upper=1.0,
+                         units='m')
+    model.add_design_var('geometry.radial_build.ib_tf.Δr_m',
+                         lower=0.05,
+                         upper=1.0,
+                         units='m')
+    model.add_design_var('a', lower=0.9, upper=3, units='m')
+    model.add_design_var('geometry.radial_build.ob.gap thickness',
+                         lower=0.00,
+                         upper=5.0,
+                         units='m')
+    model.add_design_var('magnets.j_HTS',
+                         lower=10,
+                         upper=250,
+                         ref=100,
+                         units="MA/m**2")
 
-    prob.model.add_objective('pplant.overall.P_net', scaler=-0.01)
-    # prob.model.add_objective('magnets.B0', scaler=-1)
-    # prob.model.add_objective('geometry.radial_build.cryostat R_out',
-    #                           scaler=-1)
+    model.add_objective('pplant.overall.P_net', scaler=-0.01)
 
     # set constraints
-    prob.model.add_constraint('magnets.constraint_max_stress', lower=0)
-    prob.model.add_constraint('magnets.constraint_B_on_coil', lower=0)
-    prob.model.add_constraint('magnets.constraint_wp_current_density',
-                              lower=0,
-                              ref=30)
-    prob.model.add_constraint('R0', equals=3.0)
-    prob.model.add_constraint('geometry.aspect_ratio', lower=1.6, upper=5)
+    model.add_constraint('magnets.constraint_max_stress', lower=0, ref=0.1)
+    model.add_constraint('magnets.constraint_B_on_coil', lower=0)
+    model.add_constraint('magnets.constraint_wp_current_density',
+                         lower=0,
+                         ref=10)
+    model.add_constraint('R0', equals=3.0)
+    model.add_constraint('geometry.aspect_ratio', lower=1.6, upper=5)
 
     prob.setup()
     prob.check_config(checks=['unconnected_inputs'])
@@ -241,49 +234,35 @@ if __name__ == "__main__":
     # initial values for design variables
     prob.set_val("geometry.radial_build.CS ΔR", 0.15, units="m")
     prob.set_val("geometry.radial_build.ib_tf.Δr_s", 0.1, units='m')
-    prob.set_val("geometry.radial_build.ib_tf.Δr_m", 0.1, units='m')
+    prob.set_val("geometry.radial_build.ib_tf.Δr_m", 0.3, units='m')
     prob.set_val('a', 1.5, units="m")
-    prob.set_val("magnets.j_HTS", 20, units="MA/m**2")
+    prob.set_val("magnets.j_HTS", 30, units="MA/m**2")
 
-    # initial inputs for intermediate variables
-    prob.set_val("plasma.Hbalance.H", 1.70)
-    prob.set_val("plasma.Ip", 15., units="MA")
-    prob.set_val("plasma.<n_e>", 1.5, units="n20")
-    prob.set_val("plasma.radiation.rad.P_loss", 140, units="MW")
-
-    # set up solvers
-    build = prob.model.geometry
+    build = model.geometry
     newton = build.nonlinear_solver = om.NewtonSolver(solve_subsystems=True)
     newton.options['iprint'] = 2
     newton.options['maxiter'] = 20
     build.linear_solver = om.DirectSolver()
-    newton.linesearch = om.ArmijoGoldsteinLS(retry_on_analysis_error=True,
-                                             rho=0.5,
-                                             c=0.10,
-                                             method="Armijo",
-                                             bound_enforcement="vector")
-    newton.linesearch.options["maxiter"] = 10
-    newton.linesearch.options["iprint"] = 0
 
-    mpl = prob.model.plasma
+    # initial inputs for intermediate variables
+    prob.set_val("plasma.Hbalance.H", 1.10)
+    prob.set_val("plasma.Ip", 10., units="MA")
+    prob.set_val("plasma.<n_e>", 1.5, units="n20")
+    prob.set_val("plasma.radiation.rad.P_loss", 200, units="MW")
+
+    mpl = model.plasma
     newton = mpl.nonlinear_solver = om.NewtonSolver(solve_subsystems=True)
     newton.options['iprint'] = 2
-    newton.options['maxiter'] = 100
-    newton.options['rtol'] = 1e-4
-    newton.options['atol'] = 1e-4
-    newton.options['stall_tol'] = 1e-5
-    newton.options['stall_limit'] = 10
+    newton.options['maxiter'] = 20
     mpl.linear_solver = om.DirectSolver()
     newton.linesearch = om.ArmijoGoldsteinLS(retry_on_analysis_error=True,
                                              rho=0.5,
-                                             c=0.03,
+                                             c=0.1,
                                              method="Armijo",
                                              bound_enforcement="vector")
     newton.linesearch.options["maxiter"] = 40
-    newton.linesearch.options["iprint"] = 2
-    newton.linesearch.options["print_bound_enforce"] = False
 
-    pplant = prob.model.pplant
+    pplant = model.pplant
     newton = pplant.nonlinear_solver = om.NewtonSolver(solve_subsystems=True)
     newton.options['iprint'] = 2
     newton.options['maxiter'] = 10
@@ -291,9 +270,5 @@ if __name__ == "__main__":
 
     prob.run_driver()
 
-    all_inputs = prob.model.list_inputs(values=True,
-                                        print_arrays=True,
-                                        units=True)
-    all_outputs = prob.model.list_outputs(values=True,
-                                          print_arrays=True,
-                                          units=True)
+    model.list_inputs(values=True, print_arrays=True, units=True)
+    model.list_outputs(values=True, print_arrays=True, units=True)
