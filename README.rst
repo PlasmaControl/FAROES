@@ -39,3 +39,5 @@ The two below can be installed on linux using the script available here: https:/
 * ``pyoptsparse`` (https://github.com/mdolab/pyoptsparse) in order to access the ``pyOptSparseDriver`` which allows use of more powerful optimizers like ``IPOPT``.
 * ``IPOPT``. This is optimizer seems to perform a bit better than the implemntations of ``COBYLA`` or ``SLSQP`` which are included with ``scipy``.
 
+Note that an environment variable must be set in every terminal instance using ``IPOPT``. We recommend adding a line to ``~/.bashrc`` to do this automatically for every terminal instance: ``export LD_LIBRARY_PATH=$HOME/ipopt/lib:$LD_LIBRARY_PATH``
+
