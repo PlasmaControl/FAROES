@@ -63,9 +63,9 @@ if __name__ == "__main__":
 
     prob.run_driver()
 
-    all_inputs = prob.model.list_inputs(values=True,
+    all_inputs = prob.model.list_inputs(val=True,
                                         print_arrays=True,
                                         units=True)
-    all_outputs = prob.model.list_outputs(values=True,
+    all_outputs = prob.model.list_outputs(val=True,
                                           print_arrays=True,
                                           units=True)

@@ -273,5 +273,5 @@ if __name__ == "__main__":
     prob.set_val('κa', 2.19)
     prob.set_val('M', 2.5)
     prob.run_driver()
-    prob.model.list_inputs(values=True)
-    prob.model.list_outputs(values=True)
+    prob.model.list_inputs(val=True)
+    prob.model.list_outputs(val=True)

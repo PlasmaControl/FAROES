@@ -154,8 +154,8 @@ if __name__ == "__main__":
 
     prob.run_driver()
 
-    all_inputs = prob.model.list_inputs(values=True, print_arrays=True)
-    all_outputs = prob.model.list_outputs(values=True, print_arrays=True)
+    all_inputs = prob.model.list_inputs(val=True, print_arrays=True)
+    all_outputs = prob.model.list_outputs(val=True, print_arrays=True)
 
     blanket_d_sq = prob.get_val("machine.exclusion_zone.d_sq")
     blanket_theta = prob.get_val("machine.exclusion_zone.θ_parall")

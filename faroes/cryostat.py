@@ -35,7 +35,9 @@ class SimpleCryostat(om.ExplicitComponent):
             self.tf_height_multiple = 2
 
         self.add_input("R_out", units="m", desc="Outer radius")
-        self.add_input("TF half-height", units="m", desc="Outer radius")
+        self.add_input("TF half-height",
+                       units="m",
+                       desc="Half the outer full height of the TF coils")
 
         self.add_output("V", units="m**3", desc="Cryostat total volume")
         self.add_output("h", units="m", desc="Cryostat height")
@@ -73,4 +75,5 @@ if __name__ == "__main__":
     prob.set_val("TF half-height", 1)
 
     prob.run_driver()
-    all_outputs = prob.model.list_outputs(values=True)
+    all_outputs = prob.model.list_inputs(val=True, desc=True)
+    all_outputs = prob.model.list_outputs(val=True, desc=True)

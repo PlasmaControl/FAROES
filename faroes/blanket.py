@@ -87,7 +87,7 @@ class MenardInboardBlanketFit(om.Group):
             # stub to have something that inputs A
             self.add_subsystem("ignore",
                                om.ExecComp("ignore = 0 * A",
-                                           ignore={"value": 0}),
+                                           ignore={"val": 0}),
                                promotes_inputs=["A"])
         else:
             raise ValueError(self.BAD_BL_MODEL % (model))
@@ -188,7 +188,7 @@ class MenardInboardShieldFit(om.Group):
             # stub to have something that inputs A
             self.add_subsystem("ignore",
                                om.ExecComp("ignore = 0 * A",
-                                           ignore={"value": 0}),
+                                           ignore={"val": 0}),
                                promotes_inputs=["A"])
         else:
             raise ValueError(self.BAD_SH_MODEL % (model))
@@ -296,7 +296,7 @@ class OutboardBlanketFit(om.Group):
             # stub to have something that inputs A
             self.add_subsystem("ignore",
                                om.ExecComp("ignore = 0 * A",
-                                           ignore={"value": 0}),
+                                           ignore={"val": 0}),
                                promotes_inputs=["A"])
         else:
             raise ValueError(self.BAD_BL_MODEL % (model))
@@ -1160,8 +1160,8 @@ if __name__ == "__main__":
     # prob.model = MenardMagnetCoolingProperties(config=uc)
     # prob.setup(force_alloc_complex=True)
     # prob.run_driver()
-    all_inputs = prob.model.list_inputs(values=True, units=True)
-    all_outputs = prob.model.list_outputs(values=True, units=True)
+    all_inputs = prob.model.list_inputs(val=True, units=True)
+    all_outputs = prob.model.list_outputs(val=True, units=True)
 
     # prob.model = InboardMidplaneNeutronFluxFromRing()
     # prob.setup(force_alloc_complex=True)
@@ -1177,8 +1177,8 @@ if __name__ == "__main__":
     # # check = prob.check_partials(out_stream=None, method='cs')
     # # assert_check_partials(check)
     # prob.run_driver()
-    # all_inputs = prob.model.list_inputs(values=True, units=True)
-    # all_outputs = prob.model.list_outputs(values=True, units=True)
+    # all_inputs = prob.model.list_inputs(val=True, units=True)
+    # all_outputs = prob.model.list_outputs(val=True, units=True)
 
     # prob = om.Problem()
 
@@ -1202,4 +1202,4 @@ if __name__ == "__main__":
     # check = prob.check_partials(out_stream=None, method='cs')
     # assert_check_partials(check)
     # prob.run_driver()
-    # all_outputs = prob.model.list_outputs(values=True)
+    # all_outputs = prob.model.list_outputs(val=True)

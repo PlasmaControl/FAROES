@@ -101,4 +101,4 @@ if __name__ == "__main__":
     prob.set_val("n_coil", 18)
 
     prob.run_driver()
-    all_outputs = prob.model.list_outputs(values=True)
+    all_outputs = prob.model.list_outputs(val=True)

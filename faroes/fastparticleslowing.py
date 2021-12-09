@@ -718,7 +718,7 @@ class FastParticleSlowing(om.Group):
             om.ExecComp("W_crit = scale * Wcrit0",
                         W_crit={"units": "keV"},
                         Wcrit0={"units": "keV"},
-                        scale={"value": scale}))
+                        scale={"val": scale}))
         self.connect("Wcrit0.W_crit", "Wcrit.Wcrit0")
 
         self.add_subsystem("logCoulombEl",
@@ -788,5 +788,5 @@ if __name__ == "__main__":
     assert_check_partials(check)
 
     prob.run_driver()
-    all_inputs = prob.model.list_inputs(values=True, print_arrays=True)
-    all_outputs = prob.model.list_outputs(values=True, print_arrays=True)
+    all_inputs = prob.model.list_inputs(val=True, print_arrays=True)
+    all_outputs = prob.model.list_outputs(val=True, print_arrays=True)

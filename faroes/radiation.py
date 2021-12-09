@@ -105,5 +105,5 @@ if __name__ == "__main__":
     prob.set_val("P_heat", 100)
 
     prob.run_driver()
-    prob.model.list_inputs(values=True, print_arrays=True)
-    prob.model.list_outputs(values=True, print_arrays=True)
+    prob.model.list_inputs(val=True, print_arrays=True)
+    prob.model.list_outputs(val=True, print_arrays=True)

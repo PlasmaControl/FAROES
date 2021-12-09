@@ -67,16 +67,16 @@ class SauterBootstrapProportionality(om.Group):
 
         self.add_subsystem("new_eps",
                            om.ExecComp("eps = 0.75 * oldeps",
-                                       oldeps={'value': 0.5},
-                                       eps={'value': 0.5}),
+                                       oldeps={'val': 0.5},
+                                       eps={'val': 0.5}),
                            promotes_inputs=[("oldeps", "ε")],
                            promotes_outputs=[("eps", "ε_new")])
 
         self.add_subsystem("new_delta",
                            om.ExecComp(
                                "delta = 0.5 * olddelta",
-                               olddelta={'value': 0.5},
-                               delta={'value': 0.5},
+                               olddelta={'val': 0.5},
+                               delta={'val': 0.5},
                            ),
                            promotes_inputs=[("olddelta", "δ")],
                            promotes_outputs=[("delta", "δ_new")])
@@ -92,8 +92,8 @@ class SauterBootstrapProportionality(om.Group):
         self.connect("ivc.δ0", "ft0.δ")
         self.add_subsystem("mult",
                            om.ExecComp("m = ft/(1-ft) * (1 - ft0)/ft0",
-                                       ft={'value': 0.5},
-                                       ft0={'value': 0.5}),
+                                       ft={'val': 0.5},
+                                       ft0={'val': 0.5}),
                            promotes_inputs=["ft", "ft0"],
                            promotes_outputs=["m"])
 
@@ -329,5 +329,5 @@ if __name__ == "__main__":
     check = prob.check_partials(out_stream=None, method='cs')
     assert_check_partials(check)
     prob.run_driver()
-    all_inputs = prob.model.list_inputs(values=True)
-    all_outputs = prob.model.list_outputs(values=True)
+    all_inputs = prob.model.list_inputs(val=True)
+    all_outputs = prob.model.list_outputs(val=True)

@@ -117,5 +117,5 @@ if __name__ == "__main__":
     prob.setup(force_alloc_complex=True)
     prob.set_val("p_tt", 10, units="MW/m**2")
     prob.run_driver()
-    all_inputs = prob.model.list_inputs(values=True, units=True)
-    all_outputs = prob.model.list_outputs(values=True, units=True)
+    all_inputs = prob.model.list_inputs(val=True, units=True)
+    all_outputs = prob.model.list_outputs(val=True, units=True)

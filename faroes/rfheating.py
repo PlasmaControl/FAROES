@@ -52,11 +52,11 @@ class SimpleRFHeating(om.Group):
                            om.ExecComp("P_aux = P / eff",
                                        P_aux={
                                            'units': 'MW',
-                                           'value': 0
+                                           'val': 0
                                        },
                                        P={
                                            'units': 'MW',
-                                           'value': 0
+                                           'val': 0
                                        }),
                            promotes_inputs=["P", "eff"],
                            promotes_outputs=["P_aux"])
@@ -73,5 +73,5 @@ if __name__ == "__main__":
     prob.set_val("P", 10, units="MW")
     prob.run_driver()
 
-    prob.model.list_inputs(values=True)
-    prob.model.list_outputs(values=True)
+    prob.model.list_inputs(val=True)
+    prob.model.list_outputs(val=True)

@@ -139,11 +139,11 @@ class MenardPlasmaLoop(om.Group):
                 P_alpha={'units': 'MW'},
                 P_RF={
                     'units': 'MW',
-                    'value': 0
+                    'val': 0
                 },
                 P_NBI={
                     'units': 'MW',
-                    'value': 0
+                    'val': 0
                 }))
         self.connect("DTfusion.P_α", "P_heat.P_alpha")
         self.connect("NBIsource.P", "P_heat.P_NBI")
@@ -272,9 +272,9 @@ if __name__ == "__main__":
 
     prob.run_driver()
 
-    all_inputs = prob.model.list_inputs(values=True,
+    all_inputs = prob.model.list_inputs(val=True,
                                         print_arrays=True,
                                         units=True)
-    all_outputs = prob.model.list_outputs(values=True,
+    all_outputs = prob.model.list_outputs(val=True,
                                           print_arrays=True,
                                           units=True)

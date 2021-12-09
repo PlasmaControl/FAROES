@@ -270,5 +270,5 @@ if __name__ == "__main__":
 
     prob.run_driver()
 
-    model.list_inputs(values=True, print_arrays=True, units=True)
-    model.list_outputs(values=True, print_arrays=True, units=True)
+    model.list_inputs(val=True, print_arrays=True, units=True)
+    model.list_outputs(val=True, print_arrays=True, units=True)

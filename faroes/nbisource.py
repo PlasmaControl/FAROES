@@ -125,5 +125,5 @@ if __name__ == "__main__":
     prob.setup()
     prob.run_driver()
 
-    prob.model.list_inputs(values=True)
-    prob.model.list_outputs(values=True)
+    prob.model.list_inputs(val=True)
+    prob.model.list_outputs(val=True)

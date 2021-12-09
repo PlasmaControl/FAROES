@@ -815,7 +815,7 @@ class ExampleMagnetRadialBuild(om.Group):
                            om.ExecComp("r_iu = r_min + dR",
                                        dR={
                                            'units': 'm',
-                                           'value': 0
+                                           'val': 0
                                        },
                                        r_min={'units': 'm'},
                                        r_iu={'units': 'm'}),
@@ -881,5 +881,5 @@ if __name__ == "__main__":
 
     prob.run_driver()
 
-    prob.model.list_inputs(values=True)
-    prob.model.list_outputs(values=True)
+    prob.model.list_inputs(val=True)
+    prob.model.list_outputs(val=True)
