@@ -141,6 +141,7 @@ class TestMagnetCurrent(unittest.TestCase):
         prob['A_m'] = nprand.random()
         prob['f_HTS'] = nprand.random()
         prob['j_HTS'] = nprand.random()
+        prob.run_driver()
 
         check = prob.check_partials(out_stream=None, method='fd')
         assert_check_partials(check)

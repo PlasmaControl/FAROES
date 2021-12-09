@@ -20,6 +20,7 @@ class TestThinSolenoidInductance(unittest.TestCase):
 
     def test_partials(self):
         prob = self.prob
+        prob.run_driver()
 
         check = prob.check_partials(out_stream=None, method='fd')
         assert_check_partials(check, rtol=8e-5)

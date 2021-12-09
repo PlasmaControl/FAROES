@@ -492,17 +492,12 @@ class CurrentDriveEfficiencyTerm3(om.ExplicitComponent):
     def compute_partials(self, inputs, J):
         β1 = inputs["β1"]
         α3 = inputs["α³"]
-        p1 = (3 + β1) / 3
-        p2 = (4 + β1) / 3
         p3 = (7 + β1) / 3
         arg = -1 / α3
-        hyp = hyp2f1(p1, p2, p3, arg)
-
-        exp = (-1 - β1 / 3)
-        term1 = (α3 / (1 + α3))**exp * ((1 + 1 / α3)**exp - hyp) / (3 * α3)
-        term2 = (α3 / (1 + α3))**(exp - 1) * (-α3 / (1 + α3)**2 + 1 /
-                                              (1 + α3)) * exp * hyp / (4 + β1)
-        result = -term1 + term2
+        hyp = hyp2f1(1, 4/3, p3, arg)
+        exp = (- β1 / 3)
+        prefactor = (1 + 1/α3)**exp * (α3/(1 + α3))**exp / (3*α3**2 * (4 + β1))
+        result = prefactor * (-α3 * (4 + β1) + (1 + α3 * (4 + β1)) * hyp)
         J["line3", "α³"] = result
 
 

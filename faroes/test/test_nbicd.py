@@ -181,8 +181,12 @@ class TestCurrentDriveEfficiencyTerm3(unittest.TestCase):
 
     def test_partials(self):
         prob = self.prob
-        check = prob.check_partials(out_stream=None, method='fd')
-        assert_check_partials(check, rtol=1e-5)
+        prob.run_driver()
+        prob.model.set_check_partial_options(wrt=['β1'],
+                                             method='fd',
+                                             form='central')
+        check = prob.check_partials(out_stream=None)
+        assert_check_partials(check, rtol=3e-6)
 
     def test_values(self):
         prob = self.prob
@@ -215,7 +219,7 @@ class TestCurrentDriveEfficiency(unittest.TestCase):
         prob.set_val("Eb", 500, units="keV")
 
         prob.set_val("R0", 3.0, units="m")
-        prob.set_val("ε", 1/1.6)
+        prob.set_val("ε", 1 / 1.6)
 
         prob.set_val("Z_eff", 2)
         prob.set_val("ne", 1.06, units="n20")

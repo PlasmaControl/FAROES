@@ -24,7 +24,9 @@ class TestEllipseLikeGeometry(unittest.TestCase):
 
     def test_partials(self):
         prob = self.prob
-        check = prob.check_partials(out_stream=None, method='fd')
+        prob.run_driver()
+        prob.model.set_check_partial_options('*', method='fd')
+        check = prob.check_partials(out_stream=None)
         assert_check_partials(check, atol=1e-3)
 
 
