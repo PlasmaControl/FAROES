@@ -20,9 +20,9 @@ This framework also allows users to easily specify the design variables, constra
 
 Requirements
 ------------
-* ``numpy``
+* ``numpy>=1.21.0``
 * ``scipy``
-* ``openmdao == 3.9.0``. Can be installed with ``pip install "openmdao[all]==3.9.0"``.
+* ``openmdao == 3.14.0``. Can be installed with ``pip install "openmdao[all]==3.14.0"``.
 * ``ruamel >= 0.16``, a yaml parser.
 * ``plasmapy`` (https://www.plasmapy.org/).
 

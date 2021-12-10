@@ -22,5 +22,6 @@ setuptools.setup(
         "openmdao[all] == 3.14.0",
         "ruamel.yaml >= 0.16",
         "plasmapy >= 0.5.0",
+        "numpy >= 1.21.0",
     ],
 )
