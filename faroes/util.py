@@ -441,11 +441,11 @@ class OffsetCurveWithLimiter(om.ExplicitComponent):
         xo1 = x_o[case1]
         xo2 = x_o[case2]
 
-        dxo1n_dxmin = (np.exp(b * (x_min - xo1)) /
-                       (1 + np.exp(b * (x_min - xo1))))
+        dxo1n_dxmin = (np.exp(b * (x_min - xo1)) / (1 + np.exp(b *
+                                                               (x_min - xo1))))
         dxo1n_dxo1 = 1 - dxo1n_dxmin
-        dxo2n_dxo2 = (np.exp(b * (xo2 - x_min)) /
-                      (1 + np.exp(b * (xo2 - x_min))))
+        dxo2n_dxo2 = (np.exp(b * (xo2 - x_min)) / (1 + np.exp(b *
+                                                              (xo2 - x_min))))
         dxo2n_dxmin = 1 - dxo2n_dxo2
 
         dxo_dx[case1] = dxo1n_dxo1 * dxo_dx[case1]
@@ -961,6 +961,92 @@ def polar_offset_ellipse(a, b, x, y, t):
                    (a**2 - x**2) * s**2)
     numer = b**2 * x * c + a**2 * y * s + a * b * root
     denom = (b * c)**2 + (a * s)**2
+    d = numer / denom
+    return d
+
+
+def polar_offset_ellipse_radius_dx(a, b, x, y, t):
+    r"""Derivative wrt x of the radius polar_offset_ellipse
+
+    .. math ::
+
+       \frac{d \rho}{d x} = \frac{\frac{a b \left(2 y \sin(\theta)
+           \cos(\theta) - 2 x \sin^2(\theta)\right)}
+           {2 \sqrt{\left(a^2 - x^2\right) \sin ^2(\theta)+
+           \left(b^2-y^2\right) \cos^2(\theta)+2 x y \sin(\theta)
+           \cos(\theta)}} + b^2 \cos(\theta)}
+           {a^2 \sin^2(\theta)+b^2 \cos^2(\theta)}
+
+    Parameters
+    ----------
+    a : float
+       horizontal semi-axis of the ellipse
+    b : float
+       vertical semi-axis of the ellipse
+    x : float
+       horizontal ellipse center location
+    y : float
+       vertical ellipse center location
+    t : float
+       polar angle
+
+    Returns
+    -------
+    dr/dx : float
+
+    References
+    ----------
+    .. [1] http://www.jaschwartz.net/journal/offset-ellipse-polar-form.html
+    """
+    s = sin(t)
+    c = cos(t)
+    root = np.sqrt(s**2 * (a**2 - x**2) + 2 * c * s * x * y + c**2 *
+                   (b**2 - y**2))
+    denom = (b * c)**2 + (a * s)**2
+    numer = b**2 * c + a * b * (2 * c * s * y - 2 * x * s**2) / (2 * root)
+    d = numer / denom
+    return d
+
+
+def polar_offset_ellipse_radius_dy(a, b, x, y, t):
+    r"""Derivative wrt y of the radius polar_offset_ellipse
+
+    .. math ::
+
+       \frac{d \rho}{d y} = \frac{\frac{a b \left(2 x \sin(\theta)
+           \cos(\theta)-2 y \cos^2(\theta)\right)}
+           {2 \sqrt{\left(a^2 - x^2\right) \sin^2(\theta) +
+           \left(b^2-y^2\right) \cos^2(\theta)+2 x y \sin(\theta)
+           \cos(\theta)}}+a^2 \sin(\theta)}
+           {a^2 \sin^2(\theta)+b^2 \cos^2(\theta)}
+
+    Parameters
+    ----------
+    a : float
+       horizontal semi-axis of the ellipse
+    b : float
+       vertical semi-axis of the ellipse
+    x : float
+       horizontal ellipse center location
+    y : float
+       vertical ellipse center location
+    t : float
+       polar angle
+
+    Returns
+    -------
+    dr/dx : float
+
+    References
+    ----------
+    .. [1] http://www.jaschwartz.net/journal/offset-ellipse-polar-form.html
+    """
+    s = sin(t)
+    c = cos(t)
+    root = np.sqrt(s**2 * (a**2 - x**2) + 2 * c * s * x * y + c**2 *
+                   (b**2 - y**2))
+    denom = (b * c)**2 + (a * s)**2
+    numer = a**2 * s + a * b * (2 * c * s * x - 2 * y * c**2) / (2 * root)
     d = numer / denom
     return d
 

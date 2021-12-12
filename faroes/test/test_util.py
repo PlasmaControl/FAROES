@@ -378,5 +378,44 @@ class TestPolygonalTorusVolume(unittest.TestCase):
         assert_near_equal(V, expected, tolerance=1e-8)
 
 
+class TestPolarOffsetEllipseRadiusDerivatives(unittest.TestCase):
+    def setUp(self):
+        self.a = 2
+        self.b = 1
+        self.x = 0.4
+        self.y = 0.3
+        π = np.pi
+        self.t = np.linspace(0, 1, 10) * 2 * π
+        self.dx = 1e-3
+
+    def test_values_dx(self):
+        a = self.a
+        b = self.b
+        x = self.x
+        y = self.y
+        t = self.t
+        dx = self.dx
+
+        ansp1 = util.polar_offset_ellipse(a, b, x + dx, y, t)
+        ansn1 = util.polar_offset_ellipse(a, b, x - dx, y, t)
+        cd = (ansp1 - ansn1) / (2*dx)
+        exact = util.polar_offset_ellipse_radius_dx(a, b, x, y, t)
+        assert(np.allclose(cd, exact))
+
+    def test_values_dy(self):
+        a = self.a
+        b = self.b
+        x = self.x
+        y = self.y
+        t = self.t
+        dy = self.dx
+
+        ansp1 = util.polar_offset_ellipse(a, b, x, y + dy, t)
+        ansn1 = util.polar_offset_ellipse(a, b, x, y - dy, t)
+        cd = (ansp1 - ansn1) / (2*dy)
+        exact = util.polar_offset_ellipse_radius_dy(a, b, x, y, t)
+        assert(np.allclose(cd, exact))
+
+
 if __name__ == "__main__":
     unittest.main()
