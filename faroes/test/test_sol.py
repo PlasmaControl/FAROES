@@ -29,9 +29,12 @@ class TestGoldstonHDSOL(unittest.TestCase):
 
     def test_partials(self):
         prob = self.prob
+        prob.run_driver()
 
-        check = prob.check_partials(out_stream=None, method='cs')
-        assert_check_partials(check)
+        check = prob.check_partials(out_stream=None,
+                                    method='fd',
+                                    form='central')
+        assert_check_partials(check, rtol=2e-2)
 
     def test_values(self):
         prob = self.prob
@@ -162,17 +165,17 @@ class TestPeakHeatFlux1(unittest.TestCase):
         prob.set_val("θ_pol", 23, units="deg")
         prob.set_val("θ_tot", 1, units="deg")
         prob.set_val("N_div", 2)
+        prob.run_driver()
         self.prob = prob
 
     def test_partials(self):
         prob = self.prob
 
-        check = prob.check_partials(out_stream=None, method='cs')
-        assert_check_partials(check)
+        check = prob.check_partials(out_stream=None, method='fd')
+        assert_check_partials(check, atol=2e-6)
 
     def test_values(self):
         prob = self.prob
-        prob.run_driver()
         q_max = prob.get_val("q_max", units="MW/m**2")
         expected = 3.339
         assert_near_equal(q_max, expected, tolerance=2e-3)
@@ -201,17 +204,18 @@ class TestPeakHeatFlux2(unittest.TestCase):
         prob.set_val("θ_pol", 23, units="deg")
         prob.set_val("θ_tot", 1, units="deg")
         prob.set_val("N_div", 2)
+
+        prob.run_driver()
         self.prob = prob
 
     def test_partials(self):
         prob = self.prob
 
-        check = prob.check_partials(out_stream=None, method='cs')
-        assert_check_partials(check)
+        check = prob.check_partials(out_stream=None, method='fd')
+        assert_check_partials(check, atol=3e-6)
 
     def test_values(self):
         prob = self.prob
-        prob.run_driver()
         q_max = prob.get_val("q_max", units="MW/m**2")
         expected = 4.25
         assert_near_equal(q_max, expected, tolerance=2e-3)

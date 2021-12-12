@@ -34,7 +34,12 @@ class TestPrincetonDeeTFSet(unittest.TestCase):
 
     def test_partials(self):
         prob = self.prob
-        check = prob.check_partials(out_stream=None, method="fd")
+        # Several of the calculations are done exactly,
+        # but some have fd derivatives, so we need to put
+        # form="central" here for the check.
+        check = prob.check_partials(out_stream=None,
+                                    method="fd",
+                                    form="central")
         assert_check_partials(check, rtol=2e-5, atol=8e-5)
 
     def test_values(self):

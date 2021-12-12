@@ -206,9 +206,8 @@ class FieldAtRadius(om.ExplicitComponent):
 
     def setup_partials(self):
         self.declare_partials('B0', ['I_leg', 'R0'])
-        self.declare_partials("B0", ["n_coil"], method="cs")
         self.declare_partials('B_on_coil', ['I_leg', 'r_om'])
-        self.declare_partials("B_on_coil", ["n_coil"], method="cs")
+        self.declare_partials(["B0", "B_on_coil"], ["n_coil"], method="cs")
 
     def compute_partials(self, inputs, J):
         n_coil = inputs['n_coil']
@@ -567,9 +566,10 @@ class InboardMagnetGeometry(om.ExplicitComponent):
                               ['r_is', 'Δr_s', 'Δr_m'],
                               val=1)
 
-        self.declare_partials('A_s', ['r_is', 'Δr_s'], method="cs")
-        self.declare_partials(['A_m', 'A_t'], ['r_is', 'Δr_s', 'Δr_m'],
-                              method="cs")
+        self.declare_partials('A_s', ['r_is', 'Δr_s'], method="exact")
+        self.declare_partials(['A_m'], ['r_is', 'Δr_s', 'Δr_m'],
+                              method="exact")
+        self.declare_partials(['A_t'], ['r_is', 'Δr_s', 'Δr_m'], method="cs")
         self.declare_partials(
             ["A_m", "A_t", "A_s", "approximate cross section"], ["n_coil"],
             method="cs")
@@ -584,7 +584,17 @@ class InboardMagnetGeometry(om.ExplicitComponent):
                               method="cs")
 
     def compute_partials(self, inputs, J):
-        pass
+        r_is = inputs['r_is']
+        Δr_s = inputs['Δr_s']
+        Δr_m = inputs['Δr_m']
+        n_coil = inputs['n_coil']
+        sin2ang = np.sin(2 * np.pi / n_coil)
+        J["A_s", "r_is"] = Δr_s * sin2ang
+        J["A_s", "Δr_s"] = (r_is + Δr_s) * sin2ang
+        J["A_m", "r_is"] = Δr_m * sin2ang
+        J["A_m", "Δr_s"] = Δr_m * sin2ang
+        J["A_m", "Δr_m"] = (r_is + Δr_s + self.e_gap + Δr_m) * sin2ang
+        # construction of the analytic derivatives is incomplete here.
 
 
 class OutboardMagnetGeometry(om.ExplicitComponent):

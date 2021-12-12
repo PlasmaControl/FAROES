@@ -89,15 +89,15 @@ class TestThreeArcDeeTFSet(unittest.TestCase):
         prob.set_val("hhs", 3)
         prob.set_val("θ", θ)
 
-        check = prob.check_partials(out_stream=None, method="cs")
-        assert_check_partials(check)
-
         self.prob = prob
 
     def test_partials(self):
         prob = self.prob
-        check = prob.check_partials(out_stream=None, method="cs")
-        assert_check_partials(check)
+        check = prob.check_partials(out_stream=None, method="fd")
+        # Note: this does pass when run with cs, except that
+        # a few of the derivatives are *computed* with cs so then it throws an
+        # openmdao type-of-derivative-checking error.
+        assert_check_partials(check, atol=2e-4, rtol=3e-6)
 
 
 class TestThreeEllipseArcDeeTFSet(unittest.TestCase):
@@ -124,15 +124,15 @@ class TestThreeEllipseArcDeeTFSet(unittest.TestCase):
         prob.set_val("hhs", 3)
         prob.set_val("θ", θ)
 
-        check = prob.check_partials(out_stream=None, method="cs")
-        assert_check_partials(check)
-
         self.prob = prob
 
     def test_partials(self):
         prob = self.prob
-        check = prob.check_partials(out_stream=None, method="cs")
-        assert_check_partials(check)
+        check = prob.check_partials(out_stream=None, method="fd")
+        # Note: this does pass when run with cs, except that
+        # a few of the derivatives are *computed* with cs so then it throws an
+        # openmdao type-of-derivative-checking error.
+        assert_check_partials(check, atol=2e-4, rtol=3e-6)
 
 
 if __name__ == "__main__":

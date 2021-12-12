@@ -91,8 +91,9 @@ class TestFieldAtRadius(unittest.TestCase):
         assert_near_equal(prob['B0'][0], 1, 1e-4)
         assert_near_equal(prob['B_on_coil'][0], 2, 1e-4)
 
-        check = prob.check_partials(out_stream=None, method='cs')
-        assert_check_partials(check)
+        # Here fd is used to check because the derivatives wrt n_coil are cs.
+        check = prob.check_partials(out_stream=None, method='fd')
+        assert_check_partials(check, rtol=2e-6, atol=3e-6)
 
 
 class TestInboardMagnetGeometry(unittest.TestCase):
@@ -105,13 +106,15 @@ class TestInboardMagnetGeometry(unittest.TestCase):
         prob['Δr_m'] = nprand.random()
         prob['Δr_s'] = nprand.random()
         prob['n_coil'] = 18
+        prob.run_driver()
         self.prob = prob
 
     def test_partials(self):
         prob = self.prob
 
-        check = prob.check_partials(out_stream=None, method='cs')
-        assert_check_partials(check)
+        # once converted to exact derivatives, these could be checked via cs.
+        check = prob.check_partials(out_stream=None, method='fd')
+        assert_check_partials(check, rtol=2e-6)
 
 
 class TestOutboardMagnetGeometry(unittest.TestCase):

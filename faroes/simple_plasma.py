@@ -30,7 +30,6 @@ class MainIonMix(om.ExplicitComponent):
     m : float
         kg, Averaged main ion mass
     """
-
     def setup(self):
         self.add_input("f_D", val=0.5, desc="Fraction of D in main ions")
         self.add_output("f_T", val=0.5, desc="Fraction of T in main ions")
@@ -140,7 +139,6 @@ class ZeroDPlasmaDensities(om.ExplicitComponent):
     ρ : float
         kg/m**3, Mass density
     """
-
     def setup(self):
         ρref = 1e-7
         self.add_input("f_D", val=0.5)
@@ -293,7 +291,6 @@ class ZeroDPlasmaStoredEnergy(om.ExplicitComponent):
     thermal pressure fraction : float
         Fraction of pressure from thermal particles.
     """
-
     def setup(self):
         self.add_input("V", units="m**3", desc="Plasma volume")
         self.add_input("τ_th",
@@ -368,8 +365,11 @@ class ZeroDPlasmaStoredEnergy(om.ExplicitComponent):
         self.declare_partials("<p_th>", ["V", "P_loss", "τ_th"])
         self.declare_partials(
             "<p_tot>", ["V", "P_loss", "τ_th", "W_fast_α", "W_fast_NBI"])
-        self.declare_partials("thermal pressure fraction", "*", method="cs")
-        self.declare_partials("p τE", "*", method="cs")
+        self.declare_partials("thermal pressure fraction",
+                              ["P_loss", "τ_th", "W_fast_α", "W_fast_NBI"])
+        self.declare_partials(
+            "p τE", ["V", "P_loss", "τ_th", "W_fast_α", "W_fast_NBI"],
+            method="exact")
 
     def compute_partials(self, inputs, J):
         V = inputs["V"]
@@ -393,6 +393,19 @@ class ZeroDPlasmaStoredEnergy(om.ExplicitComponent):
         J["<p_tot>", "W_fast_NBI"] = (2 / 3) * kilo / V
         J["<p_tot>", "W_fast_α"] = (2 / 3) * kilo / V
 
+        J["thermal pressure fraction", "P_loss"] = (W_fast * τ_th) / (W_tot)**2
+        J["thermal pressure fraction", "τ_th"] = (W_fast * P_loss) / (W_tot)**2
+        J["thermal pressure fraction",
+          "W_fast_α"] = -P_loss * τ_th / (W_tot)**2
+        J["thermal pressure fraction",
+          "W_fast_NBI"] = -P_loss * τ_th / (W_tot)**2
+
+        J["p τE", "P_loss"] = (2 * mega * τ_th**2) / (3 * atm * V)
+        J["p τE", "τ_th"] = 2 * mega * (W_tot + P_loss * τ_th) / (3 * atm * V)
+        J["p τE", "W_fast_α"] = 2 * mega * τ_th / (3 * atm * V)
+        J["p τE", "W_fast_NBI"] = 2 * mega * τ_th / (3 * atm * V)
+        J["p τE", "V"] = -2 * mega * τ_th * W_tot / (3 * atm * V**2)
+
 
 class ZeroDPlasmaPressures(om.ExplicitComponent):
     r"""Zero-D plasma pressures
@@ -413,7 +426,6 @@ class ZeroDPlasmaPressures(om.ExplicitComponent):
     <p_i> : float
         kPa, Averaged ion pressure
     """
-
     def setup(self):
         self.add_input("Ti/Te", val=1.0)
         self.add_input("Z_ave")
@@ -480,7 +492,6 @@ class ZeroDPlasmaTemperatures(om.ExplicitComponent):
     <T_i> : float
         keV, Averaged ion temperature
     """
-
     def setup(self):
         self.add_input("<n_e>", units="n20", desc="Average electron density")
         self.add_input("ni/ne", desc="Ratio of ions to electrons")
@@ -585,7 +596,6 @@ class ThermalVelocity(om.ExplicitComponent):
     Units of eV are used here for temperature rather than J to avoid
     small numbers in J; this is bad for the derivatives.
     """
-
     def initialize(self):
         self.options.declare('mass', default=electron_mass)
 
@@ -657,7 +667,6 @@ class ZeroDThermalFusionPower(om.ExplicitComponent):
     P_n : float
         MW, Thermal neutron power
     """
-
     def setup(self):
         self.add_input("V", units="m**3", desc="Plasma volume")
         self.add_input("rate_fus/V", units="1/m**3/as")
@@ -737,7 +746,6 @@ class ZeroDThermalFusion(om.Group):
     P_n : float
         MW, Thermal neutron power
     """
-
     def initialize(self):
         self.options.declare('config', default=None)
 
@@ -788,7 +796,6 @@ class IonMixMux(om.ExplicitComponent):
     Zi2 : array
         e**2, squares of ion charges
     """
-
     def setup(self):
         n = 3
         self.add_input("n_D", units="n20")
@@ -919,7 +926,6 @@ class ZeroDPlasma(om.Group):
     -----
     <q> refers to the volume average of a quantity q
     """
-
     def initialize(self):
         self.options.declare('config', default=None)
 
