@@ -204,11 +204,11 @@ class SauterGeometry(om.ExplicitComponent):
                         units="m**2",
                         ref=10,
                         desc="Poloidal cross-section area")
-        self.add_output("S", units="m**2", ref=100, desc="Surface area")
-        self.add_output("V", units="m**3", ref=100, desc="Volume")
+        self.add_output("S", units="m**2", ref=100, desc="Plasma surface area")
+        self.add_output("V", units="m**3", ref=100, desc="Plasma volume")
         self.add_output("L_pol",
                         units="m",
-                        desc="Poloidal circumference",
+                        desc="Poloidal circumference of LCFS",
                         lower=0,
                         ref=10)
         self.add_output("R_in",
@@ -225,7 +225,7 @@ class SauterGeometry(om.ExplicitComponent):
         self.add_output("dZ_dθ", units="m", copy_shape="θ")
         self.add_output("<(R0/R)^2>")
         self.add_output("<(R0/R)^2>n")
-        self.add_output("δ_out")
+        self.add_output("δ_out", desc="Passthrough of δ")
 
     def R02_over_R2_normalized_integrand(self, θ, A, δ=0, ξ=0):
         r"""
