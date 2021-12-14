@@ -19,7 +19,7 @@ setuptools.setup(
     ],
     python_requires='>=3.8',
     install_requires=[
-        "openmdao[all] == 3.14.0",
+        "openmdao[all] == 3.15.0",
         "ruamel.yaml >= 0.16",
         "plasmapy >= 0.5.0",
         "numpy >= 1.21.0",

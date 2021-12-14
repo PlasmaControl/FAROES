@@ -22,7 +22,7 @@ Requirements
 ------------
 * ``numpy>=1.21.0``
 * ``scipy``
-* ``openmdao == 3.14.0``. Can be installed with ``pip install "openmdao[all]==3.14.0"``.
+* ``openmdao == 3.15.0``. Can be installed with ``pip install "openmdao[all]==3.15.0"``.
 * ``ruamel >= 0.16``, a yaml parser.
 * ``plasmapy`` (https://www.plasmapy.org/).
 
