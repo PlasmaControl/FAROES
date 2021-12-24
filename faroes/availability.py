@@ -19,8 +19,14 @@ class AvailabilityProperties(om.Group):
             f_tt = f([model, "lifetime"], units="MW*a/m**2")
             t_replace = f([model, "replacement time"], units="a")
             ivc = om.IndepVarComp()
-            ivc.add_output("F_tt", val=f_tt, units="MW*a/m**2")
-            ivc.add_output("divertors t_replace", val=t_replace, units="a")
+            ivc.add_output("F_tt",
+                           val=f_tt,
+                           units="MW*a/m**2",
+                           desc="Divertor durability")
+            ivc.add_output("divertors t_replace",
+                           val=t_replace,
+                           units="a",
+                           desc="Maintenance time for divertor replacement")
             self.add_subsystem("ivc", ivc, promotes_outputs=["*"])
         else:
             raise ValueError(self.BAD_BL_MODEL % (model))
@@ -55,10 +61,12 @@ class DivertorsOnlyAvailability(om.ExplicitComponent):
     https://doi.org/10.1016/j.fusengdes.2009.01.102.
     """
     def setup(self):
-        self.add_input("F_tt", units="MW*a/m**2")
-        self.add_input("p_tt", units="MW/m**2")
-        self.add_input("t_replace", units='a')
-        self.add_output("f_av")
+        self.add_input("F_tt", units="MW*a/m**2", desc="Divertor durability")
+        self.add_input("p_tt", units="MW/m**2", desc="Peak divertor heat flux")
+        self.add_input("t_replace",
+                       units='a',
+                       desc="Maintenance time for divertor replacement")
+        self.add_output("f_av", desc="Availability factor")
         self.add_output("time between replacements", units='a')
 
     def compute(self, inputs, outputs):
@@ -117,5 +125,5 @@ if __name__ == "__main__":
     prob.setup(force_alloc_complex=True)
     prob.set_val("p_tt", 10, units="MW/m**2")
     prob.run_driver()
-    all_inputs = prob.model.list_inputs(val=True, units=True)
-    all_outputs = prob.model.list_outputs(val=True, units=True)
+    all_inputs = prob.model.list_inputs(val=True, units=True, desc=True)
+    all_outputs = prob.model.list_outputs(val=True, units=True, desc=True)
