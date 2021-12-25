@@ -134,16 +134,27 @@ class MenardPlasmaLoop(om.Group):
             "P_heat",
             om.ExecComp(
                 ["P_heat = P_alpha + P_NBI + P_RF", "P_aux = P_NBI + P_RF"],
-                P_heat={'units': 'MW'},
-                P_aux={'units': 'MW'},
-                P_alpha={'units': 'MW'},
+                P_heat={
+                    'units': 'MW',
+                    'desc': "Total heating power"
+                },
+                P_aux={
+                    'units': 'MW',
+                    'desc': "Aux. heating power"
+                },
+                P_alpha={
+                    'units': 'MW',
+                    'desc': "Alpha heating power"
+                },
                 P_RF={
                     'units': 'MW',
-                    'val': 0
+                    'val': 0,
+                    'desc': "RF aux. heating power"
                 },
                 P_NBI={
                     'units': 'MW',
-                    'val': 0
+                    'val': 0,
+                    'desc': "neutral beam aux. heating power"
                 }))
         self.connect("DTfusion.P_α", "P_heat.P_alpha")
         self.connect("NBIsource.P", "P_heat.P_NBI")
@@ -213,8 +224,15 @@ class MenardPlasmaLoop(om.Group):
         self.add_subsystem(
             "Q_phys",
             om.ExecComp("Q = P_fus/P_heat",
-                        P_fus={'units': 'MW'},
-                        P_heat={'units': 'MW'}))
+                        Q={'desc': "Plasma gain"},
+                        P_fus={
+                            'units': 'MW',
+                            'desc': "Primary fusion power"
+                        },
+                        P_heat={
+                            'units': 'MW',
+                            'desc': "Auxilliary heating power"
+                        }))
         self.connect("P_heat.P_aux", "Q_phys.P_heat")
         self.connect("DTfusion.P_fus", "Q_phys.P_fus")
 
@@ -274,7 +292,9 @@ if __name__ == "__main__":
 
     all_inputs = prob.model.list_inputs(val=True,
                                         print_arrays=True,
-                                        units=True)
+                                        units=True,
+                                        desc=True)
     all_outputs = prob.model.list_outputs(val=True,
                                           print_arrays=True,
-                                          units=True)
+                                          units=True,
+                                          desc=True)

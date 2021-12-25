@@ -48,18 +48,23 @@ class SimpleRFHeating(om.Group):
                            SimpleRFHeatingProperties(config=config),
                            promotes=["*"])
 
-        self.add_subsystem("P_aux",
-                           om.ExecComp("P_aux = P / eff",
-                                       P_aux={
-                                           'units': 'MW',
-                                           'val': 0
-                                       },
-                                       P={
-                                           'units': 'MW',
-                                           'val': 0
-                                       }),
-                           promotes_inputs=["P", "eff"],
-                           promotes_outputs=["P_aux"])
+        self.add_subsystem(
+            "P_aux",
+            om.ExecComp(
+                "P_aux = P / eff",
+                P_aux={
+                    'units': 'MW',
+                    'val': 0,
+                    'desc': "Wall plug power for RF heating"
+                },
+                P={
+                    'units': 'MW',
+                    'val': 0,
+                    'desc': "Plasma heating power"
+                },
+                eff={'desc': "Radiofrequency heating wall-plug efficiency"}),
+            promotes_inputs=["P", "eff"],
+            promotes_outputs=["P_aux"])
 
 
 if __name__ == "__main__":

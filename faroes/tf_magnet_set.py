@@ -22,17 +22,30 @@ class TFMagnetSet(om.ExplicitComponent):
     V_set : float
         m**3, Approximate material volume of the set
     conductor total: float
-        kA * m
+        kA * m, Total quantity of conductor
     """
     def setup(self):
-        self.add_input("cross section", units='m**2')
-        self.add_input("arc length", units='m')
-        self.add_input("I_leg", units='kA')
-        self.add_input("n_coil")
+        self.add_input("cross section",
+                       units='m**2',
+                       desc="Cross section of single magnet")
+        self.add_input("arc length",
+                       units='m',
+                       desc="Typical perimeter of the magnet")
+        self.add_input("I_leg", units='kA', desc="Current per leg")
+        self.add_input("n_coil", desc="Number of coils in the set")
 
-        self.add_output("V_single", units='m**3', ref=20)
-        self.add_output("V_set", units='m**3', ref=200)
-        self.add_output("conductor total", units='kA * m', ref=1e6)
+        self.add_output("V_single",
+                        units='m**3',
+                        ref=20,
+                        desc="Material volume of one coil")
+        self.add_output("V_set",
+                        units='m**3',
+                        ref=200,
+                        desc="Material volume of the set")
+        self.add_output("conductor total",
+                        units='kA * m',
+                        ref=1e6,
+                        desc="Total quantity of conductor")
 
     def compute(self, inputs, outputs):
         cs = inputs["cross section"]
@@ -84,5 +97,5 @@ if __name__ == "__main__":
 
     prob.run_driver()
 
-    prob.model.list_inputs(val=True)
-    prob.model.list_outputs(val=True)
+    prob.model.list_inputs(val=True, units=True, desc=True)
+    prob.model.list_outputs(val=True, units=True, desc=True)

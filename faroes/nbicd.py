@@ -29,7 +29,7 @@ class CurrentDriveProperties(om.Group):
 
 
 class CurrentDriveBeta1(om.ExplicitComponent):
-    r"""Current drive parameter β1
+    r"""Current drive variable β1
 
     This is special case of the more general parameter
     for the fast ion distribution βn,
@@ -45,14 +45,14 @@ class CurrentDriveBeta1(om.ExplicitComponent):
     Ab : float
         u, Neutral beam particle mass
     Ai : float
-        u, (average?) plasma ion mass
+        u, Average plasma ion mass
     Z_eff : float
-        Plasma effective charge
+        Effective ion charge
 
     Outputs
     -------
     β1 : float
-        Fast ion distribution parameter
+        Fast ion distribution variable
 
     References
     ----------
@@ -63,10 +63,10 @@ class CurrentDriveBeta1(om.ExplicitComponent):
     https://doi.org/10.1088/0032-1028/22/4/002.
     """
     def setup(self):
-        self.add_input("Z_eff")
-        self.add_input("Ab", units='u')
-        self.add_input("Ai", units='u')
-        self.add_output("β1")
+        self.add_input("Z_eff", desc="Effective ion charge")
+        self.add_input("Ab", units='u', desc="Neutral beam ion mass")
+        self.add_input("Ai", units='u', desc="Averaged plasma ion mass")
+        self.add_output("β1", desc="Current drive variable β₁")
 
     def compute(self, inputs, outputs):
         zeff = inputs["Z_eff"]
@@ -92,7 +92,7 @@ class CurrentDriveA(om.ExplicitComponent):
     Inputs
     ------
     Z_eff : float
-        Effective plasma charge
+        Effective ion charge
     vb : float
         Mm/s, Neutral beam initial velocity
     vth_e : float
@@ -113,10 +113,12 @@ class CurrentDriveA(om.ExplicitComponent):
         self.options.declare("config", default=None)
 
     def setup(self):
-        self.add_input("Z_eff")
-        self.add_input("vb", units='Mm/s')
-        self.add_input("vth_e", units='Mm/s')
-        self.add_output("A")
+        self.add_input("Z_eff", desc="Effective ion charge")
+        self.add_input("vb",
+                       units='Mm/s',
+                       desc="Neutral beam ion initial velocity")
+        self.add_input("vth_e", units='Mm/s', desc="Electron thermal velocity")
+        self.add_output("A", desc="Variable A")
         self.const = 0.6
 
     def compute(self, inputs, outputs):
@@ -139,7 +141,7 @@ class CurrentDriveA(om.ExplicitComponent):
 
 
 class CurrentDriveAlphaCubed(om.ExplicitComponent):
-    r"""Parameter α³ for current drive calculations
+    r"""Variable α³ for current drive calculations
 
     .. math::
 
@@ -158,18 +160,18 @@ class CurrentDriveAlphaCubed(om.ExplicitComponent):
     ve : float
         Mm/s, Electron thermal velocity
     ne : float
-        n20, electron density
+        n20, Electron density
     ni : array
-        n20, ion densities
+        n20, Plasma ion densities
     Ai : array
-        u, ion masses
+        u, Plasma ion masses
     Zi : array
-        fundamental charge, charges of ion species
+        fundamental charge, Charges of ion species
 
     Outputs
     -------
     α³ : float
-        Parameter
+        Variable
 
     References
     ----------
@@ -185,9 +187,11 @@ class CurrentDriveAlphaCubed(om.ExplicitComponent):
 
     """
     def setup(self):
-        self.add_input("v0", units="Mm/s")
-        self.add_input("ve", units="Mm/s")
-        self.add_input("ne", units="n20")
+        self.add_input("v0",
+                       units="Mm/s",
+                       desc="Neutral beam ion initial velocity")
+        self.add_input("ve", units="Mm/s", desc="Electron thermal velocity")
+        self.add_input("ne", units="n20", desc="Electron density")
         self.add_input('ni',
                        units='n20',
                        shape_by_conn=True,
@@ -202,7 +206,7 @@ class CurrentDriveAlphaCubed(om.ExplicitComponent):
                        copy_shape='ni',
                        desc="Ion field particle charges")
         tiny = 1e-6
-        self.add_output('α³', lower=tiny)
+        self.add_output('α³', lower=tiny, desc="Current drive variable α³")
         self.const = 0.75 * pi**(1 / 2) * electron_mass_in_u
 
     def compute(self, inputs, outputs):
@@ -243,13 +247,13 @@ class CurrentDriveG(om.ExplicitComponent):
     Inputs
     ------
     ftrap_u : float
-        Fraction of trapped particles(?)
+        Fraction of trapped particles
     A : float
         A factor used in current drive calculations
     Zb : int
-        Charge of beam ions
+        Neutral beam ion charge
     Z_eff : float
-        Plasma effective charge
+        Effective ion charge
 
     Outputs
     -------
@@ -262,11 +266,11 @@ class CurrentDriveG(om.ExplicitComponent):
     originate. It's labeled as G(Z_eff, A) but there are additional inputs...
     """
     def setup(self):
-        self.add_input("ftrap_u")
-        self.add_input("A")
-        self.add_input("Zb")
-        self.add_input("Z_eff")
-        self.add_output("G", lower=0)
+        self.add_input("ftrap_u", desc="Trapped particle fraction")
+        self.add_input("A", desc="Variable A")
+        self.add_input("Zb", desc="Neutral beam ion charge")
+        self.add_input("Z_eff", desc="Effective ion charge")
+        self.add_output("G", lower=0, desc="Variable G")
 
     def compute(self, inputs, outputs):
         ftrap_u = inputs["ftrap_u"]
@@ -293,7 +297,7 @@ class CurrentDriveEfficiencyTerm1(om.ExplicitComponent):
     τs : float
         s, Slowing time of beam particles on electrons
     v0 : float
-        m/s, Initial velocity of beam particles
+        m/s, Beam ion initial velocity
     Zb : int
         Fundamental charges, beam ion charge
     G : float
@@ -301,9 +305,9 @@ class CurrentDriveEfficiencyTerm1(om.ExplicitComponent):
     R : float
         m, Tokamak major radius
     α³ : float
-        Current drive parameter
+        Current drive variable
     E_NBI : float
-        keV, Initial energy of neutral beam particles
+        keV, Beam ion initial energy
 
     Outputs
     -------
@@ -319,14 +323,16 @@ class CurrentDriveEfficiencyTerm1(om.ExplicitComponent):
     https://doi.org/10.1088/0032-1028/22/4/002.
     """
     def setup(self):
-        self.add_input("τs", units="s")
-        self.add_input("v0", units="Mm/s")
-        self.add_input("Zb")
-        self.add_input("G")
-        self.add_input("R", units="m")
-        self.add_input("α³")
-        self.add_input("E_NBI", units="keV")
-        self.add_output("line1", units="A/W")
+        self.add_input("τs", units="s", desc="Slowing time of beam ions on e⁻")
+        self.add_input("v0", units="Mm/s", desc="Beam ion initial velocity")
+        self.add_input("Zb", desc="Beam ion charge")
+        self.add_input("G", desc="Current drive variable G")
+        self.add_input("R", units="m", desc="Major radius")
+        self.add_input("α³", desc="Current drive variable α³")
+        self.add_input("E_NBI", units="keV", desc="Beam ion initial energy")
+        self.add_output("line1",
+                        units="A/W",
+                        desc="Line 1 of NBIcd eff. equation.")
 
     def compute(self, inputs, outputs):
         τs = inputs["τs"]
@@ -386,7 +392,7 @@ class CurrentDriveEfficiencyTerm2(om.ExplicitComponent):
     Outputs
     -------
     line2 : float
-        Second line
+        Second line of the equation
 
     Notes
     -----
@@ -401,11 +407,11 @@ class CurrentDriveEfficiencyTerm2(om.ExplicitComponent):
 
     """
     def setup(self):
-        self.add_input("α³")
-        self.add_input("β1")
-        self.add_input("<T_e>", units="keV")
-        self.add_input("E_NBI", units="keV")
-        self.add_output("line2")
+        self.add_input("α³", desc="Current drive variable α³")
+        self.add_input("β1", desc="Current drive variable β₁")
+        self.add_input("<T_e>", units="keV", desc="Electron temperature")
+        self.add_input("E_NBI", units="keV", desc="Beam ion initial energy")
+        self.add_output("line2", desc="Line 2 of NBIcd eff. equation")
 
     def compute(self, inputs, outputs):
         α3 = inputs["α³"]
@@ -466,9 +472,9 @@ class CurrentDriveEfficiencyTerm3(om.ExplicitComponent):
 
     """
     def setup(self):
-        self.add_input("α³")
-        self.add_input("β1")
-        self.add_output("line3", lower=0)
+        self.add_input("α³", desc="Current drive variable α³")
+        self.add_input("β1", desc="Current drive variable β₁")
+        self.add_output("line3", lower=0, desc="Line 3 of NBIcd eff. calc.")
 
     def compute(self, inputs, outputs):
         β1 = inputs["β1"]
@@ -494,9 +500,10 @@ class CurrentDriveEfficiencyTerm3(om.ExplicitComponent):
         α3 = inputs["α³"]
         p3 = (7 + β1) / 3
         arg = -1 / α3
-        hyp = hyp2f1(1, 4/3, p3, arg)
-        exp = (- β1 / 3)
-        prefactor = (1 + 1/α3)**exp * (α3/(1 + α3))**exp / (3*α3**2 * (4 + β1))
+        hyp = hyp2f1(1, 4 / 3, p3, arg)
+        exp = (-β1 / 3)
+        prefactor = (1 + 1 / α3)**exp * (α3 / (1 + α3))**exp / (3 * α3**2 *
+                                                                (4 + β1))
         result = prefactor * (-α3 * (4 + β1) + (1 + α3 * (4 + β1)) * hyp)
         J["line3", "α³"] = result
 
@@ -528,10 +535,14 @@ class CurrentDriveEfficiencyEquation(om.ExplicitComponent):
     https://doi.org/10.1088/0032-1028/22/4/002.
     """
     def setup(self):
-        self.add_input("line1", units="A/W")
-        self.add_input("line2")
-        self.add_input("line3")
-        self.add_output("It/P", units="A/W")
+        self.add_input("line1",
+                       units="A/W",
+                       desc="Line 1 of NBIcd eff.  equation")
+        self.add_input("line2", desc="Line 2 of NBIcd eff. equation")
+        self.add_input("line3", desc="Line 3 of NBIcd eff. equation")
+        self.add_output("It/P",
+                        units="A/W",
+                        desc="NBI current drive 'efficiency'")
 
     def compute(self, inputs, outputs):
         line1 = inputs["line1"]
@@ -571,7 +582,7 @@ class CurrentDriveEfficiency(om.Group):
         Aspect ratio R/a
 
     Z_eff : float
-        Effective charge of plasma
+        Effective ion charge
     ne : float
         n20, plasma electron density
     <T_e> : float
@@ -605,11 +616,16 @@ class CurrentDriveEfficiency(om.Group):
         self.add_subsystem('props',
                            CurrentDriveProperties(config=config),
                            promotes_outputs=["ε fraction"])
-        self.add_subsystem('eps_neo',
-                           om.ExecComp("eps_neo = eps_frac * eps"),
-                           promotes_inputs=[("eps_frac", "ε fraction"),
-                                            ("eps", "ε")],
-                           promotes_outputs=[("eps_neo", "ε_neoclass")])
+        self.add_subsystem(
+            'eps_neo',
+            om.ExecComp(
+                "eps_neo = eps_frac * eps",
+                eps_frac={'desc': "Generalized minor radius for evaluation"},
+                eps={'desc': "Inverse aspect ratio"},
+                eps_neo={'desc': "Inverse aspect ratio for evaluation"},
+            ),
+            promotes_inputs=[("eps_frac", "ε fraction"), ("eps", "ε")],
+            promotes_outputs=[("eps_neo", "ε_neoclass")])
         self.add_subsystem('A_bar',
                            AverageIonMass(),
                            promotes_inputs=["ni", "Ai"],
@@ -687,10 +703,23 @@ class NBICurrent(om.ExplicitComponent):
 
     def setup(self):
         config = self.options["config"]
-        self.add_input("S", units="1/s", shape_by_conn=True)
-        self.add_input("Eb", units="keV", shape_by_conn=True, copy_shape="S")
-        self.add_input("It/P", units="A/W", shape_by_conn=True, copy_shape="S")
-        self.add_output("I_NBI", units="MA")
+        self.add_input("S",
+                       units="1/s",
+                       shape_by_conn=True,
+                       desc="Neutral beam source rate")
+        self.add_input("Eb",
+                       units="keV",
+                       shape_by_conn=True,
+                       copy_shape="S",
+                       desc="Neutral beam initial energy")
+        self.add_input("It/P",
+                       units="A/W",
+                       shape_by_conn=True,
+                       copy_shape="S",
+                       desc="Current drive efficiency")
+        self.add_output("I_NBI",
+                        units="MA",
+                        desc="Neutral-beam-driven current")
 
         if config is not None:
             self.config = self.options["config"]
@@ -758,5 +787,5 @@ if __name__ == "__main__":
 
     prob.run_driver()
 
-    prob.model.list_inputs(val=True, print_arrays=True)
-    prob.model.list_outputs(val=True, print_arrays=True)
+    prob.model.list_inputs(val=True, print_arrays=True, desc=True, units=True)
+    prob.model.list_outputs(val=True, print_arrays=True, desc=True, units=True)

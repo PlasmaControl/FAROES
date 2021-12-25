@@ -37,7 +37,6 @@ class SimpleRateCoeff(om.ExplicitComponent):
         m**3/s, Fusion reaction rate coefficient
 
     """
-
     def setup(self):
         self.coeff = 1.1e-24
         sigma_v_ref = self.coeff * 10**2
@@ -46,7 +45,7 @@ class SimpleRateCoeff(om.ExplicitComponent):
                         lower=0,
                         units="m**3/s",
                         ref=sigma_v_ref,
-                        desc="Rate coefficient")
+                        desc="Fusion rate coefficient")
 
     def compute(self, inputs, outputs):
         T = inputs["T"]
@@ -85,7 +84,6 @@ class VolumetricThermalFusionRate(om.ExplicitComponent):
     P_α/V : float
         MW/m**3, Volumetric alpha energy production rate
     """
-
     def setup(self):
         data = _DT_fusion_data
         self.ENERGY_J = data["ENERGY_J"]
@@ -97,7 +95,7 @@ class VolumetricThermalFusionRate(om.ExplicitComponent):
 
         self.add_input("n_D", units=n_units, desc="Deuterium density")
         self.add_input("n_T", units=n_units, desc="Tritium density")
-        self.add_input("<σv>", units=σv_units, desc="Rate coefficient")
+        self.add_input("<σv>", units=σv_units, desc="Fusion rate coefficient")
 
         self.add_output("rate_fus/V",
                         lower=0,
@@ -207,7 +205,6 @@ class NBIBeamTargetFusion(om.ExplicitComponent):
     https://doi.org/10.1088/0029-5515/21/1/006.
 
     """
-
     def setup(self):
         data = _DT_fusion_data
         self.ENERGY_J = data["ENERGY_J"]
@@ -217,12 +214,22 @@ class NBIBeamTargetFusion(om.ExplicitComponent):
         self.constant = 1.1e14
         self.DT_mult = 80
         self.add_input("P_NBI", units="MW", desc="Neutral beam injected power")
-        self.add_input("<T_e>", units="keV")
+        self.add_input("<T_e>",
+                       units="keV",
+                       desc="Average electron temperature")
 
         R_fus_ref = 1e4
-        self.add_output("rate_fus", units="1/as", ref=R_fus_ref, lower=0)
+        self.add_output("rate_fus",
+                        units="1/as",
+                        ref=R_fus_ref,
+                        lower=0,
+                        desc="NBI beam-target fusion reaction rate")
         P_fus_ref = 10
-        self.add_output("P_fus", units="MW", ref=P_fus_ref, lower=0)
+        self.add_output("P_fus",
+                        units="MW",
+                        ref=P_fus_ref,
+                        lower=0,
+                        desc="NBI beam-target fusion power")
         # self.add_output("P_α", units="MW", ref=P_fus_ref, lower=0)
         # self.add_output("P_n", units="MW", ref=P_fus_ref, lower=0)
 
@@ -287,7 +294,7 @@ class TotalDTFusionRate(om.ExplicitComponent):
     Outputs
     -------
     rate_fus : float
-        1 / as
+        1 / as, Total fusion reaction rate
     P_fus : float
         MW, Total fusion power
     P_α : float
@@ -300,24 +307,51 @@ class TotalDTFusionRate(om.ExplicitComponent):
     The rates and powers are trivially linked, but they're already calculated
     elsewhere so I don't want to update everything.
     """
-
     def setup(self):
         data = _DT_fusion_data
         self.α_fraction = data["α_fraction"]
         self.n_fraction = data["n_fraction"]
 
-        self.add_input("P_fus_th", val=0, units="MW")
-        self.add_input("P_fus_NBI", val=0, units="MW")
-        self.add_input("rate_th", val=0, units="1/as")
-        self.add_input("rate_NBI", val=0, units="1/as")
+        self.add_input("P_fus_th",
+                       val=0,
+                       units="MW",
+                       desc="Thermal fusion power")
+        self.add_input("P_fus_NBI",
+                       val=0,
+                       units="MW",
+                       desc="NBI beam-target fusion power")
+        self.add_input("rate_th",
+                       val=0,
+                       units="1/as",
+                       desc="Thermal fusion rate")
+        self.add_input("rate_NBI",
+                       val=0,
+                       units="1/as",
+                       desc="NBI beam-target fusion rate")
 
         rate_fus_ref = 1e5
-        self.add_output("rate_fus", lower=0, ref=rate_fus_ref, units="1/as")
+        self.add_output("rate_fus",
+                        lower=0,
+                        ref=rate_fus_ref,
+                        units="1/as",
+                        desc="Total fusion reaction rate")
         P_fus_ref = 100
         tiny = 1e-6
-        self.add_output("P_fus", lower=tiny, ref=P_fus_ref, units="MW")
-        self.add_output("P_α", lower=tiny, ref=P_fus_ref, units="MW")
-        self.add_output("P_n", lower=tiny, ref=P_fus_ref, units="MW")
+        self.add_output("P_fus",
+                        lower=tiny,
+                        ref=P_fus_ref,
+                        units="MW",
+                        desc="Total fusion power")
+        self.add_output("P_α",
+                        lower=tiny,
+                        ref=P_fus_ref,
+                        units="MW",
+                        desc="Alpha particle power")
+        self.add_output("P_n",
+                        lower=tiny,
+                        ref=P_fus_ref,
+                        units="MW",
+                        desc="Fusion neutron power")
 
     def compute(self, inputs, outputs):
         P_fus_th = inputs["P_fus_th"]
@@ -349,7 +383,6 @@ class SimpleFusionAlphaSource(om.ExplicitComponent):
     Z : int
         e, Charge of beam particles
     """
-
     def setup(self):
         # number of particles in a millimole
 
@@ -366,10 +399,18 @@ class SimpleFusionAlphaSource(om.ExplicitComponent):
         E_J = data["REACTION_ENERGY"].to(u.J).value * self.α_fraction
         v_α = (2 * E_J / m_α)**(1 / 2)
 
-        self.add_output("E", val=E_α, units="keV", ref=3.5e3)
-        self.add_output("A", val=A_α, units="u")
-        self.add_output("Z", val=Z_α)
-        self.add_output("v", val=v_α, units="m/s", ref=10e6)
+        self.add_output("E",
+                        val=E_α,
+                        units="keV",
+                        ref=3.5e3,
+                        desc="Alpha particle initial energy")
+        self.add_output("A", val=A_α, units="u", desc="Alpha particle mass")
+        self.add_output("Z", val=Z_α, desc="Alpha particle charge")
+        self.add_output("v",
+                        val=v_α,
+                        units="m/s",
+                        ref=10e6,
+                        desc="Alpha particle initial velocity")
 
 
 if __name__ == "__main__":
@@ -389,5 +430,5 @@ if __name__ == "__main__":
     prob.run_driver()
     check = prob.check_partials(out_stream=None, method='cs')
     assert_check_partials(check)
-    all_inputs = prob.model.list_inputs(val=True)
-    all_outputs = prob.model.list_outputs(val=True)
+    all_inputs = prob.model.list_inputs(val=True, desc=True, units=True)
+    all_outputs = prob.model.list_outputs(val=True, desc=True, units=True)

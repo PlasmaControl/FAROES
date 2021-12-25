@@ -178,7 +178,7 @@ class SauterGeometry(om.ExplicitComponent):
         self.add_input("ξ", desc="Related to the plasma squareness", val=0)
         self.add_input("θ",
                        shape_by_conn=True,
-                       desc="Poloidal locations to evaluate (R, Z)")
+                       desc="Poloidal angles to evaluate (R, Z)")
 
         self.add_output("R",
                         units="m",
@@ -192,7 +192,7 @@ class SauterGeometry(om.ExplicitComponent):
         self.add_output("Z0",
                         units="m",
                         val=0,
-                        desc="vertical location of magnetic axis")
+                        desc="Vertical location of magnetic axis")
         self.add_output("b", units="m", desc="Minor radius height")
         self.add_output("ε", desc="Inverse aspect ratio")
         # self.add_output("κa", desc="Effective elongation")
@@ -220,11 +220,18 @@ class SauterGeometry(om.ExplicitComponent):
                         lower=0,
                         desc="outer radius of plasma at midplane")
         self.add_output("w07", desc="Sauter 70% width parameter")
-        self.add_output("κa", lower=0, desc="effective elongation")
-        self.add_output("dR_dθ", units="m", copy_shape="θ")
-        self.add_output("dZ_dθ", units="m", copy_shape="θ")
-        self.add_output("<(R0/R)^2>")
-        self.add_output("<(R0/R)^2>n")
+        self.add_output("κa", lower=0, desc="Effective elongation")
+        self.add_output("dR_dθ",
+                        units="m",
+                        copy_shape="θ",
+                        desc="Derivative for radial distance calc.")
+        self.add_output("dZ_dθ",
+                        units="m",
+                        copy_shape="θ",
+                        desc="Derivative for radial distance calc.")
+        self.add_output("<(R0/R)^2>", desc="Geometric β adjustment factor")
+        self.add_output("<(R0/R)^2>n",
+                        desc="Normalized geometric β adj. factor")
         self.add_output("δ_out", desc="Passthrough of δ")
 
     def R02_over_R2_normalized_integrand(self, θ, A, δ=0, ξ=0):
@@ -562,5 +569,5 @@ if __name__ == "__main__":
     prob.set_val('ξ', 0.0)
 
     prob.run_driver()
-    prob.model.list_inputs(print_arrays=True)
-    prob.model.list_outputs(print_arrays=True, units=True)
+    prob.model.list_inputs(print_arrays=True, units=True, desc=True)
+    prob.model.list_outputs(print_arrays=True, units=True, desc=True)

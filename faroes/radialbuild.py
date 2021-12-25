@@ -97,11 +97,26 @@ class CSToTF(om.ExplicitComponent):
         else:
             self.cs_tf_gap = 0
 
-        self.add_input("Plug R_out", units='m', val=0)
-        self.add_input("CS ΔR", units='m', val=0)
-        self.add_input("CS-TF gap", units='m', val=self.cs_tf_gap)
-        self.add_output("CS R_in", units='m', lower=0)
-        self.add_output("CS R_out", units='m', lower=0)
+        self.add_input("Plug R_out",
+                       units='m',
+                       val=0,
+                       desc="Central plug outer radius")
+        self.add_input("CS ΔR",
+                       units='m',
+                       val=0,
+                       desc="Center stack radial width")
+        self.add_input("CS-TF gap",
+                       units='m',
+                       val=self.cs_tf_gap,
+                       desc="Gap between CS and TF magnets")
+        self.add_output("CS R_in",
+                        units='m',
+                        lower=0,
+                        desc="Center stack inner radius")
+        self.add_output("CS R_out",
+                        units='m',
+                        lower=0,
+                        desc="Center stack outer radius")
         self.add_output("TF R_in",
                         units="m",
                         desc="Inboard TF leg inner radius",
@@ -201,7 +216,10 @@ class MenardSTInboard(om.ExplicitComponent):
         self.add_input("TF R_out",
                        units='m',
                        desc="Inboard TF leg casing outer radius")
-        self.add_input("Thermal shield to VV gap", units='m', val=vv_tf_gap)
+        self.add_input("Thermal shield to VV gap",
+                       units='m',
+                       val=vv_tf_gap,
+                       desc="Gap between thermal shield and vacuum vessel")
         self.add_input(
             "WC VV shield thickness",
             units="m",
@@ -211,14 +229,17 @@ class MenardSTInboard(om.ExplicitComponent):
                        desc="Tungsten-carbide neutron shield thickness")
         self.add_input("Extra shield to blanket gap",
                        units="m",
-                       val=extra_shield_to_blanket_gap)
+                       val=extra_shield_to_blanket_gap,
+                       desc="Extra gap between shield & blanket")
         self.add_input("blanket thickness",
                        units="m",
                        desc="Inboard blanket thickness")
-        self.add_input("FW thickness", units="m", desc="first wall thickness")
+        self.add_input("FW thickness", units="m", desc="First wall thickness")
 
         # Thermal shield inner radius
-        self.add_output("Thermal shield R_in", units="m")
+        self.add_output("Thermal shield R_in",
+                        units="m",
+                        desc="Thermal shield inner radius")
         # vacuum vessel inner extent
         self.add_output("VV R_in", units='m', desc="Inboard VV inner radius")
         self.add_output("VV 2nd shell R_out",
@@ -245,17 +266,23 @@ class MenardSTInboard(om.ExplicitComponent):
                         units='m',
                         desc="WC shield outer radius")
 
-        self.add_output("blanket R_in", units='m', desc="blanket inner radius")
+        self.add_output("blanket R_in", units='m', desc="Blanket inner radius")
         self.add_output("blanket R_out",
                         units='m',
-                        desc="blanket outer radius")
+                        desc="Blanket outer radius")
 
-        self.add_output("FW R_in", units='m', desc="first wall inner radius")
-        self.add_output("FW R_out", units='m', desc="first wall outer radius")
+        self.add_output("FW R_in", units='m', desc="First wall inner radius")
+        self.add_output("FW R_out", units='m', desc="First wall outer radius")
 
-        self.add_output("Thermal shield to FW", units="m")
-        self.add_output("Shield to FW", units="m")
-        self.add_output("Blanket to FW", units="m")
+        self.add_output("Thermal shield to FW",
+                        units="m",
+                        desc="From thermal shield inner to fw outer")
+        self.add_output("Shield to FW",
+                        units="m",
+                        desc="From shield inner to FW outer")
+        self.add_output("Blanket to FW",
+                        units="m",
+                        desc="From blanket inner to FW outer")
 
     def setup_partials(self):
         outs = [
@@ -282,9 +309,9 @@ class MenardSTInboard(om.ExplicitComponent):
         self.declare_partials(outs[12:], "FW thickness", val=1)
 
         self.declare_partials("Thermal shield to FW", [
-            "Thermal shield to VV gap",
-            "WC VV shield thickness", "WC shield thickness",
-            "Extra shield to blanket gap", "blanket thickness", "FW thickness"
+            "Thermal shield to VV gap", "WC VV shield thickness",
+            "WC shield thickness", "Extra shield to blanket gap",
+            "blanket thickness", "FW thickness"
         ],
                               val=1)
         self.declare_partials("Shield to FW", [
@@ -367,7 +394,9 @@ class Plasma(om.ExplicitComponent):
 
     """
     def setup(self):
-        self.add_input("Ib FW R_out", units="m")
+        self.add_input("Ib FW R_out",
+                       units="m",
+                       desc="Inboard first wall outer radius")
         self.add_input("Ib SOL width",
                        units="m",
                        desc="Inboard scrape-off-layer width")
@@ -437,7 +466,7 @@ class MenardSTOutboard(om.ExplicitComponent):
     Inputs
     ------
     Ob FW R_in : float
-        m, Outer radius of the first wall at midplane
+        m, Outboard midplane first wall inner radius
     blanket thickness : float
         m, Thickness of FW and blanket
     shield thickness : float
@@ -467,7 +496,7 @@ class MenardSTOutboard(om.ExplicitComponent):
         # outboard build
         self.add_input("Ob FW R_in",
                        units="m",
-                       desc="outer radius of core at midplane")
+                       desc="Outboard midplane first wall inner radius")
         self.add_input("blanket thickness", units="m", val=1.0)
 
         # I think this is where the PF coils go?
@@ -479,8 +508,14 @@ class MenardSTOutboard(om.ExplicitComponent):
                        val=0,
                        desc="Extra gap in front of the TF")
 
-        self.add_output("blanket R_in", units='m', lower=0)
-        self.add_output("blanket R_out", units='m', lower=0)
+        self.add_output("blanket R_in",
+                        units='m',
+                        lower=0,
+                        desc="Outboard blanket inner radius")
+        self.add_output("blanket R_out",
+                        units='m',
+                        lower=0,
+                        desc="Outboard blanket outer radius")
 
         self.add_output("shield R_out", units='m', lower=0)
         self.add_output("TF R_min",
@@ -539,7 +574,7 @@ class MenardSTOuterMachine(om.ExplicitComponent):
     Inputs
     ------
     Ob TF R_out : float
-        m, Outboard radius of the outboard leg
+        m, Outboard TF leg outer radius
     TF-cryostat thickness : float
         m, Outboard TF outer radius to cryostat outer wall
 
@@ -551,13 +586,13 @@ class MenardSTOuterMachine(om.ExplicitComponent):
     def setup(self):
         self.add_input("Ob TF R_out",
                        units="m",
-                       desc="Outboard radius of the outboard leg")
+                       desc="Outboard TF leg outer radius")
         self.add_input("TF-cryostat thickness",
                        units="m",
                        desc="Outboard TF outer radius to cryostat outer wall")
         self.add_output("cryostat R_out",
                         units="m",
-                        desc="Outer radius of the cryostat")
+                        desc="Cryostat outer radius")
 
     def compute(self, inputs, outputs):
         TF_R_out = inputs["Ob TF R_out"]
@@ -781,5 +816,5 @@ if __name__ == "__main__":
     model.linear_solver = om.DirectSolver()
 
     prob.run_driver()
-    all_inputs = prob.model.list_inputs(val=True, units=True)
-    all_outputs = prob.model.list_outputs(val=True, units=True)
+    all_inputs = prob.model.list_inputs(val=True, units=True, desc=True)
+    all_outputs = prob.model.list_outputs(val=True, units=True, desc=True)

@@ -28,7 +28,6 @@ class BetaNTotal(om.ExplicitComponent):
 
     No-wall limit, with 50% bootstrap fraction
     """
-
     def initialize(self):
         self.options.declare('config', default=None)
 
@@ -43,7 +42,7 @@ class BetaNTotal(om.ExplicitComponent):
             β_N_multiplier = 1
 
         self.add_input("A", desc="Aspect Ratio")
-        self.add_input("f", val=β_N_multiplier)
+        self.add_input("f", val=β_N_multiplier, desc="Fraction of maximum β_N")
         self.add_output("β_N", units="m * T / MA", desc="Normalized beta")
         self.add_output("β_N total",
                         units="m * T / MA",
@@ -109,7 +108,7 @@ class BetaToroidal(om.ExplicitComponent):
     Ip : float
         MA, Plasma current
     Bt : float
-        T, Vacuum toroidal field
+        T, Vacuum toroidal field at geometric center
     a : float
         m, Minor radius
 
@@ -118,12 +117,15 @@ class BetaToroidal(om.ExplicitComponent):
     βt : float
         Toroidal beta
     """
-
     def setup(self):
-        self.add_input("Ip", units="MA")
-        self.add_input("Bt", units="T")
-        self.add_input("a", units="m")
-        self.add_input("β_N total", units="m * T / MA")
+        self.add_input("Ip", units="MA", desc="Plasma current")
+        self.add_input("Bt",
+                       units="T",
+                       desc="Vacuum toroidal field at geometric center")
+        self.add_input("a", units="m", desc="Minor radius")
+        self.add_input("β_N total",
+                       units="m * T / MA",
+                       desc="Total normalized beta")
         βt_ref = 0.02
         self.add_output("βt",
                         lower=0,
@@ -188,14 +190,19 @@ class SpecifiedTotalAveragePressure(om.ExplicitComponent):
     use a version of <(R0/R)^2> which is normalized to unity for elliptical
     plasmas.
     """
-
     def setup(self):
-        self.add_input("Bt", units="T")
-        self.add_input("βt")
-        self.add_input("<(R0/R)^2>", val=1)
+        self.add_input("Bt",
+                       units="T",
+                       desc="Vacuum toroidal field at geometric center")
+        self.add_input("βt", desc="Toroidal beta")
+        self.add_input("<(R0/R)^2>", val=1, desc="Geometric shaping factor")
 
         p_ref = 10**5
-        self.add_output("<p_tot>", units="kPa", ref=p_ref, lower=0)
+        self.add_output("<p_tot>",
+                        units="kPa",
+                        ref=p_ref,
+                        lower=0,
+                        desc="Volume-averaged total pressure")
 
     def compute(self, inputs, outputs):
         βt = inputs["βt"]
@@ -240,13 +247,16 @@ class BPoloidal(om.ExplicitComponent):
     Bp : float
         T, average poloidal field
     """
-
     def setup(self):
-        self.add_input("Ip", units="MA")
-        self.add_input("L_pol", units="m")
+        self.add_input("Ip", units="MA", desc="Plasma current")
+        self.add_input("L_pol", units="m", desc="Poloidal circumference")
         Bp_ref = 1
         tiny = 1e-6
-        self.add_output("Bp", units="T", ref=Bp_ref, lower=tiny)
+        self.add_output("Bp",
+                        units="T",
+                        ref=Bp_ref,
+                        lower=tiny,
+                        desc="Average poloidal field at LCFS")
 
     def compute(self, inputs, outputs):
         Ip = inputs["Ip"]
@@ -283,11 +293,12 @@ class BetaPoloidal(om.ExplicitComponent):
     βp : float
         Poloidal beta
     """
-
     def setup(self):
-        self.add_input("<p_tot>", units="kPa")
-        self.add_input("Bp", units="T")
-        self.add_output("βp")
+        self.add_input("<p_tot>",
+                       units="kPa",
+                       desc="Volume-averaged total pressure")
+        self.add_input("Bp", units="T", desc="Average poloidal field at LCFS")
+        self.add_output("βp", desc="Poloidal beta")
 
     def compute(self, inputs, outputs):
         Bp = inputs["Bp"]
@@ -335,7 +346,6 @@ class SpecifiedPressure(om.Group):
     <p_tot> : float
         kPa, Total specified average pressure
     """
-
     def initialize(self):
         self.options.declare('config', default=None)
 
@@ -375,12 +385,17 @@ class ThermalBetaPoloidal(om.ExplicitComponent):
         Beta poloidal (total)
     thermal pressure fraction : float
         Fraction of pressure which is from thermal rather than fast particles.
-    """
 
+    Outputs
+    -------
+    βp_th : float
+        Thermal poloidal beta
+    """
     def setup(self):
-        self.add_input("βp")
-        self.add_input("thermal pressure fraction")
-        self.add_output("βp_th", lower=0)
+        self.add_input("βp", desc="Total poloidal beta")
+        self.add_input("thermal pressure fraction",
+                       desc="Fraction of pressure from thermal particles")
+        self.add_output("βp_th", lower=0, desc="Thermal poloidal beta")
 
     def compute(self, inputs, outputs):
         βp = inputs["βp"]
@@ -411,5 +426,5 @@ if __name__ == "__main__":
     prob.set_val('L_pol', 20, units="m")
 
     prob.run_driver()
-    prob.model.list_inputs()
-    prob.model.list_outputs()
+    prob.model.list_inputs(units=True, desc=True)
+    prob.model.list_outputs(units=True, desc=True)

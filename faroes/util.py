@@ -101,8 +101,8 @@ class SmoothShiftedReLu(om.ExplicitComponent):
     def setup(self):
         self.b = self.options["bignum"]
         self.x0 = self.options["x0"]
-        self.add_input("x")
-        self.add_output("y")
+        self.add_input("x", desc="Shifted ReLu input")
+        self.add_output("y", desc="Shifted ReLu output")
 
     def compute(self, inputs, outputs):
         b = self.b
@@ -144,22 +144,31 @@ class PolarAngleAndDistanceFromPoint(om.ExplicitComponent):
            In the range (-pi, pi].
     """
     def setup(self):
-        self.add_input("x", units="m", shape_by_conn=True)
-        self.add_input("y", units="m", shape_by_conn=True, copy_shape="x")
-        self.add_input("X0", units="m")
-        self.add_input("Y0", units="m", val=0)
+        self.add_input("x",
+                       units="m",
+                       shape_by_conn=True,
+                       desc="X-locations of points")
+        self.add_input("y",
+                       units="m",
+                       shape_by_conn=True,
+                       copy_shape="x",
+                       desc="Y-locations of points")
+        self.add_input("X0", units="m", desc="Polar origin x")
+        self.add_input("Y0", units="m", val=0, desc="Polar origin y")
 
         self.add_output("d_sq",
                         units="m**2",
                         lower=0,
                         ref=10,
                         shape_by_conn=True,
-                        copy_shape="x")
+                        copy_shape="x",
+                        desc="Squared distances from origin")
         self.add_output("θ",
                         lower=-π,
                         upper=π,
                         shape_by_conn=True,
-                        copy_shape="x")
+                        copy_shape="x",
+                        desc="Angles from origin")
 
     def compute(self, inputs, outputs):
         x = inputs["x"]
@@ -226,15 +235,31 @@ class OffsetParametricCurvePoints(om.ExplicitComponent):
     .. [2] https://en.wikipedia.org/wiki/Parallel_curve
     """
     def setup(self):
-        self.add_input("x", units="m", shape_by_conn=True)
-        self.add_input("y", units="m", copy_shape="x", shape_by_conn=True)
+        self.add_input("x",
+                       units="m",
+                       shape_by_conn=True,
+                       desc="x of points on curve")
+        self.add_input("y",
+                       units="m",
+                       copy_shape="x",
+                       shape_by_conn=True,
+                       desc="y of points on curve")
         self.add_input("dx_dt", units="m", copy_shape="x", shape_by_conn=True)
         self.add_input("dy_dt", units="m", copy_shape="x", shape_by_conn=True)
-        self.add_input("s", units="m", desc="offset")
+        self.add_input("s", units="m", desc="Offset distance")
 
-        self.add_output("x_o", units="m", copy_shape="x")
-        self.add_output("y_o", units="m", copy_shape="x")
-        self.add_output("θ_o", copy_shape="x")
+        self.add_output("x_o",
+                        units="m",
+                        copy_shape="x",
+                        desc="x of offset points")
+        self.add_output("y_o",
+                        units="m",
+                        copy_shape="x",
+                        desc="y of offset points")
+        self.add_output("θ_o",
+                        copy_shape="x",
+                        shape_by_conn=True,
+                        desc="Angle of the offset")
 
     def compute(self, inputs, outputs):
         x = inputs["x"]
@@ -343,14 +368,33 @@ class OffsetCurveWithLimiter(om.ExplicitComponent):
        www.johndcook.com/blog/2010/01/20/how-to-compute-the-soft-maximum/
     """
     def setup(self):
-        self.add_input("x", units="m", shape_by_conn=True)
-        self.add_input("y", units="m", copy_shape="x", shape_by_conn=True)
-        self.add_input("θ_o", copy_shape="x", shape_by_conn=True)
-        self.add_input("s", units="m", desc="offset")
-        self.add_input("x_min", units="m", val=0.0)
+        self.add_input("x",
+                       units="m",
+                       shape_by_conn=True,
+                       desc="x of points on curve")
+        self.add_input("y",
+                       units="m",
+                       copy_shape="x",
+                       shape_by_conn=True,
+                       desc="y of points on curve")
+        self.add_input("θ_o",
+                       copy_shape="x",
+                       shape_by_conn=True,
+                       desc="Angle at which to offset")
+        self.add_input("s", units="m", desc="Offset distance")
+        self.add_input("x_min",
+                       units="m",
+                       val=0.0,
+                       desc="Limited minimum 'x' for offset points")
 
-        self.add_output("x_o", units="m", copy_shape="x")
-        self.add_output("y_o", units="m", copy_shape="x")
+        self.add_output("x_o",
+                        units="m",
+                        copy_shape="x",
+                        desc="x of offset points")
+        self.add_output("y_o",
+                        units="m",
+                        copy_shape="x",
+                        desc="y of offset points")
         self.b = 30
         self.θε = 1e-3  # prevents dealing with tan(π/2) = infinity
 
@@ -585,8 +629,8 @@ class SoftCapUnity(om.ExplicitComponent):
 
     def setup(self):
         self.b = self.options['b']
-        self.add_input("x")
-        self.add_output("y", lower=0, val=0.9)
+        self.add_input("x", desc="Input")
+        self.add_output("y", lower=0, val=0.9, desc="Input capped to unity")
 
     def compute(self, inputs, outputs):
         b = self.b
@@ -636,9 +680,9 @@ class Softmax(om.ExplicitComponent):
     def setup(self):
         self.b = self.options['b']
         u = self.options['units']
-        self.add_input("x", shape_by_conn=True, units=u)
-        self.add_input("y", units=u)
-        self.add_output("z", copy_shape="x", units=u)
+        self.add_input("x", shape_by_conn=True, units=u, desc="Input array")
+        self.add_input("y", units=u, desc="Maximum allowed value")
+        self.add_output("z", copy_shape="x", units=u, desc="Softmax'd input")
 
     def compute(self, inputs, outputs):
         b = self.b
@@ -702,9 +746,19 @@ class PolygonalTorusVolume(om.ExplicitComponent):
        m**3, Enclosed volume
     """
     def setup(self):
-        self.add_input("R", units="m", shape_by_conn=True)
-        self.add_input("Z", units="m", copy_shape="R", shape_by_conn=True)
-        self.add_output("V", units="m**3", ref=100)
+        self.add_input("R",
+                       units="m",
+                       shape_by_conn=True,
+                       desc="Vertex radial locations")
+        self.add_input("Z",
+                       units="m",
+                       copy_shape="R",
+                       shape_by_conn=True,
+                       desc="Vertex vertical locations")
+        self.add_output("V",
+                        units="m**3",
+                        ref=100,
+                        desc="Enclosed torus volume")
 
     def compute(self, inputs, outputs):
         r = inputs["R"]

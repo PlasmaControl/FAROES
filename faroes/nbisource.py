@@ -91,23 +91,49 @@ class SimpleNBISource(om.Group):
                            SimpleNBISourceProperties(config=config),
                            promotes_outputs=["P", "E", "A", "Z", "m", "eff"])
         self.add_subsystem("P_aux",
-                           om.ExecComp("P_aux = P / eff",
-                                       P={"units": "MW"},
-                                       P_aux={"units": "MW"}),
+                           om.ExecComp(
+                               "P_aux = P / eff",
+                               P={
+                                   "units": "MW",
+                                   'desc': "NBI heating power"
+                               },
+                               eff={'desc': "NBI wall-plug efficiency"},
+                               P_aux={
+                                   "units": "MW",
+                                   'desc': "NBI wall-plug power"
+                               }),
                            promotes_inputs=["P", "eff"],
                            promotes_outputs=["P_aux"])
         self.add_subsystem("rate",
                            om.ExecComp("S = P/E",
-                                       S={'units': '1/s'},
-                                       P={'units': 'W'},
-                                       E={'units': 'J'}),
+                                       S={
+                                           'units': '1/s',
+                                           'desc': "Particle source rate"
+                                       },
+                                       P={
+                                           'units': 'W',
+                                           'desc': "Particle power"
+                                       },
+                                       E={
+                                           'units': 'J',
+                                           'desc': "Energy per particle"
+                                       }),
                            promotes_outputs=["*"])
         self.add_subsystem("v",
                            om.ExecComp(
                                "v = (2 * E/m)**(1/2)",
-                               v={'units': 'm/s'},
-                               E={'units': 'J'},
-                               m={'units': 'kg'},
+                               v={
+                                   'units': 'm/s',
+                                   'desc': "Beam particle initial velocity"
+                               },
+                               E={
+                                   'units': 'J',
+                                   'desc': "Beam particle initial energy"
+                               },
+                               m={
+                                   'units': 'kg',
+                                   'desc': "Beam particle mass"
+                               },
                            ),
                            promotes_outputs=["*"])
         self.connect('E', ['rate.E', 'v.E'])
@@ -125,5 +151,5 @@ if __name__ == "__main__":
     prob.setup()
     prob.run_driver()
 
-    prob.model.list_inputs(val=True)
-    prob.model.list_outputs(val=True)
+    prob.model.list_inputs(val=True, desc=True, units=True)
+    prob.model.list_outputs(val=True, desc=True, units=True)

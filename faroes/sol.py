@@ -123,9 +123,9 @@ class StrikePointRadius(om.ExplicitComponent):
     def setup(self):
         if self.options['config'] is None:
             raise ValueError("StrikePointRadius requries a config file")
-        self.add_input("R0", units="m")
-        self.add_input("a", units="m")
-        self.add_input("δ", val=0)
+        self.add_input("R0", units="m", desc="Plasma geometric major radius")
+        self.add_input("a", units="m", desc="Minor radius")
+        self.add_input("δ", val=0, desc="Triangularity")
         config = self.options["config"].accessor(["plasma", "SOL", "divertor"])
         model = config(["model"])
         self.model = model
@@ -143,7 +143,11 @@ class StrikePointRadius(om.ExplicitComponent):
             raise ValueError(self.BAD_MODEL)
 
         R_strike_ref = 5
-        self.add_output("R_strike", units="m", lower=0, ref=R_strike_ref)
+        self.add_output("R_strike",
+                        units="m",
+                        lower=0,
+                        ref=R_strike_ref,
+                        desc="Outer strike point major radius")
 
     def compute(self, inputs, outputs):
         R0 = inputs["R0"]
@@ -263,20 +267,24 @@ class GoldstonHDSOL(om.ExplicitComponent):
         # reference: Menard T109
         self.c_Tesep = 30.81
         self.c_λ = 5671
-        self.add_input("R0", units="m")
-        self.add_input("a", units="m")
-        self.add_input("κ")
-        self.add_input("Bt", units="T")
-        self.add_input("Ip", units="A")
-        self.add_input("P_sol", units="W")
-        self.add_input("Z_eff")
-        self.add_input("Z-bar")
-        self.add_input("A-bar")
+        self.add_input("R0", units="m", desc="Plasma geometric major radius")
+        self.add_input("a", units="m", desc="Minor radius")
+        self.add_input("κ", desc="Elongation")
+        self.add_input("Bt", units="T", desc="Vacuum toroidal field on axis")
+        self.add_input("Ip", units="A", desc="Plasma current")
+        self.add_input("P_sol", units="W", desc="Power into SOL")
+        self.add_input("Z_eff", desc="Effective ion charge")
+        self.add_input("Z-bar", desc="Average ion charge")
+        self.add_input("A-bar", desc="Average ion mass")
 
         T_sep_ref = 100
-        self.add_output("T_sep", units="eV", lower=0, ref=T_sep_ref)
+        self.add_output("T_sep",
+                        units="eV",
+                        lower=0,
+                        ref=T_sep_ref,
+                        desc="Midplane seperatrix temperature")
         λ_ref = 1e-3
-        self.add_output("λ", units="m", lower=0, ref=λ_ref)
+        self.add_output("λ", units="m", lower=0, ref=λ_ref, desc="SOL width")
 
     def compute(self, inputs, outputs):
         R0 = inputs["R0"]
@@ -394,18 +402,28 @@ class PeakHeatFlux(om.ExplicitComponent):
         else:
             raise ValueError(self.BAD_MODEL)
 
-        self.add_input("R_strike", units="m")
-        self.add_input("κ")
-        self.add_input("P_sol", units="MW")
-        self.add_input("f_outer")
-        self.add_input("f_fluxexp")
-        self.add_input("λ_sol", units="mm")
-        self.add_input("q_star")
-        self.add_input("θ_pol", units="rad")
-        self.add_input("θ_tot", units="rad")
-        self.add_input("N_div", 1)
+        self.add_input("R_strike", units="m", desc="Strike point major radius")
+        self.add_input("κ", desc="Elongation")
+        self.add_input("P_sol", units="MW", desc="Power to SOL")
+        self.add_input("f_outer",
+                       desc="Fraction of power to the outer divertor")
+        self.add_input("f_fluxexp", desc="Flux expansion factor")
+        self.add_input("λ_sol", units="mm", desc="SOL width")
+        self.add_input("q_star", desc="Cylindrical safety factor")
+        self.add_input("θ_pol",
+                       units="rad",
+                       desc="Poloidal angle of the field at strike point")
+        self.add_input(
+            "θ_tot",
+            units="rad",
+            desc="Total angle of the field to the strike point surface")
+        self.add_input("N_div", 1, desc="Number of divertors")
         q_max_ref = 3e6
-        self.add_output("q_max", units="MW/m**2", lower=0, ref=q_max_ref)
+        self.add_output("q_max",
+                        units="MW/m**2",
+                        lower=0,
+                        ref=q_max_ref,
+                        desc="Peak heat flux")
 
     def compute(self, inputs, outputs):
         Rs = inputs["R_strike"]
@@ -457,14 +475,21 @@ class SOLAndDivertor(om.Group):
         self.add_subsystem("props",
                            SOLProperties(config=config),
                            promotes_outputs=["*"])
-        self.add_subsystem("Psol",
-                           om.ExecComp("P_sol = P_heat * (1 - f_rad)",
-                                       P_sol={
-                                           "units": "MW",
-                                           "lower": 0.1
-                                       },
-                                       P_heat={"units": "MW"}),
-                           promotes=["*"])
+        self.add_subsystem(
+            "Psol",
+            om.ExecComp(
+                "P_sol = P_heat * (1 - f_rad)",
+                P_sol={
+                    'units': "MW",
+                    'lower': 0.1,
+                    'desc': "Power entering the SOL"
+                },
+                f_rad={'desc': "Fraction of heating power which is radiated"},
+                P_heat={
+                    "units": "MW",
+                    'desc': "Plasma heating power"
+                }),
+            promotes=["*"])
         self.add_subsystem("R_strike",
                            StrikePointRadius(config=config),
                            promotes_inputs=["*"],
@@ -473,14 +498,21 @@ class SOLAndDivertor(om.Group):
                            GoldstonHDSOL(),
                            promotes_inputs=["*"],
                            promotes_outputs=["T_sep", ("λ", "λ_HD")])
-        self.add_subsystem("lambda_q",
-                           om.ExecComp("lambda_q = lambda_q_HD * fudge_factor",
-                                       lambda_q={"units": "mm"},
-                                       lambda_q_HD={"units": "mm"}),
-                           promotes_inputs=[("lambda_q_HD", "λ_HD"),
-                                            ("fudge_factor",
-                                             "SOL width multiplier")],
-                           promotes_outputs=[("lambda_q", "λ_sol")])
+        self.add_subsystem(
+            "lambda_q",
+            om.ExecComp("lambda_q = lambda_q_HD * fudge_factor",
+                        lambda_q={
+                            "units": "mm",
+                            'desc': "Heat flux width"
+                        },
+                        fudge_factor={'desc': "Adjustment factor"},
+                        lambda_q_HD={
+                            "units": "mm",
+                            'desc': "Computed heat flux width"
+                        }),
+            promotes_inputs=[("lambda_q_HD", "λ_HD"),
+                             ("fudge_factor", "SOL width multiplier")],
+            promotes_outputs=[("lambda_q", "λ_sol")])
         self.add_subsystem("peak_heat_flux",
                            PeakHeatFlux(config=config),
                            promotes_inputs=["*"],
@@ -505,8 +537,10 @@ if __name__ == "__main__":
     prob.run_driver()
 
     all_inputs = prob.model.list_inputs(val=True,
+                                        desc=True,
                                         print_arrays=True,
                                         units=True)
     all_outputs = prob.model.list_outputs(val=True,
+                                          desc=True,
                                           print_arrays=True,
                                           units=True)

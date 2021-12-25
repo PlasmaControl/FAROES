@@ -196,15 +196,19 @@ class EllipseLikeGeometry(om.ExplicitComponent):
                         lower=0,
                         ref=100,
                         desc="Surface area of the elliptical plasma")
-        self.add_output("V", units='m**3', desc="Volume", lower=0, ref=100)
+        self.add_output("V",
+                        units='m**3',
+                        desc="Plasma volume",
+                        lower=0,
+                        ref=100)
         self.add_output("S_c",
                         units='m**2',
-                        desc="Cross-sectional area",
+                        desc="Cross-sectional area of the plasma",
                         lower=0,
                         ref=20)
         self.add_output("L_pol",
                         units="m",
-                        desc="Poloidal circumference",
+                        desc="Poloidal circumference of the plasma",
                         lower=0,
                         ref=10)
         self.add_output("L_pol_simple",
@@ -219,7 +223,7 @@ class EllipseLikeGeometry(om.ExplicitComponent):
                         desc="Inner radius of plasma at midplane")
         self.add_output("R_out",
                         units='m',
-                        desc="outer radius of plasma at midplane")
+                        desc="Outer radius of plasma at midplane")
 
     def compute(self, inputs, outputs):
         outputs["δ"] = 0  # ellipse-like plasma approximation
@@ -322,7 +326,9 @@ class EllipticalPlasmaGeometry(om.Group):
                            promotes_outputs=["κ"])
         # enforce equality
         self.add_subsystem("passthrough",
-                           om.ExecComp("kappaa = kappa"),
+                           om.ExecComp("kappaa = kappa",
+                                       kappa={'desc': "Elongation"},
+                                       kappaa={'desc': "Elongation"}),
                            promotes_inputs=[("kappa", "κ")],
                            promotes_outputs=[("kappaa", "κa")])
 
@@ -370,5 +376,5 @@ if __name__ == "__main__":
     prob.set_val('κa', 2.7)
 
     prob.run_driver()
-    prob.model.list_inputs()
-    prob.model.list_outputs()
+    prob.model.list_inputs(desc=True, units=True)
+    prob.model.list_outputs(desc=True, units=True)

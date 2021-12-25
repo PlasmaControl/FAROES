@@ -39,8 +39,14 @@ class PrimaryCoilSetCost(om.ExplicitComponent):
 
     def setup(self):
         self.cpv = self.options['cost_per_volume']
-        self.add_input("V_pc", units="m**3", val=0.0)
-        self.add_output("Cpc", units="MUSD", ref=100)
+        self.add_input("V_pc",
+                       units="m**3",
+                       val=0.0,
+                       desc="Material volume of primary (TF) coils")
+        self.add_output("Cpc",
+                        units="MUSD",
+                        ref=100,
+                        desc="Cost of primary coilset")
 
     def compute(self, inputs, outputs):
         outputs['Cpc'] = self.cpv * inputs["V_pc"]
@@ -87,8 +93,11 @@ class BlanketCost(om.ExplicitComponent):
 
     def setup(self):
         self.cpv = self.options['cost_per_volume']
-        self.add_input("V_bl", units="m**3")
-        self.add_output("C_bl", units="MUSD", ref=100)
+        self.add_input("V_bl", units="m**3", desc="Blanket volume")
+        self.add_output("C_bl",
+                        units="MUSD",
+                        ref=100,
+                        desc="Cost of one blanket set")
 
     def compute(self, inputs, outputs):
         outputs['C_bl'] = self.cpv * inputs["V_bl"]
@@ -132,8 +141,13 @@ class StructureCost(om.ExplicitComponent):
 
     def setup(self):
         self.cpv = self.options['cost_per_volume']
-        self.add_input("V_st", units="m**3")
-        self.add_output("Cst", units="MUSD", ref=100)
+        self.add_input("V_st",
+                       units="m**3",
+                       desc="Material volume of coil structures & supports")
+        self.add_output("Cst",
+                        units="MUSD",
+                        ref=100,
+                        desc="Cost of coil structures & supports")
 
     def compute(self, inputs, outputs):
         outputs['Cst'] = self.cpv * inputs["V_st"]
@@ -177,8 +191,11 @@ class ShieldWithGapsCost(om.ExplicitComponent):
 
     def setup(self):
         self.cpv = self.options['cost_per_volume']
-        self.add_input("V_sg", units="m**3")
-        self.add_output("Csg", units="MUSD", ref=100)
+        self.add_input("V_sg", units="m**3", desc="Volume of shield with gaps")
+        self.add_output("Csg",
+                        units="MUSD",
+                        ref=100,
+                        desc="Cost of shielding with gaps")
 
     def compute(self, inputs, outputs):
         outputs['Csg'] = self.cpv * inputs["V_sg"]
@@ -225,8 +242,8 @@ class DivertorCost(om.ExplicitComponent):
 
     def setup(self):
         self.cpa = self.options['cost_per_area']
-        self.add_input("A_tt", units="m**2")
-        self.add_output("C_tt", units="MUSD", ref=3)
+        self.add_input("A_tt", units="m**2", desc="Divertor wall area")
+        self.add_output("C_tt", units="MUSD", ref=3, desc="Divertor set cost")
 
     def compute(self, inputs, outputs):
         outputs['C_tt'] = self.cpa * inputs["A_tt"]
@@ -270,8 +287,13 @@ class AuxHeatingCost(om.ExplicitComponent):
 
     def setup(self):
         self.cpw = self.options['cost_per_watt']
-        self.add_input("P_aux", units="MW")
-        self.add_output("C_aux", units="MUSD", ref=100)
+        self.add_input("P_aux",
+                       units="MW",
+                       desc="Power of aux heating systems")
+        self.add_output("C_aux",
+                        units="MUSD",
+                        ref=100,
+                        desc="Cost of aux heating systems")
 
     def compute(self, inputs, outputs):
         outputs['C_aux'] = self.cpw * inputs["P_aux"]
@@ -310,8 +332,13 @@ class AnnualAuxHeatingCost(om.ExplicitComponent):
 
     def setup(self):
         self.cc = self.options['cost_params']
-        self.add_input("C_aux", units="MUSD")
-        self.add_output("C_aa", units="MUSD/a", ref=10)
+        self.add_input("C_aux",
+                       units="MUSD",
+                       desc="Capital cost of aux heating")
+        self.add_output("C_aa",
+                        units="MUSD/a",
+                        ref=10,
+                        desc="Annualized cost of aux heating")
 
     def compute(self, inputs, outputs):
         cc = self.cc
@@ -407,14 +434,26 @@ class FusionIslandCost(om.ExplicitComponent):
     def setup(self):
         self.cc = self.options['cost_params']
         #  todo: raise a proper error
-        self.add_input("P_t", units="MW")
-        self.add_input("Cpc", units="GUSD")
-        self.add_input("Csg", units="GUSD")
-        self.add_input("Cst", units="GUSD")
-        self.add_input("C_aux", units="GUSD")
+        self.add_input("P_t",
+                       units="MW",
+                       desc="Thermal power handled by b.o.p.")
+        self.add_input("Cpc", units="GUSD", desc="Cost of primary coilset")
+        self.add_input("Csg", units="GUSD", desc="Cost of shielding and gaps")
+        self.add_input("Cst",
+                       units="GUSD",
+                       desc="Cost of structures & supports for coils")
+        self.add_input("C_aux",
+                       units="GUSD",
+                       desc="Cost of aux heating systems")
 
-        self.add_output("C_ht", units="GUSD", ref=1)
-        self.add_output("C_FI", units="GUSD", ref=1)
+        self.add_output("C_ht",
+                        units="GUSD",
+                        ref=1,
+                        desc="Cost of main heat transfer steam system")
+        self.add_output("C_FI",
+                        units="GUSD",
+                        ref=1,
+                        desc="Cost of the fusion island")
 
     def compute(self, inputs, outputs):
         Pt = inputs['P_t']
@@ -536,14 +575,29 @@ class CapitalCost(om.ExplicitComponent):
 
     def setup(self):
         self.cc = self.options['cost_params']
-        self.add_input("P_e", units="MW")
-        self.add_input("P_t", units="MW")
-        self.add_input("V_FI", units="m**3")
-        self.add_input("C_FI", units="GUSD")
+        self.add_input("P_e",
+                       units="MW",
+                       desc="Electric power generated by turbine")
+        self.add_input("P_t", units="MW", desc="Thermal power of the system")
+        self.add_input("V_FI",
+                       units="m**3",
+                       desc="Volume of the fusion island")
+        self.add_input("C_FI",
+                       units="GUSD",
+                       desc="Cost of fusion island components")
 
-        self.add_output("C_BOP", units="GUSD", ref=1)
-        self.add_output("C_bld", units="GUSD", ref=1)
-        self.add_output("C_D", units="GUSD", ref=1)
+        self.add_output("C_BOP",
+                        units="GUSD",
+                        ref=1,
+                        desc="Cap. cost of the b.o.p. systems")
+        self.add_output("C_bld",
+                        units="GUSD",
+                        ref=1,
+                        desc="Cap. cost of buildings, etc")
+        self.add_output("C_D",
+                        units="GUSD",
+                        ref=1,
+                        desc="Direct cap. cost of whole plant")
 
     def compute(self, inputs, outputs):
         Pt = inputs['P_t']
@@ -663,9 +717,15 @@ class DeuteriumVariableCost(om.ExplicitComponent):
 
     def setup(self):
         self.cc = self.options['cost_params']
-        self.add_input("P_fus", units="MW")
-        self.add_output("D usage", units="kg/h", ref=0.01)
-        self.add_output("C_Dv", units="USD/h", ref=0.5)
+        self.add_input("P_fus", units="MW", desc="DT fusion power")
+        self.add_output("D usage",
+                        units="kg/h",
+                        ref=0.01,
+                        desc="Rate of deuterium burning")
+        self.add_output("C_Dv",
+                        units="USD/h",
+                        ref=0.5,
+                        desc="Instantaneous deuterium cost")
 
         # this was done by looking up the masses of D+, T, α,
         # neutrons, and e⁻, and doing Δm c²
@@ -727,11 +787,21 @@ class AnnualDeuteriumCost(om.ExplicitComponent):
        https://doi.org/10.2172/6633213
     """
     def setup(self):
-        self.add_input("C_Dv", units="kUSD/h")
-        self.add_input("D usage", units="g/h")
-        self.add_input("f_av")
-        self.add_output("C_deuterium", units="kUSD/a", ref=0.5)
-        self.add_output("Annual D usage", units="kg/a", ref=50)
+        self.add_input("C_Dv",
+                       units="kUSD/h",
+                       desc="Instantaneous variable cost of deuterium")
+        self.add_input("D usage",
+                       units="g/h",
+                       desc="Instantaneous deuterium usage")
+        self.add_input("f_av", desc="Availability factor")
+        self.add_output("C_deuterium",
+                        units="kUSD/a",
+                        ref=0.5,
+                        desc="Annualized deuterium cost")
+        self.add_output("Annual D usage",
+                        units="kg/a",
+                        ref=50,
+                        desc="Annualized deuterium usage")
         self.g_per_h_to_kg_per_a = year / hour / kilo
         self.per_h_to_per_a = year / hour
 
@@ -802,9 +872,18 @@ class MiscReplacements(om.ExplicitComponent):
 
     def setup(self):
         self.cc = self.options['cost_params']
-        self.add_input("C_fuel", units="MUSD/a", val=0.8)
-        self.add_output("C_fa", units="MUSD/a", ref=10)
-        self.add_output("C_misca", units="MUSD/a", ref=10)
+        self.add_input("C_fuel",
+                       units="MUSD/a",
+                       val=0.8,
+                       desc="Annual cost of fuel")
+        self.add_output("C_fa",
+                        units="MUSD/a",
+                        ref=10,
+                        desc="Cost of misc. sched. repl. items & fuel")
+        self.add_output("C_misca",
+                        units="MUSD/a",
+                        ref=10,
+                        desc="Cost of misc. sched. repl. items")
 
     def compute(self, inputs, outputs):
         cc = self.cc
@@ -849,11 +928,26 @@ class FuelCycleCost(om.ExplicitComponent):
        https://doi.org/10.13182/FST15-157.
     """
     def setup(self):
-        self.add_input("C_ba", units="MUSD/a", val=0.0)
-        self.add_input("C_ta", units="MUSD/a", val=0.0)
-        self.add_input("C_aa", units="MUSD/a", val=0.0)
-        self.add_input("C_fa", units="MUSD/a", val=0.0)
-        self.add_output("C_F", units="GUSD/a", ref=0.100)
+        self.add_input("C_ba",
+                       units="MUSD/a",
+                       val=0.0,
+                       desc="Annualized blanket costs")
+        self.add_input("C_ta",
+                       units="MUSD/a",
+                       val=0.0,
+                       desc="Annualized divertor costs")
+        self.add_input("C_aa",
+                       units="MUSD/a",
+                       val=0.0,
+                       desc="Annualized aux heating costs")
+        self.add_input("C_fa",
+                       units="MUSD/a",
+                       val=0.0,
+                       desc="Annualized fuel costs")
+        self.add_output("C_F",
+                        units="GUSD/a",
+                        ref=0.100,
+                        desc="Annualized 'fuel cycle' costs")
 
     def compute(self, inputs, outputs):
         outputs["C_F"] = (inputs["C_ba"] + inputs["C_ta"] + inputs["C_aa"] +
@@ -923,15 +1017,34 @@ class AveragedAnnualBlanketCost(om.ExplicitComponent):
 
     def setup(self):
         self.cc = self.options['cost_params']
-        self.add_input("C_bl", units="MUSD", val=0.0)
-        self.add_input("p_wn", units="MW/m**2")
-        self.add_input("F_wn", units="MW*a/m**2")
-        self.add_input("f_av", val=1.0)
-        self.add_input("N_years")
-        self.add_output("C_bv", units="MUSD/a", lower=0, ref=40)
-        self.add_output("Initial blanket", units="MUSD/a", lower=0, ref=20)
-        self.add_output("Avg blanket repl", units="MUSD/a", lower=0, ref=30)
-        self.add_output("C_ba", units="MUSD/a", lower=0, ref=50)
+        self.add_input("C_bl",
+                       units="MUSD",
+                       val=0.0,
+                       desc="Cost of 1st blanket set")
+        self.add_input("p_wn", units="MW/m**2", desc="Neutron wall loading")
+        self.add_input("F_wn", units="MW*a/m**2", desc="Blanket durability")
+        self.add_input("f_av", val=1.0, desc="Plant availability factor")
+        self.add_input("N_years", desc="Plant operational lifetime")
+        self.add_output("C_bv",
+                        units="MUSD/a",
+                        lower=0,
+                        ref=40,
+                        desc="Variable cost of blanket")
+        self.add_output("Initial blanket",
+                        units="MUSD/a",
+                        lower=0,
+                        ref=20,
+                        desc="Annualized cost of 1st blanket")
+        self.add_output("Avg blanket repl",
+                        units="MUSD/a",
+                        lower=0,
+                        ref=30,
+                        desc="Annualized replacement blanket costs")
+        self.add_output("C_ba",
+                        units="MUSD/a",
+                        lower=0,
+                        ref=50,
+                        desc="Annualized blanket costs")
 
         self.ffails = self.cc['fudge'] * self.cc['f_failures']
 
@@ -1005,7 +1118,7 @@ class DivertorVariableCost(om.ExplicitComponent):
     p_tt : float
         MW/m**2, Averaged thermal load on the divertor targets
     F_tt : float
-        MW*a/m**2, Divertor lifetime
+        MW*a/m**2, Divertor durability
 
     Outputs
     -------
@@ -1024,10 +1137,19 @@ class DivertorVariableCost(om.ExplicitComponent):
        https://doi.org/10.13182/FST15-157.
     """
     def setup(self):
-        self.add_input("C_tt", units="MUSD", val=0.0)
-        self.add_input("F_tt", units="MW*a/m**2")
-        self.add_input("p_tt", units="MW/m**2")
-        self.add_output("C_tv", units="MUSD/a", lower=0, ref=100)
+        self.add_input("C_tt",
+                       units="MUSD",
+                       val=0.0,
+                       desc="Cost of 1st divertor")
+        self.add_input("F_tt", units="MW*a/m**2", desc="Divertor durability")
+        self.add_input("p_tt",
+                       units="MW/m**2",
+                       desc="Thermal load on divertor")
+        self.add_output("C_tv",
+                        units="MUSD/a",
+                        lower=0,
+                        ref=100,
+                        desc="Variable costs from divertor")
 
     def compute(self, inputs, outputs):
         C_tt = inputs["C_tt"]
@@ -1066,11 +1188,11 @@ class AveragedAnnualDivertorCost(om.ExplicitComponent):
     Inputs
     ------
     C_tt : float
-        MUSD, cost of the initial blanket
+        MUSD, cost of the initial divertor
     p_tt : float
-        MW/m**2, Neutron wall loading
+        MW/m**2, Thermal load on divertor targets
     F_tt : float
-        First wall and blanket lifetime
+        Divertor durability
     f_av : float
         Plant availability
     N_years : float
@@ -1112,15 +1234,36 @@ class AveragedAnnualDivertorCost(om.ExplicitComponent):
 
     def setup(self):
         self.cc = self.options['cost_params']
-        self.add_input("C_tt", units="MUSD", val=0.0)
-        self.add_input("p_tt", units="MW/m**2")
-        self.add_input("F_tt", units="MW*a/m**2")
-        self.add_input("f_av", val=1.0)
-        self.add_input("N_years")
-        self.add_output("C_tv", units="MUSD/a", lower=0, ref=40)
-        self.add_output("Initial divertor", units="MUSD/a", lower=0, ref=20)
-        self.add_output("Avg divertor repl", units="MUSD/a", lower=0, ref=30)
-        self.add_output("C_ta", units="MUSD/a", lower=0, ref=50)
+        self.add_input("C_tt",
+                       units="MUSD",
+                       val=0.0,
+                       desc="Costs of 1st divertor")
+        self.add_input("p_tt",
+                       units="MW/m**2",
+                       desc="Thermal load on divertor target")
+        self.add_input("F_tt", units="MW*a/m**2", desc="Divertor durability")
+        self.add_input("f_av", val=1.0, desc="Plant availability factor")
+        self.add_input("N_years", desc="Plant operational lifetime")
+        self.add_output("C_tv",
+                        units="MUSD/a",
+                        lower=0,
+                        ref=40,
+                        desc="Variable cost of divertor use, instantaneous")
+        self.add_output("Initial divertor",
+                        units="MUSD/a",
+                        lower=0,
+                        ref=20,
+                        desc="Annualized 1st divertor cost")
+        self.add_output("Avg divertor repl",
+                        units="MUSD/a",
+                        lower=0,
+                        ref=30,
+                        desc="Annualized replacement divertor cost")
+        self.add_output("C_ta",
+                        units="MUSD/a",
+                        lower=0,
+                        ref=50,
+                        desc="Annualized divertor costs")
 
         self.ffails = self.cc['fudge'] * self.cc['f_failures']
 
@@ -1192,7 +1335,7 @@ class FixedOMCost(om.ExplicitComponent):
     Outputs
     -------
     C_OM : float
-        MUSD/a
+        MUSD/a, Operations and maintenance cost
 
     Options
     -------
@@ -1241,8 +1384,11 @@ class FixedOMCost(om.ExplicitComponent):
 
     def setup(self):
         self.cc = self.options["cost_params"]
-        self.add_input("P_e", units="MW")
-        self.add_output("C_OM", units="MUSD/a", ref=100)
+        self.add_input("P_e", units="MW", desc="Electric power")
+        self.add_output("C_OM",
+                        units="MUSD/a",
+                        ref=100,
+                        desc="Operations and maintenance cost")
 
     def compute(self, inputs, outputs):
         cc = self.cc
@@ -1299,10 +1445,17 @@ class TotalCapitalCost(om.ExplicitComponent):
        https://doi.org/10.13182/FST15-157.
     """
     def setup(self):
-        self.add_input("C_D", units="GUSD")
-        self.add_input("f_CAP0", val=1.0)
-        self.add_input("f_IND", val=1.0)
-        self.add_output("C_C0", units="GUSD", ref=3)
+        self.add_input("C_D",
+                       units="GUSD",
+                       desc="Overnight plant capital cost")
+        self.add_input("f_CAP0",
+                       val=1.0,
+                       desc="Constant-dollar capitalization factor")
+        self.add_input("f_IND", val=1.0, desc="Indirect charges factor")
+        self.add_output("C_C0",
+                        units="GUSD",
+                        ref=3,
+                        desc="Total plant capital cost")
 
     def compute(self, inputs, outputs):
         C_D = inputs["C_D"]
@@ -1345,8 +1498,8 @@ class IndirectChargesFactor(om.ExplicitComponent):
        https://doi.org/10.13182/FST15-157.
     """
     def setup(self):
-        self.add_input("T_constr", units="a")
-        self.add_output("f_IND")
+        self.add_input("T_constr", units="a", desc="Construction time")
+        self.add_output("f_IND", desc="Indirect charges factor")
 
     def compute(self, inputs, outputs):
         T_constr = inputs["T_constr"]
@@ -1388,8 +1541,8 @@ class ConstantDollarCapitalizationFactor(om.ExplicitComponent):
        https://doi.org/10.13182/FST15-157.
     """
     def setup(self):
-        self.add_input("T_constr", units='a')
-        self.add_output("f_CAP0")
+        self.add_input("T_constr", units='a', desc="Construction time")
+        self.add_output("f_CAP0", desc="Constant-dollar capitalization factor")
 
     def compute(self, inputs, outputs):
         T = inputs["T_constr"]
@@ -1447,13 +1600,26 @@ class CostOfElectricity(om.ExplicitComponent):
 
     def setup(self):
         self.cc = self.options['cost_params']
-        self.add_input("C_C0", units="MUSD", val=0.0)
-        self.add_input("C_F", units="MUSD/a", val=0.0)
-        self.add_input("C_OM", units="MUSD/a", val=0.0)
-        self.add_input("f_av", val=1.0)
-        self.add_input("P_e", units="MW")
+        self.add_input("C_C0",
+                       units="MUSD",
+                       val=0.0,
+                       desc="Total capital cost")
+        self.add_input("C_F",
+                       units="MUSD/a",
+                       val=0.0,
+                       desc="Annual fuel cycle cost")
+        self.add_input("C_OM",
+                       units="MUSD/a",
+                       val=0.0,
+                       desc="Operations & maint. cost")
+        self.add_input("f_av", val=1.0, desc="Availability factor")
+        self.add_input("P_e", units="MW", desc="Net electric power output")
 
-        self.add_output("COE", units="mUSD/kW/h", lower=0, ref=100)
+        self.add_output("COE",
+                        units="mUSD/kW/h",
+                        lower=0,
+                        ref=100,
+                        desc="Cost of electricity")
 
     def compute(self, inputs, outputs):
         cc = self.cc
@@ -1521,8 +1687,14 @@ class GeneromakStructureVolume(om.ExplicitComponent):
        https://doi.org/10.13182/FST15-157.
     """
     def setup(self):
-        self.add_input("V_pc", units='m**3', val=0.0)
-        self.add_output("V_st", units='m**3', ref=100)
+        self.add_input("V_pc",
+                       units='m**3',
+                       val=0.0,
+                       desc="Primary coil volume")
+        self.add_output("V_st",
+                        units='m**3',
+                        ref=100,
+                        desc="Magnet structure volume")
         self.c = 0.75
 
     def compute(self, inputs, outputs):
@@ -1695,7 +1867,10 @@ class GeneromakCosting(om.Group):
             # ignore promotes V_st
             self.add_subsystem("ignore",
                                om.ExecComp(["ignore=V_st"],
-                                           V_st={'units': 'm**3'}),
+                                           V_st={
+                                               'units': 'm**3',
+                                               'desc': "Structure volume"
+                                           }),
                                promotes_inputs=["V_st"])
 
         sg_cost_per_vol = cost_pars["ShieldWithGaps.cost_per_vol"]
@@ -1744,9 +1919,15 @@ class GeneromakCosting(om.Group):
             # The 2016 Generomak paper uses a constant 7.5M for miscellaneous
             # costs.
             ivc = om.IndepVarComp()
-            ivc.add_output("C_fa", units="MUSD/a", val=7.5)
-            ivc.add_output("C_misca", units="MUSD/a",
-                           val=7.5)  # yes, the same.
+            ivc.add_output("C_fa",
+                           units="MUSD/a",
+                           val=7.5,
+                           desc="Annual fuel cycle costs")
+            ivc.add_output(
+                "C_misca",
+                units="MUSD/a",
+                val=7.5,  # yes, the same value.
+                desc="Annual misc. replacements cost")
             self.add_subsystem("misc",
                                ivc,
                                promotes_outputs=["C_fa", "C_misca"])
@@ -1859,8 +2040,11 @@ class GeneromakCosting(om.Group):
             self.promotes("omcost", inputs=[("P_e", "P_net")])
             # create a stub so that P_e has something to connect to.
             self.add_subsystem("ignore2",
-                               om.ExecComp(["ignore=P_e"], P_e={'units':
-                                                                'MW'}),
+                               om.ExecComp(["ignore=P_e"],
+                                           P_e={
+                                               'units': 'MW',
+                                               'desc': "Gross electric power"
+                                           }),
                                promotes_inputs=["P_e"])
         else:
             self.promotes("plant_capital", inputs=["P_e"])
@@ -1892,12 +2076,12 @@ class GeneromakCosting(om.Group):
                          "GenXInterface.Initial divertor")
             # in the exact formulation, C_misca contains the fuel cost
             if not exact_generomak:
-                self.connect("d_cost_var.C_Dv",
-                             "GenXInterface.C_fv")
+                self.connect("d_cost_var.C_Dv", "GenXInterface.C_fv")
 
 
 #################################################
 # Interface from Generomak costing to GenX inputs
+
 
 class GeneromakToGenX(om.ExplicitComponent):
     r"""Outputs metrics used by GenX
@@ -1962,31 +2146,58 @@ class GeneromakToGenX(om.ExplicitComponent):
 
     def setup(self):
         self.cc = self.options['cost_params']
-        self.add_input('C_C0', units='USD', val=0.0)
-        self.add_input('Initial blanket', units='USD/a', val=0.0)
-        self.add_input('Initial divertor', units='USD/a', val=0.0)
+        self.add_input('C_C0', units='USD', val=0.0, desc="Total capital cost")
+        self.add_input('Initial blanket',
+                       units='USD/a',
+                       val=0.0,
+                       desc="Annualized cost of 1st blanket")
+        self.add_input('Initial divertor',
+                       units='USD/a',
+                       val=0.0,
+                       desc="Annualized cost of 1st divertor")
 
-        self.add_input('C_aa', units='USD/a', val=0.0)
-        self.add_input('C_misca', units='USD/a', val=0.0)
-        self.add_input('C_OM', units='USD/a', val=0.0)
+        self.add_input('C_aa',
+                       units='USD/a',
+                       val=0.0,
+                       desc="Annualized cost of aux heating")
+        self.add_input('C_misca',
+                       units='USD/a',
+                       val=0.0,
+                       desc="Miscallaneous replacements cost")
+        self.add_input('C_OM',
+                       units='USD/a',
+                       val=0.0,
+                       desc="Operations & maint. cost")
 
-        self.add_input('C_bv', units='USD/h', val=0.0)
-        self.add_input('C_tv', units='USD/h', val=0.0)
-        self.add_input('C_fv', units='USD/h', val=0.0)
+        self.add_input('C_bv',
+                       units='USD/h',
+                       val=0.0,
+                       desc="Variable ops. & maint. cost of blanket")
+        self.add_input('C_tv',
+                       units='USD/h',
+                       val=0.0,
+                       desc="Variable ops. & maint. cost of divertor")
+        self.add_input('C_fv',
+                       units='USD/h',
+                       val=0.0,
+                       desc="Variable ops. & maint. cost of fuel")
 
-        self.add_input('P_e', units='MW')
+        self.add_input('P_e', units='MW', desc="Electric power output")
 
         self.add_output('Inv_Cost_per_MWyr',
                         units='USD/MW/a',
-                        ref=100000)
+                        ref=100000,
+                        desc="Annualized investment cost per MW")
         self.add_output('Fixed_OM_Cost_per_MWyr',
                         units='USD/MW/a',
                         lower=0,
-                        ref=10000)
+                        ref=10000,
+                        desc="Fixed operations and maintenance cost")
         self.add_output('Var_OM_Cost_per_MWh',
                         units='USD/MW/h',
                         lower=0,
-                        ref=10)
+                        ref=10,
+                        desc="Instantaneous variable ops. & maint.  cost")
 
     def compute(self, inputs, outputs):
         cc = self.cc
@@ -2099,5 +2310,5 @@ if __name__ == '__main__':
     prob.set_val("T_constr", 6, units='a')
 
     prob.run_driver()
-    prob.model.list_inputs(units=True)
-    prob.model.list_outputs(units=True)
+    prob.model.list_inputs(units=True, desc=True)
+    prob.model.list_outputs(units=True, desc=True)

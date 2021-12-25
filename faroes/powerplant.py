@@ -114,7 +114,11 @@ class RecirculatingElectricPower(om.ExplicitComponent):
                        desc="Electric power to drive plasma control systems")
         tiny = 1e-6
         P_ref = 100
-        self.add_output("P_recirc", units="MW", ref=P_ref, lower=tiny)
+        self.add_output("P_recirc",
+                        units="MW",
+                        ref=P_ref,
+                        lower=tiny,
+                        desc="Recirculating electric power")
 
     def compute(self, inputs, outputs):
         P_aux = inputs["P_aux"]
@@ -206,7 +210,7 @@ class SimpleGeneratedPower(om.ExplicitComponent):
     Inputs
     ------
     P_heat : float
-        GW, Power to generators
+        GW, Thermal power to generators
 
     Outputs
     -------
@@ -217,8 +221,13 @@ class SimpleGeneratedPower(om.ExplicitComponent):
         self.options.declare("config", default=None)
 
     def setup(self):
-        self.add_input("P_heat", units="GW")
-        self.add_output("P_el", ref=0.500, units="GW")
+        self.add_input("P_heat",
+                       units="GW",
+                       desc="Thermal power to generators")
+        self.add_output("P_el",
+                        ref=0.500,
+                        units="GW",
+                        desc="Gross electric power")
 
         if self.options['config'] is not None:
             self.config = self.options['config']
@@ -251,7 +260,7 @@ class PowerplantQ(om.ExplicitComponent):
     Inputs
     ------
     P_gen : float
-        GW, Power generated
+        GW, Gross power generated
     P_recirc : float
         GW, Recirculating electric power
 
@@ -260,13 +269,13 @@ class PowerplantQ(om.ExplicitComponent):
     Q_eng : float
         Engineering Q of the plant
     P_net : float
-        GW, net electric power
+        GW, Net electric power
     f_recirc : float
         Fraction of generated electric power which is recirculated
     """
     def setup(self):
         P_ref = 0.5
-        self.add_input("P_gen", units="GW", desc="Power generated")
+        self.add_input("P_gen", units="GW", desc="Gross power generated")
         self.add_input("P_recirc",
                        units="GW",
                        desc="Recirculating electric power")
@@ -275,7 +284,8 @@ class PowerplantQ(om.ExplicitComponent):
                         ref=3,
                         desc="Engineering Q of the plant")
         self.add_output("P_net",
-                        units="GW", ref=P_ref,
+                        units="GW",
+                        ref=P_ref,
                         desc="Net electric power generated")
         self.add_output("f_recirc",
                         lower=0,
@@ -396,5 +406,5 @@ if __name__ == "__main__":
     prob.model.linear_solver = om.DirectSolver()
 
     prob.run_driver()
-    all_inputs = prob.model.list_inputs(val=True)
-    all_outputs = prob.model.list_outputs(val=True)
+    all_inputs = prob.model.list_inputs(val=True, desc=True, units=True)
+    all_outputs = prob.model.list_outputs(val=True, desc=True, units=True)

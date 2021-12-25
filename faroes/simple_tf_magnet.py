@@ -25,9 +25,17 @@ class WindingPackProperties(om.Group):
             f = acc.accessor(["materials", "HTS cable"])
             max_strain = f(["strain limit"])
             youngs = f(["Young's modulus"], units="GPa")
-            ivc.add_output("Young's modulus", youngs, units="GPa")
-            ivc.add_output("max_strain", max_strain)
-            ivc.add_output("max_stress", max_strain * youngs, units="GPa")
+            ivc.add_output("Young's modulus",
+                           youngs,
+                           units="GPa",
+                           desc="HTS cable Young's modulus")
+            ivc.add_output("max_strain",
+                           max_strain,
+                           desc="HTS cable max strain")
+            ivc.add_output("max_stress",
+                           max_strain * youngs,
+                           units="GPa",
+                           desc="HTS cable max stress")
 
         else:
             ivc.add_output("Young's modulus", units="GPa")
@@ -150,7 +158,7 @@ class FieldAtRadius(om.ExplicitComponent):
     I_leg : float
         MA, Current in one TF leg
     r_om : float
-        m, Radius of the outermost conductor
+        m, Inboard conductor outer radius
     R0 : float
         m, major radius
     n_coil: int
@@ -164,13 +172,19 @@ class FieldAtRadius(om.ExplicitComponent):
         T, maximum toroidal field on the TF coil conductor
     """
     def setup(self):
-        self.add_input('I_leg', units='MA')
-        self.add_input('r_om', units='m')
-        self.add_input('R0', units='m')
-        self.add_input('n_coil', 18)
+        self.add_input('I_leg', units='MA', desc="Current in one TF leg")
+        self.add_input('r_om',
+                       units='m',
+                       desc="Inboard conductor outer radius")
+        self.add_input('R0', units='m', desc="Geometric major radius")
+        self.add_input('n_coil', 18, desc="Number of TF coils")
 
-        self.add_output('B_on_coil', units='T')
-        self.add_output('B0', units='T')
+        self.add_output('B_on_coil',
+                        units='T',
+                        desc="Toroidal field on conductor")
+        self.add_output('B0',
+                        units='T',
+                        desc="Vacuum toroidal field at geometric center")
 
     def field_at_radius(self, i, r):
         """Toroidal field at a given radius
@@ -249,6 +263,13 @@ class InnerTFCoilStrain(om.ExplicitComponent):
     f_HTS : float
         fraction of winding pack area which is the superconducting cable
 
+    hts_E_young : float
+        GPa, Young's modulus of HTS cable
+    struct_E_yong : float
+        GPa, Young's modulus of magnet structure
+    hts_max_stress : float
+        MPa, Max allowable stress in HTS cable
+
     Outputs
     -------
     s_HTS : float
@@ -270,9 +291,15 @@ class InnerTFCoilStrain(om.ExplicitComponent):
         self.add_input('f_HTS',
                        desc='Fraction of magnet area which is SC cable')
 
-        self.add_input('hts_E_young', units='GPa')
-        self.add_input('struct_E_young', units='GPa')
-        self.add_input('hts_max_stress', units='MPa')
+        self.add_input('hts_E_young',
+                       units='GPa',
+                       desc="Young's modulus of HTS cable")
+        self.add_input('struct_E_young',
+                       units='GPa',
+                       desc="Young's modulus of magnet structure")
+        self.add_input('hts_max_stress',
+                       units='MPa',
+                       desc="Max allowable stress in HTS cable")
 
         ref_strain_MPa = 100
         self.add_output('s_HTS',
@@ -280,7 +307,7 @@ class InnerTFCoilStrain(om.ExplicitComponent):
                         ref=ref_strain_MPa,
                         desc='Strain on the HTS cable')
         self.add_output('constraint_max_stress',
-                        desc='fraction of maximum stress on the HTS cable')
+                        desc='Fraction of maximum stress on the HTS cable')
 
     def compute(self, inputs, outputs):
         A_s = inputs['A_s']
@@ -410,7 +437,7 @@ class InboardMagnetGeometry(om.ExplicitComponent):
     r_ot : float
         m, Outer radius of the outer structure of the inboard leg.
     Δr : float
-        m, thickness of the inboard magnets
+        m, Thickness of the inboard magnets
 
     w_is: float
         m, Inner 'width' of the inner structure of the inboard leg.
@@ -461,17 +488,41 @@ class InboardMagnetGeometry(om.ExplicitComponent):
             self.e_gap = 0.006
             self.Δr_t = 0.05
 
-        self.add_input('r_is', units='m')
-        self.add_input('Δr_s', units='m')
-        self.add_input('Δr_m', units='m')
-        self.add_input('n_coil', val=18, desc='number of coils')
+        self.add_input(
+            'r_is',
+            units='m',
+            desc="Inner radius of the inner structure of the inboard leg.")
+        self.add_input('Δr_s',
+                       units='m',
+                       desc="Radial thickness of inner structure")
+        self.add_input('Δr_m',
+                       units='m',
+                       desc="Radial thickness of winding pack")
+        self.add_input('n_coil', val=18, desc='Number of coils')
 
-        self.add_output('r_os', units='m')
-        self.add_output('r_im', units='m')
-        self.add_output('r_om', units='m')
-        self.add_output('r_it', units='m')
-        self.add_output('r_ot', units='m')
-        self.add_output('Δr', units='m')
+        self.add_output(
+            'r_os',
+            units='m',
+            desc="Outer radius of the inner structure of the inboard leg.")
+        self.add_output(
+            'r_im',
+            units='m',
+            desc="Inner radius of the winding pack of the inboard leg.")
+        self.add_output(
+            'r_om',
+            units='m',
+            desc="Outer radius of the winding pack of the inboard leg.")
+        self.add_output(
+            'r_it',
+            units='m',
+            desc="Inner radius of the outer structure of the inboard leg.")
+        self.add_output(
+            'r_ot',
+            units='m',
+            desc="Outer radius of the outer structure of the inboard leg.")
+        self.add_output('Δr',
+                        units='m',
+                        desc="Thickness of the inboard magnet leg")
 
         # turned off because they are not used at the moment
         # self.add_output('w_is', units='m')
@@ -488,13 +539,27 @@ class InboardMagnetGeometry(om.ExplicitComponent):
         # self.add_output('l_it', units='m')
         # self.add_output('l_ot', units='m')
 
-        self.add_output('A_s', units='m**2')
-        self.add_output('A_m', units='m**2')
-        self.add_output('A_t', units='m**2')
+        self.add_output(
+            'A_s',
+            units='m**2',
+            desc="Cross-sectional area of the inboard leg inner structure.")
+        self.add_output(
+            'A_m',
+            units='m**2',
+            desc="Cross-sectional area of the inboard leg winding pack.")
+        self.add_output(
+            'A_t',
+            units='m**2',
+            desc="Cross-sectional area of the inboard leg outer structure.")
 
-        self.add_output('r1', units='m')
+        self.add_output(
+            'r1',
+            units='m',
+            desc="Average radius of the winding pack of the inboard leg.")
 
-        self.add_output('approximate cross section', units='m**2')
+        self.add_output('approximate cross section',
+                        units='m**2',
+                        desc="Cross section as if magnet were rectangular")
 
     def compute(self, inputs, outputs):
         e_gap = self.e_gap
@@ -630,11 +695,20 @@ class OutboardMagnetGeometry(om.ExplicitComponent):
     def setup(self):
         self.add_input('r_iu',
                        units='m',
-                       desc='Inner radius of outboard TF leg')
-        self.add_input('Ib TF Δr', units='m')
+                       desc="Inner radius of outboard TF leg")
+        self.add_input('Ib TF Δr',
+                       units='m',
+                       desc="Radial thickness of inboard leg")
 
-        self.add_output('r2', units='m', lower=0)
-        self.add_output('r_ov', units='m', lower=0)
+        self.add_output(
+            'r2',
+            units='m',
+            lower=0,
+            desc="Average radius of the winding pack of the outer leg.")
+        self.add_output('r_ov',
+                        units='m',
+                        lower=0,
+                        desc="Outer radius of the outboard leg")
 
     def compute(self, inputs, outputs):
         r_iu = inputs['r_iu']
@@ -659,7 +733,7 @@ class MagnetCurrent(om.ExplicitComponent):
     Inputs
     ------
     A_m : float
-        m^2, area of the inboard leg winding pack
+        m^2, Area of the inboard leg winding pack
     f_HTS : float
         Fraction of that winding pack which is superconducting cable
     j_HTS : float
@@ -674,10 +748,16 @@ class MagnetCurrent(om.ExplicitComponent):
 
     """
     def setup(self):
-        self.add_input('A_m', units='m**2')
-        self.add_input('f_HTS')
-        self.add_input('j_HTS', units='MA/m**2')
-        self.add_output('I_leg', units='MA')
+        self.add_input('A_m',
+                       units='m**2',
+                       desc="Area of the inboard leg winding pack")
+        self.add_input(
+            'f_HTS',
+            desc="Fraction of winding pack which is superconducting cable")
+        self.add_input('j_HTS',
+                       units='MA/m**2',
+                       desc="Current density in superconducting cable")
+        self.add_output('I_leg', units='MA', desc="Current in one TF leg")
 
     def compute(self, inputs, outputs):
         A_m = inputs['A_m']
@@ -790,16 +870,37 @@ class SimpleMagnetEngineering(om.Group):
         self.add_subsystem(
             'con_cmp2',
             om.ExecComp('constraint_B_on_coil = B_max - B_on_coil',
-                        B_on_coil={'units': 'T'},
-                        B_max={'units': 'T'}),
+                        constraint_B_on_coil={
+                            'desc': "Positive if acceptable field-on-coil"
+                        },
+                        B_on_coil={
+                            'units': 'T',
+                            'desc': "Computed field on coil"
+                        },
+                        B_max={
+                            'units': 'T',
+                            'desc': "Max allowable field on coil"
+                        }),
             promotes=['constraint_B_on_coil', 'B_on_coil', 'B_max'])
         self.add_subsystem(
             'con_cmp3',
             om.ExecComp(
                 'constraint_wp_current_density = A_m * j_eff_wp_max - I_leg',
-                A_m={'units': 'm**2'},
-                j_eff_wp_max={'units': 'MA/m**2'},
-                I_leg={'units': 'MA'}),
+                constraint_wp_current_density={
+                    'desc': "Positive if acceptable"
+                },
+                A_m={
+                    'units': 'm**2',
+                    'desc': "Winding pack cross section"
+                },
+                j_eff_wp_max={
+                    'units': 'MA/m**2',
+                    'desc': "Winding pack average current density"
+                },
+                I_leg={
+                    'units': 'MA',
+                    'desc': "Current in magnet leg"
+                }),
             promotes=['constraint_wp_current_density', 'A_m', 'I_leg'])
         self.connect('windingpack.j_eff_max', ['con_cmp3.j_eff_wp_max'])
 
@@ -821,16 +922,24 @@ class ExampleMagnetRadialBuild(om.Group):
                                ('r_om', 'Ib winding pack R_out'),
                                ('r_ot', 'Ib TF R_out')
                            ])
-        self.add_subsystem("ob_gap",
-                           om.ExecComp("r_iu = r_min + dR",
-                                       dR={
-                                           'units': 'm',
-                                           'val': 0
-                                       },
-                                       r_min={'units': 'm'},
-                                       r_iu={'units': 'm'}),
-                           promotes_inputs=['dR'],
-                           promotes_outputs=["r_iu"])
+        self.add_subsystem(
+            "ob_gap",
+            om.ExecComp(
+                "r_iu = r_min + dR",
+                dR={
+                    'units': 'm',
+                    'val': 0,
+                    'desc': "Outboard gap thickness",
+                },
+                r_min={'units': 'm'},
+                r_iu={
+                    'units':
+                    'm',
+                    'desc':
+                    "Inner radius of the inner structure of the outboard leg."
+                }),
+            promotes_inputs=['dR'],
+            promotes_outputs=["r_iu"])
 
         self.add_subsystem('ob_geometry',
                            OutboardMagnetGeometry(),
@@ -891,5 +1000,5 @@ if __name__ == "__main__":
 
     prob.run_driver()
 
-    prob.model.list_inputs(val=True)
-    prob.model.list_outputs(val=True)
+    prob.model.list_inputs(val=True, desc=True, units=True)
+    prob.model.list_outputs(val=True, desc=True, units=True)

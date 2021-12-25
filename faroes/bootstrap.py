@@ -62,21 +62,38 @@ class SauterBootstrapProportionality(om.Group):
     def setup(self):
         self.set_input_defaults("δ", 0)
         ivc = om.IndepVarComp()
-        ivc.add_output("δ0", val=0)
+        ivc.add_output("δ0", val=0, desc="Reference triangularity")
         self.add_subsystem("ivc", ivc)
 
-        self.add_subsystem("new_eps",
-                           om.ExecComp("eps = 0.75 * oldeps",
-                                       oldeps={'val': 0.5},
-                                       eps={'val': 0.5}),
-                           promotes_inputs=[("oldeps", "ε")],
-                           promotes_outputs=[("eps", "ε_new")])
+        self.add_subsystem(
+            "new_eps",
+            om.ExecComp("eps = 0.75 * oldeps",
+                        oldeps={
+                            'val': 0.5,
+                            'desc': "Plasma inverse aspect ratio"
+                        },
+                        eps={
+                            'val':
+                            0.5,
+                            'desc':
+                            "Inverse aspect ratio for bootstrap current calc"
+                        }),
+            promotes_inputs=[("oldeps", "ε")],
+            promotes_outputs=[("eps", "ε_new")])
 
         self.add_subsystem("new_delta",
                            om.ExecComp(
                                "delta = 0.5 * olddelta",
-                               olddelta={'val': 0.5},
-                               delta={'val': 0.5},
+                               olddelta={
+                                   'val': 0.5,
+                                   'desc': "LCFS triangularity"
+                               },
+                               delta={
+                                   'val':
+                                   0.5,
+                                   'desc':
+                                   "Triangularity for boostrap current calc."
+                               },
                            ),
                            promotes_inputs=[("olddelta", "δ")],
                            promotes_outputs=[("delta", "δ_new")])
@@ -90,12 +107,20 @@ class SauterBootstrapProportionality(om.Group):
                            promotes_inputs=[("ε", "ε_new")],
                            promotes_outputs=[("ftrap", "ft0")])
         self.connect("ivc.δ0", "ft0.δ")
-        self.add_subsystem("mult",
-                           om.ExecComp("m = ft/(1-ft) * (1 - ft0)/ft0",
-                                       ft={'val': 0.5},
-                                       ft0={'val': 0.5}),
-                           promotes_inputs=["ft", "ft0"],
-                           promotes_outputs=["m"])
+        self.add_subsystem(
+            "mult",
+            om.ExecComp("m = ft/(1-ft) * (1 - ft0)/ft0",
+                        m={'desc': "Factor accounting for triangularity"},
+                        ft={
+                            'val': 0.5,
+                            'desc': "Trapped particle fraction"
+                        },
+                        ft0={
+                            'val': 0.5,
+                            'desc': "Reference trapped particle fraction"
+                        }),
+            promotes_inputs=["ft", "ft0"],
+            promotes_outputs=["m"])
 
 
 class BootstrapMultiplier(om.ExplicitComponent):
@@ -144,9 +169,11 @@ class BootstrapMultiplier(om.ExplicitComponent):
         self.f = 5
         self.y1 = 0.6
         self.s = 2.0  # sharpness factor
-        self.add_input("q_star", val=3.5)
-        self.add_input("q_min", val=2.2)
-        self.add_output("bs_mult")
+        self.add_input("q_star", val=3.5, desc="Cylindrical safety factor")
+        self.add_input("q_min",
+                       val=2.2,
+                       desc="Reference cylindrical safety factor")
+        self.add_output("bs_mult", desc="Bootstrap current multiplier")
 
     def compute(self, inputs, outputs):
         f = self.f
@@ -225,12 +252,14 @@ class BootstrapFraction(om.ExplicitComponent):
        Oxford University Press: New York, 2004.
     """
     def setup(self):
-        self.add_input("bs_mult", desc="Bootstrap multiplier")
+        self.add_input("bs_mult", desc="Bootstrap current multiplier")
         self.add_input("δ_mult", desc="Extra multiplier for dependence on δ")
-        self.add_input("ε", val=0.5)
-        self.add_input("βp_th")
-        self.add_input("fudge")
-        self.add_output("f_BS")
+        self.add_input("ε",
+                       val=0.5,
+                       desc="Typical flux surface inverse aspect ratio")
+        self.add_input("βp_th", desc="β-poloidal from thermal particles")
+        self.add_input("fudge", desc="Adjustment factor")
+        self.add_output("f_BS", desc="Bootstrap fraction")
         self.c = 0.9  # boostrap fraction multiplier
 
     def compute(self, inputs, outputs):
@@ -265,9 +294,9 @@ class BootstrapCurrent(om.Group):
     Inputs
     ------
     ε : float
-        Inverse aspect ratio of the plasma
+        Inverse aspect ratio of the plasma LCFS
     δ : float
-        Triangularity of the plasma.
+        Triangularity of the plasma LCFS
     Ip : float
         MA, plasma current
     βp : float
@@ -306,8 +335,15 @@ class BootstrapCurrent(om.Group):
         self.connect("triangularity_factor.m", ["bsf.δ_mult"])
         self.add_subsystem("ip",
                            om.ExecComp("I_BS = f_BS * Ip",
-                                       Ip={"units": "MA"},
-                                       I_BS={"units": "MA"}),
+                                       f_BS={'desc': "Bootstrap fraction"},
+                                       Ip={
+                                           "units": "MA",
+                                           'desc': "Total plasma current"
+                                       },
+                                       I_BS={
+                                           "units": "MA",
+                                           'desc': "Bootstrap current"
+                                       }),
                            promotes=["*"])
 
 
@@ -329,5 +365,5 @@ if __name__ == "__main__":
     check = prob.check_partials(out_stream=None, method='cs')
     assert_check_partials(check)
     prob.run_driver()
-    all_inputs = prob.model.list_inputs(val=True)
-    all_outputs = prob.model.list_outputs(val=True)
+    all_inputs = prob.model.list_inputs(val=True, units=True, desc=True)
+    all_outputs = prob.model.list_outputs(val=True, units=True, desc=True)

@@ -141,9 +141,9 @@ class ZeroDPlasmaDensities(om.ExplicitComponent):
     """
     def setup(self):
         ρref = 1e-7
-        self.add_input("f_D", val=0.5)
+        self.add_input("f_D", val=0.5, desc="Fraction of D of main ions")
         self.add_input("A_main_i", units="u", desc="Main ion mass")
-        self.add_input("Z_eff", val=2.0)
+        self.add_input("Z_eff", val=2.0, desc="Effective ion charge")
         self.add_input("Z_imp", desc="Impurity charge state")
         self.add_input("A_imp", units="u", desc="Impurity mass")
         self.add_input("n_e", units="n20", desc="Electron density")
@@ -427,23 +427,23 @@ class ZeroDPlasmaPressures(om.ExplicitComponent):
         kPa, Averaged ion pressure
     """
     def setup(self):
-        self.add_input("Ti/Te", val=1.0)
-        self.add_input("Z_ave")
+        self.add_input("Ti/Te", val=1.0, desc="Ion-electron temp ratio")
+        self.add_input("Z_ave", desc="Average ion charge")
         self.add_input("<p_th>",
                        units="kPa",
-                       desc="Averaged thermal particle pressure")
+                       desc="Volume-averaged thermal particle pressure")
 
         pref = 100
         self.add_output("<p_e>",
                         lower=0,
                         units="kPa",
                         ref=pref,
-                        desc="Averaged electron pressure")
+                        desc="Volume-averaged electron pressure")
         self.add_output("<p_i>",
                         lower=0,
                         units="kPa",
                         ref=pref,
-                        desc="Averaged ion pressure")
+                        desc="Volume-averaged ion pressure")
 
     def compute(self, inputs, outputs):
         p_th = inputs["<p_th>"]
@@ -477,26 +477,32 @@ class ZeroDPlasmaTemperatures(om.ExplicitComponent):
     Inputs
     ------
     <n_e> : float
-        n20, Average electron density
+        n20, Volume-average electron density
     ni/ne : float
         Ratio of ion density to electron density
     <p_e> : float
-        kPa, Averaged electron pressure
+        kPa, Volume-averaged electron pressure
     <p_ion> : float
-        kPa, Averaged ion pressure
+        kPa, Volume-averaged ion pressure
 
     Outputs
     -------
     <T_e> : float
-        keV, Averaged electron temperature
+        keV, Volume-averaged electron temperature
     <T_i> : float
-        keV, Averaged ion temperature
+        keV, Volume-averaged ion temperature
     """
     def setup(self):
-        self.add_input("<n_e>", units="n20", desc="Average electron density")
+        self.add_input("<n_e>",
+                       units="n20",
+                       desc="Volume-average electron density")
         self.add_input("ni/ne", desc="Ratio of ions to electrons")
-        self.add_input("<p_e>", units="kPa", desc="Averaged electron pressure")
-        self.add_input("<p_i>", units="kPa", desc="Averaged ion pressure")
+        self.add_input("<p_e>",
+                       units="kPa",
+                       desc="Volume-averaged electron pressure")
+        self.add_input("<p_i>",
+                       units="kPa",
+                       desc="Volume-averaged ion pressure")
 
         Tref = 10
         tiny = 1e-3
@@ -504,12 +510,12 @@ class ZeroDPlasmaTemperatures(om.ExplicitComponent):
                         lower=tiny,
                         units="keV",
                         ref=Tref,
-                        desc="Averaged electron temperature")
+                        desc="Volume-averaged electron temperature")
         self.add_output("<T_i>",
                         lower=tiny,
                         units="keV",
                         ref=Tref,
-                        desc="Averaged ion temperature")
+                        desc="Volume-averaged ion temperature")
 
     def compute(self, inputs, outputs):
         p_e = inputs["<p_e>"]
@@ -583,7 +589,7 @@ class ThermalVelocity(om.ExplicitComponent):
     Outputs
     -------
     vth : float
-        m/s, simple thermal velocity
+        m/s, Simple thermal velocity
     v_mps : float
         m/s, Most probable speed in 3D
     v_rms : float
@@ -600,13 +606,29 @@ class ThermalVelocity(om.ExplicitComponent):
         self.options.declare('mass', default=electron_mass)
 
     def setup(self):
-        self.add_input("T", units='eV')
+        self.add_input("T", units='eV', desc="Temperature")
         vref = 1e6
         tiny = 1e-3
-        self.add_output("v_th", ref=vref, lower=tiny, units='m/s')
-        self.add_output("v_mps", ref=vref, lower=tiny, units='m/s')
-        self.add_output("v_rms", ref=vref, lower=tiny, units='m/s')
-        self.add_output("v_meanmag", ref=vref, lower=tiny, units='m/s')
+        self.add_output("v_th",
+                        ref=vref,
+                        lower=tiny,
+                        units='m/s',
+                        desc="RMS of velocity in one dimension")
+        self.add_output("v_mps",
+                        ref=vref,
+                        lower=tiny,
+                        units='m/s',
+                        desc="Most probable speed in 3D")
+        self.add_output("v_rms",
+                        ref=vref,
+                        lower=tiny,
+                        units='m/s',
+                        desc="RMS of the total velocity in 3D")
+        self.add_output("v_meanmag",
+                        ref=vref,
+                        lower=tiny,
+                        units='m/s',
+                        desc="Mean of the magnitude of the velocity")
 
     def compute(self, inputs, outputs):
         mass = self.options['mass']
@@ -669,17 +691,37 @@ class ZeroDThermalFusionPower(om.ExplicitComponent):
     """
     def setup(self):
         self.add_input("V", units="m**3", desc="Plasma volume")
-        self.add_input("rate_fus/V", units="1/m**3/as")
-        self.add_input("P_fus/V", units="MW/m**3")
-        self.add_input("P_n/V", units="MW/m**3")
-        self.add_input("P_α/V", units="MW/m**3")
+        self.add_input("rate_fus/V",
+                       units="1/m**3/as",
+                       desc="Volumetric reaction rate")
+        self.add_input("P_fus/V", units="MW/m**3", desc="Volumetric power")
+        self.add_input("P_n/V",
+                       units="MW/m**3",
+                       desc="Volumetric neutron power")
+        self.add_input("P_α/V", units="MW/m**3", desc="Volumetric alpha power")
         self.add_input("enhancement", desc="Fusion enhancement from p-peaking")
         rate_fus_ref = 1e1
-        self.add_output("rate_fus", lower=0, ref=rate_fus_ref, units="1/as")
+        self.add_output("rate_fus",
+                        lower=0,
+                        ref=rate_fus_ref,
+                        units="1/as",
+                        desc="Total reaction rate")
         Pref = 100
-        self.add_output("P_fus", lower=0, ref=Pref, units="MW")
-        self.add_output("P_n", lower=0, ref=Pref, units="MW")
-        self.add_output("P_α", lower=0, ref=Pref, units="MW")
+        self.add_output("P_fus",
+                        lower=0,
+                        ref=Pref,
+                        units="MW",
+                        desc="Primary fusion power")
+        self.add_output("P_n",
+                        lower=0,
+                        ref=Pref,
+                        units="MW",
+                        desc="Neutron power")
+        self.add_output("P_α",
+                        lower=0,
+                        ref=Pref,
+                        units="MW",
+                        desc="Alpha power")
 
     def compute(self, inputs, outputs):
         f_enh = inputs["enhancement"]
@@ -798,16 +840,24 @@ class IonMixMux(om.ExplicitComponent):
     """
     def setup(self):
         n = 3
-        self.add_input("n_D", units="n20")
-        self.add_input("n_T", units="n20")
-        self.add_input("n_imp", units="n20")
-        self.add_input("A_imp", units="u")
-        self.add_input("Z_imp")
+        self.add_input("n_D", units="n20", desc="Deuterium density")
+        self.add_input("n_T", units="n20", desc="Tritium density")
+        self.add_input("n_imp", units="n20", desc="(Single) Impurity density")
+        self.add_input("A_imp", units="u", desc="(Single) Impurity mass")
+        self.add_input("Z_imp", desc="(Single) Impurity charge number")
         tiny = 1e-8
-        self.add_output("ni", units="n20", lower=tiny, shape=(n, ))
-        self.add_output("Ai", units="u", lower=0, shape=(n, ))
-        self.add_output("Zi", lower=0, shape=n)
-        self.add_output("Zi2", shape=n)
+        self.add_output("ni",
+                        units="n20",
+                        lower=tiny,
+                        shape=(n, ),
+                        desc="Ion densities")
+        self.add_output("Ai",
+                        units="u",
+                        lower=0,
+                        shape=(n, ),
+                        desc="Ion masses")
+        self.add_output("Zi", lower=0, shape=n, desc="Ion charges")
+        self.add_output("Zi2", shape=n, desc="Squared ion chargers")
 
     def compute(self, inputs, outputs):
         nD = inputs["n_D"]
@@ -987,7 +1037,9 @@ if __name__ == "__main__":
 
     all_inputs = prob.model.list_inputs(val=True,
                                         print_arrays=True,
-                                        units=True)
+                                        units=True,
+                                        desc=True)
     all_outputs = prob.model.list_outputs(val=True,
                                           print_arrays=True,
-                                          units=True)
+                                          units=True,
+                                          desc=True)

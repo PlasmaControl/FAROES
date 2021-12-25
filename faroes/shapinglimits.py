@@ -49,7 +49,10 @@ class ZohmMaximumKappaScaling(om.ExplicitComponent):
     """
     def setup(self):
         self.add_input("A", desc="Aspect Ratio")
-        self.add_output("κ", lower=0, ref=2, desc="Elongation")
+        self.add_output("κ",
+                        lower=0,
+                        ref=2,
+                        desc="Maximum controllable elongation")
 
     def compute(self, inputs, outputs):
         A = inputs["A"]

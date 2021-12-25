@@ -34,7 +34,7 @@ class SimpleCryostat(om.ExplicitComponent):
         else:
             self.tf_height_multiple = 2
 
-        self.add_input("R_out", units="m", desc="Outer radius")
+        self.add_input("R_out", units="m", desc="Cryostat outer radius")
         self.add_input("TF half-height",
                        units="m",
                        desc="Half the outer full height of the TF coils")

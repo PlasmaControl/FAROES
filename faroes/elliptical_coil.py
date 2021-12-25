@@ -92,7 +92,7 @@ class SimpleEllipticalTFSet(om.ExplicitComponent):
                         units="m**3",
                         lower=0,
                         ref=V_enc_ref,
-                        desc="magnetized volume enclosed by the set")
+                        desc="Magnetized volume enclosed by the set")
 
     def compute(self, inputs, outputs):
         R0 = inputs["R0"]
@@ -214,4 +214,5 @@ if __name__ == "__main__":
     prob.set_val("n_coil", 18)
 
     prob.run_driver()
-    all_outputs = prob.model.list_outputs(val=True)
+    all_outputs = prob.model.list_inputs(val=True, desc=True)
+    all_outputs = prob.model.list_outputs(val=True, desc=True)

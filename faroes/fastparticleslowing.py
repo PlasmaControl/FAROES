@@ -45,8 +45,13 @@ class SlowingThermalizationTime(om.ExplicitComponent):
     """
     def setup(self):
         self.add_input("W/Wc", desc="Initial beam energy / critical energy")
-        self.add_input("ts", units="s", desc="Ion-electron slowing time")
-        self.add_output("τth", lower=0, units="s")
+        self.add_input("ts",
+                       units="s",
+                       desc="Velocity slowing time of ions on e⁻")
+        self.add_output("τth",
+                        lower=0,
+                        units="s",
+                        desc="Fast particle thermalization time")
 
     def compute(self, inputs, outputs):
         w_rat = inputs["W/Wc"]
@@ -107,8 +112,12 @@ class FastParticleHeatingFractions(om.ExplicitComponent):
     """
     def setup(self):
         self.add_input("W/Wc", desc="Initial beam energy / critical energy")
-        self.add_output("f_i", val=0.5)
-        self.add_output("f_e", val=0.5)
+        self.add_output("f_i",
+                        val=0.5,
+                        desc="Fraction of fast particle energy to ions")
+        self.add_output("f_e",
+                        val=0.5,
+                        desc="Fraction of fast particle energy to electrons")
 
     def ionfrac(self, w_rat):
         return hyp2f1(2 / 3, 1, 5 / 3, -w_rat**(3 / 2))
@@ -355,7 +364,7 @@ class StixCriticalSlowingEnergy(om.ExplicitComponent):
     Outputs
     -------
     W_crit : float
-        keV, Critical energy
+        keV, Critical energy for slowing ions
 
     Notes
     -----
@@ -616,7 +625,10 @@ class CriticalSlowingEnergyRatio(om.ExplicitComponent):
     def setup(self):
         self.add_input("W", units="keV", desc="Test particle energy")
         self.add_input("W_crit", units="keV", desc="Critical slowing energy")
-        self.add_output("W/Wc", lower=0, desc="Ratio of energies")
+        self.add_output(
+            "W/Wc",
+            lower=0,
+            desc="Ratio of initial energy to critical slowing energy")
 
     def compute(self, inputs, outputs):
         outputs["W/Wc"] = inputs["W"] / inputs["W_crit"]
@@ -716,9 +728,18 @@ class FastParticleSlowing(om.Group):
         self.add_subsystem(
             "Wcrit",
             om.ExecComp("W_crit = scale * Wcrit0",
-                        W_crit={"units": "keV"},
-                        Wcrit0={"units": "keV"},
-                        scale={"val": scale}))
+                        W_crit={
+                            "units": "keV",
+                            'desc': "Adjusted critical slowing energy"
+                        },
+                        Wcrit0={
+                            "units": "keV",
+                            'desc': "Critical slowing energy"
+                        },
+                        scale={
+                            "val": scale,
+                            'desc': "Critical slowing energy adj. factor"
+                        }))
         self.connect("Wcrit0.W_crit", "Wcrit.Wcrit0")
 
         self.add_subsystem("logCoulombEl",
@@ -740,14 +761,28 @@ class FastParticleSlowing(om.Group):
         self.add_subsystem("averagew",
                            AverageEnergyWhileSlowing(),
                            promotes_outputs=["*"])
-        self.add_subsystem("Wfast",
-                           om.ExecComp("Wfast = (Wbar) * tauth * S / 10**6",
-                                       Wfast={"units": "MJ"},
-                                       Wbar={"units": "J"},
-                                       tauth={"units": "s"},
-                                       S={"units": "1/s"}),
-                           promotes_inputs=["Wbar", ("tauth", "τth"), "S"],
-                           promotes_outputs=["Wfast"])
+        self.add_subsystem(
+            "Wfast",
+            om.ExecComp("Wfast = (Wbar) * tauth * S / 10**6",
+                        Wfast={
+                            "units": "MJ",
+                            'desc': "Fast particle thermal energy"
+                        },
+                        Wbar={
+                            "units": "J",
+                            'desc':
+                            "Average energy of fast particle while slowing"
+                        },
+                        tauth={
+                            "units": "s",
+                            'desc': "Thermalization time"
+                        },
+                        S={
+                            "units": "1/s",
+                            'desc': "Fast particle source rate"
+                        }),
+            promotes_inputs=["Wbar", ("tauth", "τth"), "S"],
+            promotes_outputs=["Wfast"])
 
         self.connect("Wcrit.W_crit", ["WcRat.W_crit", "averagew.Wc"])
         self.connect("WcRat.W/Wc",
@@ -788,5 +823,11 @@ if __name__ == "__main__":
     assert_check_partials(check)
 
     prob.run_driver()
-    all_inputs = prob.model.list_inputs(val=True, print_arrays=True)
-    all_outputs = prob.model.list_outputs(val=True, print_arrays=True)
+    all_inputs = prob.model.list_inputs(val=True,
+                                        print_arrays=True,
+                                        units=True,
+                                        desc=True)
+    all_outputs = prob.model.list_outputs(val=True,
+                                          print_arrays=True,
+                                          units=True,
+                                          desc=True)

@@ -93,7 +93,7 @@ class ConfinementTimeMultiplication(om.ExplicitComponent):
         self.add_input("H",
                        val=1,
                        desc="H-factor; multiplies confinement time")
-        self.add_output("τe", units="s")
+        self.add_output("τe", units="s", desc="Energy confinement time")
 
     def compute(self, inputs, outputs):
         τe = inputs["H"] * inputs["τe_law"]
@@ -172,9 +172,9 @@ class ConfinementTimeScaling(om.ExplicitComponent):
 
         self.add_input("Ip", units="MA", desc="Plasma current")
         self.add_input("Bt", units="T", desc="Toroidal field on axis")
-        self.add_input("n19", units="n19", desc="Density in 10^19 m⁻³")
+        self.add_input("n19", units="n19", desc="Density")
         self.add_input("PL", units="MW", desc="Heating power (or loss power)")
-        self.add_input("R", units="m", desc="major radius")
+        self.add_input("R", units="m", desc="Major radius")
         self.add_input("ε", desc="Inverse aspect ratio")
         self.add_input("κa", desc="Effective elongation, S_c / πa²")
         self.add_input("M", units="u", desc="Ion mass number")
@@ -243,15 +243,31 @@ class MenardHybridScaling(om.Group):
                            promotes_inputs=["*"],
                            promotes_outputs=[("τe", "tau_P")])
 
-        self.add_subsystem('frac',
-                           om.ExecComp("f = 0.5 + tanh((eps - 0.5) * 10) / 2"),
-                           promotes=[("eps", "ε")])
-        self.add_subsystem("tau",
-                           om.ExecComp("tau = tau_N * f + (1-f) * tau_P",
-                                       tau={"units": "s"},
-                                       tau_N={"units": "s"},
-                                       tau_P={"units": "s"}),
-                           promotes=[("tau", "τe"), "tau_N", "tau_P"])
+        self.add_subsystem(
+            'frac',
+            om.ExecComp(
+                "f = 0.5 + tanh((eps - 0.5) * 10) / 2",
+                eps={'desc': "Inverse aspect ratio"},
+                f={'desc': "Inter-formula interpolation parameter"},
+            ),
+            promotes=[("eps", "ε")])
+        self.add_subsystem(
+            "tau",
+            om.ExecComp("tau = tau_N * f + (1-f) * tau_P",
+                        f={'desc': "Inter-formula interpolation parameter"},
+                        tau={
+                            'units': 's',
+                            'desc': "Synthesized confinement time"
+                        },
+                        tau_N={
+                            'units': 's',
+                            'desc': "NSTX-MG scaling conf. time"
+                        },
+                        tau_P={
+                            'units': 's',
+                            'desc': "Petty scaling conf. time"
+                        }),
+            promotes=[("tau", "τe"), "tau_N", "tau_P"])
         self.connect("frac.f", "tau.f")
 
 
@@ -273,5 +289,5 @@ if __name__ == "__main__":
     prob.set_val('κa', 2.19)
     prob.set_val('M', 2.5)
     prob.run_driver()
-    prob.model.list_inputs(val=True)
-    prob.model.list_outputs(val=True)
+    prob.model.list_inputs(val=True, desc=True)
+    prob.model.list_outputs(val=True, desc=True)

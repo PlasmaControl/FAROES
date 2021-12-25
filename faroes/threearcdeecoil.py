@@ -39,27 +39,52 @@ class ThreeEllipseArcDeeTFSetAdaptor(om.ExplicitComponent):
     Outputs
     -------
     hhs : float
-        m, half-height of the straight segment
+        m, Half-height of the straight segment
     e_a : float
-        m, elliptical arc horizontal semi-major axis
+        m, Elliptical arc horizontal semi-major axis
     e1_a : float
-        m, inboard arc horizontal radius
+        m, Inboard arc horizontal radius
     e1_b : float
-        m, inboard arc vertical radius
+        m, Inboard arc vertical radius
     """
     def setup(self):
-        self.add_input("Ib TF R_out", units="m")
-        self.add_input("Ob TF R_in", units="m")
-        self.add_input("Z_min", units="m")
+        self.add_input("Ib TF R_out",
+                       units="m",
+                       desc="Inboard TF outer radius")
+        self.add_input("Ob TF R_in",
+                       units="m",
+                       desc="Outboard TF inner radius")
+        self.add_input("Z_min",
+                       units="m",
+                       desc="Minimum height for inner edge of magnet's crown")
 
-        self.add_input("f_c", val=0.5)
-        self.add_input("f_hhs", val=0.5)
-        self.add_input("Z_1", units="m", val=0.5)
+        self.add_input("f_c",
+                       val=0.5,
+                       desc="Fraction of bore taken by inboard arc")
+        self.add_input("f_hhs",
+                       val=0.5,
+                       desc="Fraction of height taken by straight segment")
+        self.add_input("Z_1",
+                       units="m",
+                       val=0.5,
+                       desc="Extra height above Z_min for inner edge of crown")
 
-        self.add_output("hhs", units="m", lower=0)
-        self.add_output("e1_a", units="m", lower=0)
-        self.add_output("e1_b", units="m", lower=0)
-        self.add_output("e_a", units="m", lower=0)
+        self.add_output("hhs",
+                        units="m",
+                        lower=0,
+                        desc="Half-height of the straight segment")
+        self.add_output("e1_a",
+                        units="m",
+                        lower=0,
+                        desc="Elliptical arc horizontal semi-major axis")
+        self.add_output("e1_b",
+                        units="m",
+                        lower=0,
+                        desc="Inboard arc horizontal radius")
+        self.add_output("e_a",
+                        units="m",
+                        lower=0,
+                        desc="Inboard arc vertical radius")
 
     def compute(self, inputs, outputs):
         f_c = inputs["f_c"]
@@ -146,23 +171,40 @@ class ThreeArcDeeTFSetAdaptor(om.ExplicitComponent):
     Outputs
     -------
     hhs : float
-        m, half-height of the straight segment
+        m, Half-height of the straight segment
     e_a : float
-        m, elliptical arc horizontal semi-major axis
+        m, Elliptical arc horizontal semi-major axis
     r_c : float
-        m, circular arc radius
+        m, Circular arc radius
     """
     def setup(self):
-        self.add_input("Ib TF R_out", units="m")
-        self.add_input("Ob TF R_in", units="m")
-        self.add_input("Z_min", units="m")
+        self.add_input("Ib TF R_out",
+                       units="m",
+                       desc="Inboard TF outer radius")
+        self.add_input("Ob TF R_in",
+                       units="m",
+                       desc="Outboard TF inner radius")
+        self.add_input("Z_min",
+                       units="m",
+                       desc="Min height for inner edge of magnet crown")
 
-        self.add_input("f_c", val=0.5)
-        self.add_input("Z_1", units="m", val=0.5)
+        self.add_input("f_c",
+                       val=0.5,
+                       desc="Fraction of span taken by circular arc")
+        self.add_input("Z_1",
+                       units="m",
+                       val=0.5,
+                       desc="Extra height above Z_min for inner edge of crown")
 
-        self.add_output("hhs", units="m", lower=0)
-        self.add_output("r_c", units="m", lower=0)
-        self.add_output("e_a", units="m", lower=0)
+        self.add_output("hhs",
+                        units="m",
+                        lower=0,
+                        desc="Half-height of straight segment")
+        self.add_output("r_c", units="m", lower=0, desc="Circular arc radius")
+        self.add_output("e_a",
+                        units="m",
+                        lower=0,
+                        desc="Elliptical arc horizontal semi-major axis")
 
     def compute(self, inputs, outputs):
         f_c = inputs["f_c"]
@@ -242,17 +284,17 @@ class ThreeEllipseArcDeeTFSet(om.ExplicitComponent):
     Inputs
     ------
     Ib TF R_out : float
-        m, inboard leg outer radius
+        m, Inboard leg outer radius
     hhs : float
-        m, half-height of the straight segment
+        m, Half-height of the straight segment
     e_a : float
-        m, elliptical arc horizontal semi-major axis
+        m, Elliptical arc horizontal semi-major axis
     e1_a : float
-        m, inboard elliptical arc horizontal semi-major axis
+        m, Inboard elliptical arc horizontal semi-major axis
     e1_b : float
-        m, inboard elliptical arc horizontal semi-major axis
+        m, Inboard elliptical arc vertical semi-major axis
     R0 : float
-        m, plasma major radius
+        m, Plasma major radius
     θ   : array
         Angles relative to the magnetic axis at which to
            evaluate the distance to the magnet.
@@ -260,16 +302,16 @@ class ThreeEllipseArcDeeTFSet(om.ExplicitComponent):
     Outputs
     -------
     e_b : float
-        m, elliptical arc vertical semi-major axis
+        m, Outboard elliptical arc vertical semi-major axis
     d_sq : float
         m**2, Squared distance to points on the inner perimeter,
            at angle θ from the magnetic axis
     arc length: float
-        m, inner perimeter of the magnet
+        m, Inner perimeter of the magnet
     V_enc : float
-        m**3, magnetized volume enclosed by the set
+        m**3, Magnetized volume enclosed by the set
     half-height : float
-        m, half the vertical height of the conductors
+        m, Half the vertical height of the conductors
     bore : float
         m, Horizontal span of the interior bore
     e_κ : float
@@ -286,25 +328,43 @@ class ThreeEllipseArcDeeTFSet(om.ExplicitComponent):
         self.add_input("hhs",
                        units="m",
                        desc="Half-height of the straight segment")
-        self.add_input("e1_a", units="m")
-        self.add_input("e1_b", units="m")
-        self.add_input("θ", shape_by_conn=True)
+        self.add_input(
+            "e1_a",
+            units="m",
+            desc="Inboard elliptical arc horizontal semi-major axis")
+        self.add_input("e1_b",
+                       units="m",
+                       desc="Inboard elliptical arc vertical semi-major axis")
+        self.add_input("θ",
+                       shape_by_conn=True,
+                       desc="Angles at which to find distance to magnet")
 
         self.add_output("e_b",
                         units="m",
-                        desc="Elliptical arc vertical semi-major axis")
+                        desc="Outboard arc vertical semi-major axis")
         self.add_output("arc length",
                         units="m",
                         desc="Inner perimeter of the magnet")
         V_enc_ref = 1e3
-        self.add_output("Ob TF R_in", units="m", ref=10, lower=0)
-        self.add_output("constraint_axis_within_coils", units="m", ref=1)
+        self.add_output("Ob TF R_in",
+                        units="m",
+                        ref=10,
+                        lower=0,
+                        desc="Outboard TF inner radius")
+        self.add_output(
+            "constraint_axis_within_coils",
+            units="m",
+            ref=1,
+            desc="Positive if the geometric radius is within the outer leg")
         self.add_output("V_enc",
                         units="m**3",
                         lower=0,
                         ref=V_enc_ref,
-                        desc="magnetized volume enclosed by the set")
-        self.add_output("d_sq", units="m**2", copy_shape="θ")
+                        desc="Magnetized volume enclosed by the set")
+        self.add_output("d_sq",
+                        units="m**2",
+                        copy_shape="θ",
+                        desc="Squared distance to magnet")
         self.add_output("half-height",
                         units="m",
                         lower=0,
@@ -547,14 +607,25 @@ class ThreeArcDeeTFSet(om.ExplicitComponent):
                         units="m",
                         desc="Inner perimeter of the magnet")
         V_enc_ref = 1e3
-        self.add_output("Ob TF R_in", units="m", ref=10, lower=0)
-        self.add_output("constraint_axis_within_coils", units="m", ref=1)
+        self.add_output("Ob TF R_in",
+                        units="m",
+                        ref=10,
+                        lower=0,
+                        desc="Outboard TF inner radius")
+        self.add_output(
+            "constraint_axis_within_coils",
+            units="m",
+            ref=1,
+            desc="Positive if the geometric radius is within the outer leg")
         self.add_output("V_enc",
                         units="m**3",
                         lower=0,
                         ref=V_enc_ref,
                         desc="magnetized volume enclosed by the set")
-        self.add_output("d_sq", units="m**2", copy_shape="θ")
+        self.add_output("d_sq",
+                        units="m**2",
+                        copy_shape="θ",
+                        desc="Squared distance to magnet")
         self.add_output("half-height",
                         units="m",
                         lower=0,
@@ -745,5 +816,9 @@ if __name__ == "__main__":
     # prob.set_val("n_coil", 18)
 
     prob.run_driver()
-    # all_inputs = prob.model.list_inputs(print_arrays=True)
-    all_outputs = prob.model.list_outputs(print_arrays=True)
+    all_inputs = prob.model.list_inputs(print_arrays=True,
+                                        units=True,
+                                        desc=True)
+    all_outputs = prob.model.list_outputs(print_arrays=True,
+                                          units=True,
+                                          desc=True)

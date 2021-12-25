@@ -68,24 +68,29 @@ class PrincetonDeeTFSet(om.ExplicitComponent):
         self.add_input("Ob TF R_in",
                        units="m",
                        desc="Outboard TF leg inner radius")
-        self.add_input("θ", shape_by_conn=True)
+        self.add_input("θ",
+                       shape_by_conn=True,
+                       desc="Angles at which to eval. distance")
 
         self.add_output("k", desc="Normalized magnet shape parameter")
         # self.add_output("arc length",
         #                 units="m",
         #                 desc="Inner perimeter of the magnet")
         V_enc_ref = 1e3
-        self.add_output("constraint_axis_within_coils", units="m", ref=1)
+        self.add_output("constraint_axis_within_coils",
+                        units="m",
+                        ref=1,
+                        desc="Positive when major axis within magnet legs")
         self.add_output("V_enc",
                         units="m**3",
                         lower=0,
                         ref=V_enc_ref,
-                        desc="magnetized volume enclosed by the set")
+                        desc="Magnetized volume enclosed by the set")
         self.add_output("d_sq", units="m**2", copy_shape="θ")
         self.add_output("half-height",
                         units="m",
                         lower=0,
-                        desc="Average semi-major axis of the magnet")
+                        desc="Average half height of the magnet")
 
     def inner_leg_half_height(self, k, r0):
         return r0 * k * pi * iv(1, k)
@@ -295,5 +300,9 @@ if __name__ == "__main__":
     # prob.set_val("θ", [1,2,3])
 
     prob.run_driver()
-    # all_inputs = prob.model.list_inputs(print_arrays=True)
-    all_outputs = prob.model.list_outputs(print_arrays=True)
+    all_inputs = prob.model.list_inputs(print_arrays=True,
+                                        desc=True,
+                                        units=True)
+    all_outputs = prob.model.list_outputs(print_arrays=True,
+                                          desc=True,
+                                          units=True)

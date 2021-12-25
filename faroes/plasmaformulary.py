@@ -82,7 +82,7 @@ class AverageIonMass(om.ExplicitComponent):
                        shape_by_conn=True,
                        copy_shape="ni",
                        desc="Ion field particle atomic masses")
-        self.add_output("A_bar", units="u", lower=0)
+        self.add_output("A_bar", units="u", lower=0, desc="Average ion mass")
 
     def compute(self, inputs, outputs):
         ni = inputs["ni"]
@@ -138,9 +138,13 @@ class CoulombLogarithmElectrons(om.ExplicitComponent):
     https://doi.org/10.1063/1.873240.
     """
     def setup(self):
-        self.add_input("ne", units="n20")
-        self.add_input("Te", units="eV")
-        self.add_output("logΛe", lower=3, upper=100, ref=20)
+        self.add_input("ne", units="n20", desc="Electron density")
+        self.add_input("Te", units="eV", desc="Electron temperature")
+        self.add_output("logΛe",
+                        lower=3,
+                        upper=100,
+                        ref=20,
+                        desc="Coulomb collision logarithm for e⁻")
         self.c0 = 31.3
 
     def compute(self, inputs, outputs):
@@ -181,7 +185,7 @@ class CoulombLogarithmIons(om.ExplicitComponent):
     Outputs
     -------
     logΛi : float
-       Electron coulomb logarithm
+       Ion coulomb logarithm
 
     Notes
     -----
@@ -204,10 +208,14 @@ class CoulombLogarithmIons(om.ExplicitComponent):
     https://doi.org/10.1063/1.873240.
     """
     def setup(self):
-        self.add_input("ni", units="n20")
-        self.add_input("Ti", units="eV")
-        self.add_input("Z")
-        self.add_output("logΛi", lower=0, upper=100, ref=20)
+        self.add_input("ni", units="n20", desc="Ion density")
+        self.add_input("Ti", units="eV", desc="Ion temperature")
+        self.add_input("Z", desc="Ion charge number")
+        self.add_output("logΛi",
+                        lower=0,
+                        upper=100,
+                        ref=20,
+                        desc="Coulomb collision logarithm for ions")
         self.c0 = 30
 
     def compute(self, inputs, outputs):

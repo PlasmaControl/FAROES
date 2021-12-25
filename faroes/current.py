@@ -60,13 +60,13 @@ class QCylindrical(om.ExplicitComponent):
     https://doi.org/10.1063/1.1640623.
     """
     def setup(self):
-        self.add_input("R0", units="m", val=1)
-        self.add_input("L_pol", units="m")
-        self.add_input("a", units="m")
-        self.add_input("Ip", units="MA", val=1)
-        self.add_input("Bt", units="T")
+        self.add_input("R0", units="m", val=1, desc="Major radius")
+        self.add_input("L_pol", units="m", desc="Poloidal circumference")
+        self.add_input("a", units="m", desc="Minor radius")
+        self.add_input("Ip", units="MA", val=1, desc="Plasma current")
+        self.add_input("Bt", units="T", desc="Toroidal field")
         self.add_output("I/aB", lower=0)
-        self.add_output("q_star", lower=0)
+        self.add_output("q_star", lower=0, desc="Cylindrical safety factor")
 
     def compute(self, inputs, outputs):
         R = inputs["R0"]
@@ -150,17 +150,19 @@ class SauterQ95(om.ExplicitComponent):
        http://dx.doi.org/10.1016/j.fusengdes.2016.04.033
     """
     def setup(self):
-        self.add_input("R0", units="m")
-        self.add_input("a", units="m")
-        self.add_input("κ")
-        self.add_input("δ")
-        self.add_input("ε")
-        self.add_input("w07")
-        self.add_input("Ip", units="MA")
-        self.add_input("Bt", units="T")
+        self.add_input("R0", units="m", desc="Major radius")
+        self.add_input("a", units="m", desc="Minor radius")
+        self.add_input("κ", desc="Elongation")
+        self.add_input("δ", desc="Triangularity")
+        self.add_input("ε", desc="Inverse aspect ratio")
+        self.add_input("w07", desc="Sauter 70% squareness parameter")
+        self.add_input("Ip", units="MA", desc="Plasma current")
+        self.add_input("Bt", units="T", desc="Toroidal field")
 
         self.add_output("I/aB", lower=0)
-        self.add_output("q95", lower=0)
+        self.add_output("q95",
+                        lower=0,
+                        desc="Safety factor at 95% flux surface")
 
         self.c1 = 4.1
         self.c2 = 1.2
@@ -272,12 +274,20 @@ class LineAveragedDensity(om.ExplicitComponent):
         n20, line-averaged electron density
     """
     def setup(self):
-        self.add_input("Ip", units="MA")
-        self.add_input("a", units="m")
-        self.add_input("Greenwald fraction")
+        self.add_input("Ip", units="MA", desc="Plasma current")
+        self.add_input("a", units="m", desc="Minor radius")
+        self.add_input("Greenwald fraction", desc="Greenwald fraction")
         tiny = 1e-6
-        self.add_output("n_GW", units="n20", lower=tiny, ref=1)
-        self.add_output("n_bar", units="n20", lower=tiny, ref=1)
+        self.add_output("n_GW",
+                        units="n20",
+                        lower=tiny,
+                        ref=1,
+                        desc="Greenwald density")
+        self.add_output("n_bar",
+                        units="n20",
+                        lower=tiny,
+                        ref=1,
+                        desc="Line-averaged electron density")
 
     def compute(self, inputs, outputs):
         Ip = inputs["Ip"]
@@ -331,13 +341,29 @@ class TotalPlasmaCurrent(om.ExplicitComponent):
     is changed to be more physically-based in the future.
     """
     def setup(self):
-        self.add_input("I_BS", units="MA", val=5)
-        self.add_input("I_NBI", units="MA", val=5)
-        self.add_input("I_RF", units="MA", val=0)
-        self.add_input("I_ohmic", units="MA", val=0)
+        self.add_input("I_BS", units="MA", val=5, desc="Bootstrap current")
+        self.add_input("I_NBI",
+                       units="MA",
+                       val=5,
+                       desc="Neutral-beam-driven current")
+        self.add_input("I_RF",
+                       units="MA",
+                       val=0,
+                       desc="Radiofrequency-driven current")
+        self.add_input("I_ohmic", units="MA", val=0, desc="Ohmic current")
         tiny = 1e-3
-        self.add_output("Ip", units="MA", lower=tiny, val=10, ref=10)
-        self.add_output("f_BS", lower=0, val=0.5, upper=1, ref=1)
+        self.add_output("Ip",
+                        units="MA",
+                        lower=tiny,
+                        val=10,
+                        ref=10,
+                        desc="Total plasma current")
+        self.add_output("f_BS",
+                        lower=0,
+                        val=0.5,
+                        upper=1,
+                        ref=1,
+                        desc="Bootstrap fraction")
 
     def compute(self, inputs, outputs):
         Ip = inputs["I_BS"] + inputs["I_NBI"] + \
@@ -436,5 +462,5 @@ if __name__ == "__main__":
     prob.set_val("R0", 3.0, units="m")
 
     prob.run_driver()
-    prob.model.list_inputs(val=True, print_arrays=True)
-    prob.model.list_outputs(val=True, print_arrays=True)
+    prob.model.list_inputs(val=True, print_arrays=True, desc=True)
+    prob.model.list_outputs(val=True, print_arrays=True, desc=True)

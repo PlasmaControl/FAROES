@@ -25,8 +25,13 @@ class SimpleCoolantPumpingPower(om.ExplicitComponent):
         self.options.declare('config', default=None)
 
     def setup(self):
-        self.add_input("P_thermal", units="MW")
-        self.add_output("P_pumps", units="MW", lower=0)
+        self.add_input("P_thermal",
+                       units="MW",
+                       desc="Plasma primary thermal power")
+        self.add_output("P_pumps",
+                        units="MW",
+                        lower=0,
+                        desc="Primary coolant pump electric power")
 
         if self.options['config'] is not None:
             self.config = self.options['config']
@@ -55,5 +60,5 @@ if __name__ == "__main__":
     check = prob.check_partials(out_stream=None, method='cs')
     assert_check_partials(check)
     prob.run_driver()
-    all_inputs = prob.model.list_inputs(val=True)
-    all_outputs = prob.model.list_outputs(val=True)
+    all_inputs = prob.model.list_inputs(val=True, desc=True)
+    all_outputs = prob.model.list_outputs(val=True, desc=True)
