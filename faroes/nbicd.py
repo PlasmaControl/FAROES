@@ -285,7 +285,7 @@ class CurrentDriveG(om.ExplicitComponent):
                               method="cs")
 
 
-class CurrentDriveEfficiencyTerm1and2(om.ExplicitComponent):
+class CurrentDriveEfficiencyTerms(om.ExplicitComponent):
     r"""
 
     .. math::
@@ -297,6 +297,11 @@ class CurrentDriveEfficiencyTerm1and2(om.ExplicitComponent):
         1 + (3 - 2 \alpha^3 \beta_1) \delta / (1 + \alpha^3)^2
 
         \delta \equiv \left<T_e\right>/(2 E_\mathrm{NBI})
+
+    .. math::
+
+        i = \int_0^1 x^{3 + \beta_1}
+           \left(\frac{1 + \alpha^3}{x^3 + \alpha^3}\right)^{1+\beta_1/3} \; dx
 
     Inputs
     ------
@@ -322,9 +327,17 @@ class CurrentDriveEfficiencyTerm1and2(om.ExplicitComponent):
     Outputs
     -------
     line1 : float
-        First line of Equation (45) of [1]
+        A/W, First line of Equation (45) of [1]
     line2 : float
-        Second line of the equation
+        unitless, Second line of the equation
+    line3 : float
+        unitless, Third line, the integral
+
+    Notes
+    -----
+    There is no general analytic formula for derivatives of the 2F1 function
+    with respect to the parameters, so finite differencing is used here.
+    The function is fairly smooth so it should be acceptable.
 
     References
     ----------
@@ -347,7 +360,13 @@ class CurrentDriveEfficiencyTerm1and2(om.ExplicitComponent):
         self.add_output("line1",
                         units="A/W",
                         desc="Line 1 of NBIcd eff. equation")
-        self.add_output("line2", desc="Line 2 of NBIcd eff. equation")
+        self.add_output("line2",
+                        units="unitless",
+                        desc="Line 2 of NBIcd eff. equation")
+        self.add_output("line3",
+                        units="unitless",
+                        lower=0,
+                        desc="Line 3 of NBIcd eff. equation")
 
     def compute(self, inputs, outputs):
         τs = inputs["τs"]
@@ -366,10 +385,23 @@ class CurrentDriveEfficiencyTerm1and2(om.ExplicitComponent):
         line2 = 1 + (3 - 2 * α3 * β1) * Te / (2 * E_NBI * (1 + α3)**2)
         outputs["line2"] = line2
 
+        if α3 < 1e-10:
+            raise om.AnalysisError("Current drive α3 is too small")
+
+        p1 = (3 + β1) / 3
+        p2 = (4 + β1) / 3
+        p3 = (7 + β1) / 3
+        arg = -1 / α3
+        hyp = hyp2f1(p1, p2, p3, arg)
+        result = (α3 / (1 + α3))**(-1 - β1 / 3) * hyp / (4 + β1)
+        outputs["line3"] = result
+
     def setup_partials(self):
         self.declare_partials("line1",
                               ["τs", "v0", "Zb", "G", "R", "α³", "E_NBI"])
         self.declare_partials("line2", ["α³", "β1", "<T_e>", "E_NBI"])
+        self.declare_partials("line3", ["β1"], method="fd")
+        self.declare_partials("line3", ["α³"])
 
     def compute_partials(self, inputs, J):
         τs = inputs["τs"]
@@ -397,69 +429,6 @@ class CurrentDriveEfficiencyTerm1and2(om.ExplicitComponent):
         J["line2",
           "E_NBI"] = (-3 + 2 * α3 * β1) * Te / (2 * (1 + α3)**2 * E_NBI**2)
 
-
-class CurrentDriveEfficiencyTerm3(om.ExplicitComponent):
-    r"""Integral for current drive efficiency calculations
-
-    .. math::
-
-        i = \int_0^1 x^{3 + \beta_1}
-           \left(\frac{1 + \alpha^3}{x^3 + \alpha^3}\right)^{1+\beta_1/3} \; dx
-
-    Inputs
-    ------
-    α³ : float
-        A parameter used in current drive calculations
-    β1 : float
-        A parameter used in current drive calculations
-
-    Outputs
-    -------
-    line3 : float
-        The integral
-
-    References
-    ----------
-    Line 3 of Equation (45) of
-    Start, D. F. H.; Cordey, J. G.; Jones, E. M.
-    The Effect of Trapped Electrons on Beam Driven Currents
-    in Toroidal Plasmas. Plasma Physics 1980, 22 (4), 303–316.
-    https://doi.org/10.1088/0032-1028/22/4/002.
-
-    Notes
-    -----
-    There is no general analytic formula for derivatives of the 2F1 function
-    with respect to the parameters, so finite differencing is used here.
-    The function is fairly smooth so it should be acceptable.
-
-    """
-    def setup(self):
-        self.add_input("α³", desc="Current drive variable α³")
-        self.add_input("β1", desc="Current drive variable β₁")
-        self.add_output("line3", lower=0, desc="Line 3 of NBIcd eff. equation")
-
-    def compute(self, inputs, outputs):
-        β1 = inputs["β1"]
-        α3 = inputs["α³"]
-
-        if α3 < 1e-10:
-            raise om.AnalysisError("Current drive α3 is too small")
-
-        p1 = (3 + β1) / 3
-        p2 = (4 + β1) / 3
-        p3 = (7 + β1) / 3
-        arg = -1 / α3
-        hyp = hyp2f1(p1, p2, p3, arg)
-        result = (α3 / (1 + α3))**(-1 - β1 / 3) * hyp / (4 + β1)
-        outputs["line3"] = result
-
-    def setup_partials(self):
-        self.declare_partials("line3", ["β1"], method="fd")
-        self.declare_partials("line3", ["α³"])
-
-    def compute_partials(self, inputs, J):
-        β1 = inputs["β1"]
-        α3 = inputs["α³"]
         p3 = (7 + β1) / 3
         arg = -1 / α3
         hyp = hyp2f1(1, 4 / 3, p3, arg)
@@ -476,11 +445,11 @@ class CurrentDriveEfficiencyEquation(om.ExplicitComponent):
     Inputs
     ------
     line1 : float
-        A/W
+        A/W, First line of the equation
     line2 : float
-        Second line of the equation
+        unitless, Second line of the equation
     line3 : float
-        Third line of the equation
+        unitless, Third line of the equation
 
     Outputs
     -------
@@ -499,9 +468,13 @@ class CurrentDriveEfficiencyEquation(om.ExplicitComponent):
     def setup(self):
         self.add_input("line1",
                        units="A/W",
-                       desc="Line 1 of NBIcd eff.  equation")
-        self.add_input("line2", desc="Line 2 of NBIcd eff. equation")
-        self.add_input("line3", desc="Line 3 of NBIcd eff. equation")
+                       desc="Line 1 of NBIcd eff. equation")
+        self.add_input("line2",
+                       units="unitless",
+                       desc="Line 2 of NBIcd eff. equation")
+        self.add_input("line3",
+                       units="unitless",
+                       desc="Line 3 of NBIcd eff. equation")
         self.add_output("It/P",
                         units="A/W",
                         desc="NBI current drive 'efficiency'")
@@ -613,8 +586,8 @@ class CurrentDriveEfficiency(om.Group):
                            CurrentDriveG(),
                            promotes_inputs=["ftrap_u", "A", "Zb", "Z_eff"],
                            promotes_outputs=["G"])
-        self.add_subsystem("line1and2",
-                           CurrentDriveEfficiencyTerm1and2(),
+        self.add_subsystem("threelines",
+                           CurrentDriveEfficiencyTerms(),
                            promotes_inputs=[
                                "τs",
                                ("v0", "vb"),
@@ -626,11 +599,7 @@ class CurrentDriveEfficiency(om.Group):
                                "β1",
                                "<T_e>",
                            ],
-                           promotes_outputs=["line1", "line2"])
-        self.add_subsystem("line3",
-                           CurrentDriveEfficiencyTerm3(),
-                           promotes_inputs=["α³", "β1"],
-                           promotes_outputs=["line3"])
+                           promotes_outputs=["line1", "line2", "line3"])
         self.add_subsystem('eff',
                            CurrentDriveEfficiencyEquation(),
                            promotes_inputs=["*"],

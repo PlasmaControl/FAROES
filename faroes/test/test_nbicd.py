@@ -115,11 +115,11 @@ class TestTrappedParticleFractionUpperEst(unittest.TestCase):
         assert_near_equal(prob["ftrap_u"], 0.455802, tolerance=1e-4)
 
 
-class TestCurrentDriveEfficiencyTerm1and2(unittest.TestCase):
+class TestCurrentDriveEfficiencyTerms(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
 
-        prob.model = faroes.nbicd.CurrentDriveEfficiencyTerm1and2()
+        prob.model = faroes.nbicd.CurrentDriveEfficiencyTerms()
 
         prob.setup(force_alloc_complex=True)
         prob.set_val('Zb', 1)
@@ -153,28 +153,7 @@ class TestCurrentDriveEfficiencyTerm1and2(unittest.TestCase):
         prob.run_driver()
         assert_near_equal(prob["line2"], 1.007, tolerance=1e-3)
 
-
-class TestCurrentDriveEfficiencyTerm3(unittest.TestCase):
-    def setUp(self):
-        prob = om.Problem()
-
-        prob.model = faroes.nbicd.CurrentDriveEfficiencyTerm3()
-
-        prob.setup(force_alloc_complex=True)
-        prob.set_val('β1', 2.5)
-        prob.set_val('α³', 0.32)
-        self.prob = prob
-
-    def test_partials(self):
-        prob = self.prob
-        prob.run_driver()
-        prob.model.set_check_partial_options(wrt=['β1'],
-                                             method='fd',
-                                             form='central')
-        check = prob.check_partials(out_stream=None)
-        assert_check_partials(check, rtol=3e-6)
-
-    def test_values(self):
+    def test_values3(self):
         prob = self.prob
 
         prob.run_driver()
