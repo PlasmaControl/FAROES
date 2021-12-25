@@ -285,12 +285,18 @@ class CurrentDriveG(om.ExplicitComponent):
                               method="cs")
 
 
-class CurrentDriveEfficiencyTerm1(om.ExplicitComponent):
+class CurrentDriveEfficiencyTerm1and2(om.ExplicitComponent):
     r"""
 
     .. math::
 
         \frac{\tau_{se} v_0 Z_b G}{2 \pi R (1 + \alpha^3) E_{NBI}}
+
+    .. math::
+
+        1 + (3 - 2 \alpha^3 \beta_1) \delta / (1 + \alpha^3)^2
+
+        \delta \equiv \left<T_e\right>/(2 E_\mathrm{NBI})
 
     Inputs
     ------
@@ -308,11 +314,17 @@ class CurrentDriveEfficiencyTerm1(om.ExplicitComponent):
         Current drive variable
     E_NBI : float
         keV, Beam ion initial energy
+    β1 : float
+        Current drive parameter
+    <T_e> : float
+        keV, Electron temperature
 
     Outputs
     -------
     line1 : float
         First line of Equation (45) of [1]
+    line2 : float
+        Second line of the equation
 
     References
     ----------
@@ -330,9 +342,12 @@ class CurrentDriveEfficiencyTerm1(om.ExplicitComponent):
         self.add_input("R", units="m", desc="Major radius")
         self.add_input("α³", desc="Current drive variable α³")
         self.add_input("E_NBI", units="keV", desc="Beam ion initial energy")
+        self.add_input("β1", desc="Current drive variable β₁")
+        self.add_input("<T_e>", units="keV", desc="Electron temperature")
         self.add_output("line1",
                         units="A/W",
-                        desc="Line 1 of NBIcd eff. equation.")
+                        desc="Line 1 of NBIcd eff. equation")
+        self.add_output("line2", desc="Line 2 of NBIcd eff. equation")
 
     def compute(self, inputs, outputs):
         τs = inputs["τs"]
@@ -346,9 +361,15 @@ class CurrentDriveEfficiencyTerm1(om.ExplicitComponent):
                                              (kilo * E_NBI))
         outputs["line1"] = line1
 
+        β1 = inputs["β1"]
+        Te = inputs["<T_e>"]
+        line2 = 1 + (3 - 2 * α3 * β1) * Te / (2 * E_NBI * (1 + α3)**2)
+        outputs["line2"] = line2
+
     def setup_partials(self):
         self.declare_partials("line1",
                               ["τs", "v0", "Zb", "G", "R", "α³", "E_NBI"])
+        self.declare_partials("line2", ["α³", "β1", "<T_e>", "E_NBI"])
 
     def compute_partials(self, inputs, J):
         τs = inputs["τs"]
@@ -368,67 +389,8 @@ class CurrentDriveEfficiencyTerm1(om.ExplicitComponent):
         J["line1", "E_NBI"] = -numer / denom / E_NBI
         J["line1", "α³"] = -numer / (2 * pi * R * (1 + α3)**2 * (kilo * E_NBI))
 
-
-class CurrentDriveEfficiencyTerm2(om.ExplicitComponent):
-    r"""
-
-    .. math::
-
-        1 + (3 - 2 \alpha^3 \beta_1) \delta / (1 + \alpha^3)^2
-
-        \delta \equiv \left<T_e\right>/(2 E_\mathrm{NBI})
-
-    Inputs
-    ------
-    α³ : float
-        Current drive parameter
-    β1 : float
-        Current drive parameter
-    <T_e> : float
-        keV, Electron temperature
-    E_NBI : float
-        keV, Neutral beam injection energy
-
-    Outputs
-    -------
-    line2 : float
-        Second line of the equation
-
-    Notes
-    -----
-
-    References
-    ----------
-    Line 2 of Equation (45) of
-    Start, D. F. H.; Cordey, J. G.; Jones, E. M.
-    The Effect of Trapped Electrons on Beam Driven Currents
-    in Toroidal Plasmas. Plasma Physics 1980, 22 (4), 303–316.
-    https://doi.org/10.1088/0032-1028/22/4/002.
-
-    """
-    def setup(self):
-        self.add_input("α³", desc="Current drive variable α³")
-        self.add_input("β1", desc="Current drive variable β₁")
-        self.add_input("<T_e>", units="keV", desc="Electron temperature")
-        self.add_input("E_NBI", units="keV", desc="Beam ion initial energy")
-        self.add_output("line2", desc="Line 2 of NBIcd eff. equation")
-
-    def compute(self, inputs, outputs):
-        α3 = inputs["α³"]
         β1 = inputs["β1"]
         Te = inputs["<T_e>"]
-        E_NBI = inputs["E_NBI"]
-        line2 = 1 + (3 - 2 * α3 * β1) * Te / (2 * E_NBI * (1 + α3)**2)
-        outputs["line2"] = line2
-
-    def setup_partials(self):
-        self.declare_partials("line2", ["α³", "β1", "<T_e>", "E_NBI"])
-
-    def compute_partials(self, inputs, J):
-        α3 = inputs["α³"]
-        β1 = inputs["β1"]
-        Te = inputs["<T_e>"]
-        E_NBI = inputs["E_NBI"]
         J["line2", "α³"] = (-3 + (α3 - 1) * β1) * Te / ((1 + α3)**3 * E_NBI)
         J["line2", "β1"] = -α3 * Te / ((1 + α3)**2 * E_NBI)
         J["line2", "<T_e>"] = (3 - 2 * α3 * β1) / (2 * (1 + α3)**2 * E_NBI)
@@ -474,7 +436,7 @@ class CurrentDriveEfficiencyTerm3(om.ExplicitComponent):
     def setup(self):
         self.add_input("α³", desc="Current drive variable α³")
         self.add_input("β1", desc="Current drive variable β₁")
-        self.add_output("line3", lower=0, desc="Line 3 of NBIcd eff. calc.")
+        self.add_output("line3", lower=0, desc="Line 3 of NBIcd eff. equation")
 
     def compute(self, inputs, outputs):
         β1 = inputs["β1"]
@@ -651,18 +613,20 @@ class CurrentDriveEfficiency(om.Group):
                            CurrentDriveG(),
                            promotes_inputs=["ftrap_u", "A", "Zb", "Z_eff"],
                            promotes_outputs=["G"])
-        self.add_subsystem("line1",
-                           CurrentDriveEfficiencyTerm1(),
+        self.add_subsystem("line1and2",
+                           CurrentDriveEfficiencyTerm1and2(),
                            promotes_inputs=[
-                               "τs", ("v0", "vb"), "Zb", "G", ("R", "R0"),
-                               "α³", ("E_NBI", "Eb")
+                               "τs",
+                               ("v0", "vb"),
+                               "Zb",
+                               "G",
+                               ("R", "R0"),
+                               "α³",
+                               ("E_NBI", "Eb"),
+                               "β1",
+                               "<T_e>",
                            ],
-                           promotes_outputs=["line1"])
-        self.add_subsystem(
-            "line2",
-            CurrentDriveEfficiencyTerm2(),
-            promotes_inputs=["α³", "β1", "<T_e>", ("E_NBI", "Eb")],
-            promotes_outputs=["line2"])
+                           promotes_outputs=["line1", "line2"])
         self.add_subsystem("line3",
                            CurrentDriveEfficiencyTerm3(),
                            promotes_inputs=["α³", "β1"],

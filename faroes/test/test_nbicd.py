@@ -115,11 +115,11 @@ class TestTrappedParticleFractionUpperEst(unittest.TestCase):
         assert_near_equal(prob["ftrap_u"], 0.455802, tolerance=1e-4)
 
 
-class TestCurrentDriveEfficiencyTerm1(unittest.TestCase):
+class TestCurrentDriveEfficiencyTerm1and2(unittest.TestCase):
     def setUp(self):
         prob = om.Problem()
 
-        prob.model = faroes.nbicd.CurrentDriveEfficiencyTerm1()
+        prob.model = faroes.nbicd.CurrentDriveEfficiencyTerm1and2()
 
         prob.setup(force_alloc_complex=True)
         prob.set_val('Zb', 1)
@@ -129,39 +129,25 @@ class TestCurrentDriveEfficiencyTerm1(unittest.TestCase):
         prob.set_val('α³', 0.32)
         prob.set_val('τs', 0.599, units="s")
         prob.set_val('R', 3.0, units="m")
-        self.prob = prob
-
-    def test_partials(self):
-        prob = self.prob
-        check = prob.check_partials(out_stream=None, method='cs')
-        assert_check_partials(check, rtol=1e-5)
-
-    def test_values(self):
-        prob = self.prob
-
-        prob.run_driver()
-        assert_near_equal(prob["line1"], 0.3233, tolerance=1e-3)
-
-
-class TestCurrentDriveEfficiencyTerm2(unittest.TestCase):
-    def setUp(self):
-        prob = om.Problem()
-
-        prob.model = faroes.nbicd.CurrentDriveEfficiencyTerm2()
-
-        prob.setup(force_alloc_complex=True)
-        prob.set_val("E_NBI", 500, units='keV')
-        prob.set_val("α³", 0.32)
         prob.set_val("<T_e>", 9.20, units="keV")
         prob.set_val("β1", 2.50)
         self.prob = prob
 
     def test_partials(self):
         prob = self.prob
-        check = prob.check_partials(out_stream=None, method='cs')
+        prob.run_model()
+        check = prob.check_partials(out_stream=None,
+                                    method='fd',
+                                    form='central')
         assert_check_partials(check, rtol=1e-5)
 
-    def test_values(self):
+    def test_values1(self):
+        prob = self.prob
+
+        prob.run_driver()
+        assert_near_equal(prob["line1"], 0.3233, tolerance=1e-3)
+
+    def test_values2(self):
         prob = self.prob
 
         prob.run_driver()
