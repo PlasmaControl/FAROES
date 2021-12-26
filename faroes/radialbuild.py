@@ -104,7 +104,7 @@ class CSToTF(om.ExplicitComponent):
         self.add_input("CS ΔR",
                        units='m',
                        val=0,
-                       desc="Center stack radial width")
+                       desc="Central solenoid radial width")
         self.add_input("CS-TF gap",
                        units='m',
                        val=self.cs_tf_gap,
@@ -112,11 +112,11 @@ class CSToTF(om.ExplicitComponent):
         self.add_output("CS R_in",
                         units='m',
                         lower=0,
-                        desc="Center stack inner radius")
+                        desc="Central solenoid inner radius")
         self.add_output("CS R_out",
                         units='m',
                         lower=0,
-                        desc="Center stack outer radius")
+                        desc="Central solenoid outer radius")
         self.add_output("TF R_in",
                         units="m",
                         desc="Inboard TF leg inner radius",
