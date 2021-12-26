@@ -35,7 +35,7 @@ class MenardKappaScaling(om.ExplicitComponent):
     The fit coefficients are loaded from the configuration tree.
     """
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         if self.options['config'] is not None:
@@ -316,7 +316,7 @@ class EllipticalPlasmaGeometry(om.Group):
     Otherwise behaves like :code:`EllipseLikePlasma`.
     """
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         config = self.options['config']
@@ -347,7 +347,7 @@ class MenardPlasmaGeometry(om.Group):
     Otherwise behaves like :code:`EllipseLikePlasma`.
     """
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         config = self.options['config']

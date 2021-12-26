@@ -46,7 +46,7 @@ class SimpleRipple(om.ExplicitComponent):
        https://doi.org/10.1016/j.fusengdes.2014.09.018.
     """
     def initialize(self):
-        self.options.declare("config", default=None)
+        self.options.declare("config", default=None, recordable=False)
 
     def setup(self):
         self.add_input("R", units="m", desc="Major radius at evaluation point")

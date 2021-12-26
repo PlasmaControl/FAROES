@@ -7,7 +7,7 @@ class AvailabilityProperties(om.Group):
         "Choice is 'divertorsOnly'."
 
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         if self.options['config'] is None:
@@ -100,7 +100,7 @@ class DivertorsOnlyAvailability(om.ExplicitComponent):
 
 class SimpleAvailability(om.Group):
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         config = self.options['config']

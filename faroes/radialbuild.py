@@ -13,7 +13,7 @@ class Properties(om.Group):
     r"""Helper for the Menard ST radial build
     """
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         ivc = om.IndepVarComp()
@@ -87,7 +87,7 @@ class CSToTF(om.ExplicitComponent):
     Loads a default value for the cs-to-tf gap from the configuration tree.
     """
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         if self.options['config'] is not None:
@@ -193,7 +193,7 @@ class MenardSTInboard(om.ExplicitComponent):
         m, Total thickness from the blanket to FW.
     """
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         if self.options['config'] is not None:
@@ -661,7 +661,7 @@ class STRadialBuild(om.Group):
         m, Outer radius of the cryostat
     """
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         config = self.options['config']
@@ -750,7 +750,7 @@ class MenardSTRadialBuild(om.Group):
     A nonlinear solver needs to be attached to this component.
     """
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         config = self.options['config']
@@ -783,7 +783,7 @@ if __name__ == "__main__":
     # test building a tokamak with A=1.6
     class MyRadialBuild(om.Group):
         def initialize(self):
-            self.options.declare('config', default=None)
+            self.options.declare('config', default=None, recordable=False)
 
         def setup(self):
             config = self.options['config']

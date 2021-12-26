@@ -63,7 +63,7 @@ class MenardPlasmaLoop(om.Group):
         MW, Power lost via particle diffusion into the SOL.
     """
     def initialize(self):
-        self.options.declare('config')
+        self.options.declare('config', recordable=False)
 
     def setup(self):
         config = self.options['config']
@@ -241,7 +241,7 @@ if __name__ == "__main__":
 
     class Machine(om.Group):
         def initialize(self):
-            self.options.declare('config')
+            self.options.declare('config', recordable=False)
 
         def setup(self):
             config = self.options['config']

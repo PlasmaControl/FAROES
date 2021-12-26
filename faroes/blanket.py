@@ -47,7 +47,7 @@ class MenardInboardBlanketFit(om.Group):
     BAD_BL_MODEL = "Blanket thickness model %s not supported"
 
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         if self.options['config'] is None:
@@ -86,8 +86,8 @@ class MenardInboardBlanketFit(om.Group):
 
             # stub to have something that inputs A
             self.add_subsystem("ignore",
-                               om.ExecComp("ignore = 0 * A",
-                                           ignore={"val": 0}),
+                               om.ExecComp("ignore = 0 * A", ignore={"val":
+                                                                     0}),
                                promotes_inputs=["A"])
         else:
             raise ValueError(self.BAD_BL_MODEL % (model))
@@ -135,7 +135,7 @@ class MenardInboardShieldFit(om.Group):
     BAD_SH_MODEL = "Shield thickness model %s not supported"
 
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         if self.options['config'] is None:
@@ -187,8 +187,8 @@ class MenardInboardShieldFit(om.Group):
 
             # stub to have something that inputs A
             self.add_subsystem("ignore",
-                               om.ExecComp("ignore = 0 * A",
-                                           ignore={"val": 0}),
+                               om.ExecComp("ignore = 0 * A", ignore={"val":
+                                                                     0}),
                                promotes_inputs=["A"])
         else:
             raise ValueError(self.BAD_SH_MODEL % (model))
@@ -244,7 +244,7 @@ class OutboardBlanketFit(om.Group):
     BAD_BL_MODEL = "Blanket thickness model %s not supported"
 
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         if self.options['config'] is None:
@@ -295,8 +295,8 @@ class OutboardBlanketFit(om.Group):
 
             # stub to have something that inputs A
             self.add_subsystem("ignore",
-                               om.ExecComp("ignore = 0 * A",
-                                           ignore={"val": 0}),
+                               om.ExecComp("ignore = 0 * A", ignore={"val":
+                                                                     0}),
                                promotes_inputs=["A"])
         else:
             raise ValueError(self.BAD_BL_MODEL % (model))
@@ -337,7 +337,7 @@ class MenardSTBlanketAndShieldMagnetProtection(om.ExplicitComponent):
         Factor by which shielding is better than the reference case
     """
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         if self.options['config'] is not None:
@@ -774,7 +774,7 @@ class MenardMagnetCoolingProperties(om.Group):
         Figure of merit; amount that it is worse than Carnot
     """
     def initialize(self):
-        self.options.declare("config", default=None)
+        self.options.declare("config", default=None, recordable=False)
 
     def setup(self):
         acc = Accessor(self.options["config"])
@@ -930,7 +930,7 @@ class MagnetCryoCoolingPower(om.Group):
         MW, Electric power to deliver cooling at cryogenic temperatures
     """
     def initialize(self):
-        self.options.declare("config", default=None)
+        self.options.declare("config", default=None, recordable=False)
 
     def setup(self):
         config = self.options["config"]
@@ -953,7 +953,7 @@ class BlanketProperties(om.Group):
     BAD_MODEL = "Only 'simple' is supported"
 
     def initialize(self):
-        self.options.declare("config", default=None)
+        self.options.declare("config", default=None, recordable=False)
 
     def setup(self):
         config = self.options['config']
@@ -1021,7 +1021,7 @@ class SimpleBlanketPower(om.Group):
         MW, Thermal power in blanket
     """
     def initialize(self):
-        self.options.declare("config", default=None)
+        self.options.declare("config", default=None, recordable=False)
 
     def setup(self):
         config = self.options["config"]
@@ -1115,7 +1115,7 @@ class MenardMagnetLifetime(om.ExplicitComponent):
 
     """
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         config = self.options["config"]

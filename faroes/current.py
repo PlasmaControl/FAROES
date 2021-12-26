@@ -6,7 +6,7 @@ from scipy.constants import pi
 
 class TokamakMagneticConfigurationLimitProperties(om.Group):
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         ivc = om.IndepVarComp()
@@ -426,7 +426,7 @@ class CurrentAndSafetyFactor(om.Group):
         n20, line-averaged electron density
     """
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         config = self.options["config"]

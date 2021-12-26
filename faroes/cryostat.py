@@ -25,7 +25,7 @@ class SimpleCryostat(om.ExplicitComponent):
 
     """
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         if self.options['config'] is not None:

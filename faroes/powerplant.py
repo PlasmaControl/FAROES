@@ -218,7 +218,7 @@ class SimpleGeneratedPower(om.ExplicitComponent):
         GW, Electrical power generated
     """
     def initialize(self):
-        self.options.declare("config", default=None)
+        self.options.declare("config", default=None, recordable=False)
 
     def setup(self):
         self.add_input("P_heat",
@@ -350,7 +350,7 @@ class Powerplant(om.Group):
         Fraction of generated electric power which is recirculated
     """
     def initialize(self):
-        self.options.declare("config", default=None)
+        self.options.declare("config", default=None, recordable=False)
 
     def setup(self):
         config = self.options["config"]

@@ -700,7 +700,7 @@ class FastParticleSlowing(om.Group):
     SUPPORTED_METHODS = ["Bellan", "Stix", "Menard"]
 
     def initialize(self):
-        self.options.declare("config", default=None)
+        self.options.declare("config", default=None, recordable=False)
 
     def setup(self):
         config = self.options["config"]

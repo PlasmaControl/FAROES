@@ -9,7 +9,7 @@ from importlib import resources
 
 class WindingPackProperties(om.Group):
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         ivc = om.IndepVarComp()
@@ -46,7 +46,7 @@ class WindingPackProperties(om.Group):
 
 class MagnetStructureProperties(om.Group):
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         ivc = om.IndepVarComp()
@@ -467,7 +467,7 @@ class InboardMagnetGeometry(om.ExplicitComponent):
 
     """
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         if self.options['config'] is not None:
@@ -829,7 +829,7 @@ class SimpleMagnetEngineering(om.Group):
     Various properties are loaded from the configuration tree.
     """
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         config = self.options['config']
@@ -909,7 +909,7 @@ class ExampleMagnetRadialBuild(om.Group):
     r"""This is a class for testing and demonstration.
     """
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         config = self.options['config']

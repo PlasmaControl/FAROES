@@ -28,7 +28,7 @@ class SOLProperties(om.Group):
         Poloidal flux expansion factor
     """
     def initialize(self):
-        self.options.declare("config", default=None)
+        self.options.declare("config", default=None, recordable=False)
 
     def setup(self):
         ivc = om.IndepVarComp()
@@ -118,7 +118,7 @@ class StrikePointRadius(om.ExplicitComponent):
     BAD_MODEL = "Only 'SF', 'SXD', and 'LinearDelta' are supported"
 
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         if self.options['config'] is None:
@@ -387,7 +387,7 @@ class PeakHeatFlux(om.ExplicitComponent):
     BAD_MODEL = "Only 'poloidal angle' and 'total angle' are supported"
 
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         if self.options['config'] is None:
@@ -468,7 +468,7 @@ class PeakHeatFlux(om.ExplicitComponent):
 
 class SOLAndDivertor(om.Group):
     def initialize(self):
-        self.options.declare("config", default=None)
+        self.options.declare("config", default=None, recordable=False)
 
     def setup(self):
         config = self.options["config"]

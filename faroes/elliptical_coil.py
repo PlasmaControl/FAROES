@@ -6,7 +6,7 @@ from faroes.configurator import Accessor
 
 class TFSetProperties(om.Group):
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         ivc = om.IndepVarComp()
@@ -53,7 +53,7 @@ class SimpleEllipticalTFSet(om.ExplicitComponent):
     """
 
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         self.add_input("R0", units="m", desc="Plasma major radius")

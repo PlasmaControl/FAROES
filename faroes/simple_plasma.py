@@ -58,7 +58,7 @@ class MainIonMix(om.ExplicitComponent):
 
 class ZeroDPlasmaProperties(om.ExplicitComponent):
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         if self.options['config'] is None:
@@ -789,7 +789,7 @@ class ZeroDThermalFusion(om.Group):
         MW, Thermal neutron power
     """
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         self.add_subsystem('ratecoeff',
@@ -977,7 +977,7 @@ class ZeroDPlasma(om.Group):
     <q> refers to the volume average of a quantity q
     """
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         config = self.options['config']

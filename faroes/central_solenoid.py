@@ -14,7 +14,7 @@ class CentralSolenoidProperties(om.Group):
     """Helper class to load properties
     """
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         ivc = om.IndepVarComp()
@@ -386,7 +386,7 @@ class FiniteSolenoidStresses(om.ExplicitComponent):
     It's nice to have all the CS in compression.
     """
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         self.add_input("j", units='MA/m**2', desc="smeared current density")
@@ -480,7 +480,7 @@ class FiniteSolenoidStresses(om.ExplicitComponent):
 
 class CentralSolenoid(om.Group):
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         config = self.options['config']

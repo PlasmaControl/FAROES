@@ -18,7 +18,7 @@ class CurrentDriveProperties(om.Group):
     """Helper class to load properties
     """
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         ivc = om.IndepVarComp()
@@ -110,7 +110,7 @@ class CurrentDriveA(om.ExplicitComponent):
 
     """
     def initialize(self):
-        self.options.declare("config", default=None)
+        self.options.declare("config", default=None, recordable=False)
 
     def setup(self):
         self.add_input("Z_eff", desc="Effective ion charge")
@@ -544,7 +544,7 @@ class CurrentDriveEfficiency(om.Group):
             to the injected neutral beam power
     """
     def initialize(self):
-        self.options.declare("config", default=None)
+        self.options.declare("config", default=None, recordable=False)
 
     def setup(self):
         config = self.options["config"]
@@ -632,7 +632,7 @@ class NBICurrent(om.ExplicitComponent):
         MA, total neutral-beam-driven current
     """
     def initialize(self):
-        self.options.declare("config", default=None)
+        self.options.declare("config", default=None, recordable=False)
 
     def setup(self):
         config = self.options["config"]

@@ -1769,7 +1769,7 @@ class GeneromakCosting(om.Group):
     """
     def initialize(self):
         self.options.declare('exact_generomak', default=True)
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def reformat_cost_parameters(self, f):
         r"""Loads cost parameters from configuration tree

@@ -164,7 +164,7 @@ class SauterGeometry(om.ExplicitComponent):
        http://dx.doi.org/10.1016/j.fusengdes.2016.04.033
     """
     def initialize(self):
-        self.options.declare("config", default=None)
+        self.options.declare("config", default=None, recordable=False)
 
     def setup(self):
         if self.options["config"] is not None:
@@ -529,7 +529,7 @@ class SauterPlasmaGeometryMarginalKappa(om.Group):
     Uses :code:`MenardKappaScaling`.
     """
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         config = self.options['config']

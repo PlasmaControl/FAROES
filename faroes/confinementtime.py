@@ -42,7 +42,7 @@ class ConfinementTime(om.Group):
 
     """
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
         self.options.declare("scaling", default=None)
 
     def setup(self):
@@ -152,7 +152,7 @@ class ConfinementTimeScaling(om.ExplicitComponent):
         "the confinement time calculation. Its value was %f."
 
     def initialize(self):
-        self.options.declare("config", default=None)
+        self.options.declare("config", default=None, recordable=False)
         self.options.declare("scaling", default=None)
 
     def setup(self):
@@ -227,7 +227,7 @@ class ConfinementTimeScaling(om.ExplicitComponent):
 
 class MenardHybridScaling(om.Group):
     def initialize(self):
-        self.options.declare('config')
+        self.options.declare('config', recordable=False)
 
     def setup(self):
         config = self.options['config']

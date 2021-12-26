@@ -270,7 +270,7 @@ class Bremsstrahlung(om.Group):
     """
 
     def initialize(self):
-        self.options.declare("config", default=None)
+        self.options.declare("config", default=None, recordable=False)
         self.options.declare("profile", default="constant")
         self.options.declare("triangularity", default="constant")
 

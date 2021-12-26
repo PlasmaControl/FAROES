@@ -22,7 +22,7 @@ class SimplePlasmaControlPower(om.ExplicitComponent):
         Plasma control system power
     """
     def initialize(self):
-        self.options.declare('config', default=None)
+        self.options.declare('config', default=None, recordable=False)
 
     def setup(self):
         self.add_input("P_thermal",
