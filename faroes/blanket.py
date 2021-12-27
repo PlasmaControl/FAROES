@@ -167,22 +167,33 @@ class MenardInboardShieldFit(om.Group):
                                sh,
                                promotes_inputs=[("x", "A")],
                                promotes_outputs=[("y", "change")])
-            self.add_subsystem("sh",
-                               om.ExecComp(f"shield_thickness = {t0} + change",
-                                           shield_thickness={
-                                               "units": "m",
-                                               "lower": 0
-                                           },
-                                           change={"units": "m"}),
-                               promotes_inputs=["change"],
-                               promotes_outputs=["shield_thickness"])
+            self.add_subsystem(
+                "sh",
+                om.ExecComp(
+                    f"shield_thickness = {t0} + change",
+                    shield_thickness={
+                        "units": "m",
+                        "lower": 0,
+                        'desc': "Base shield thickness"
+                    },
+                    change={
+                        "units":
+                        "m",
+                        'desc':
+                        "Aspect-ratio-dependent component to shield thickness"
+                    }),
+                promotes_inputs=["change"],
+                promotes_outputs=["shield_thickness"])
 
         elif model == "constant":
             f = config.accessor(
                 ["radial_build", "inboard", "WC n shield thickness"])
             th = f(["constant"], units="m")
             ivc = om.IndepVarComp()
-            ivc.add_output("shield_thickness", val=th, units="m")
+            ivc.add_output("shield_thickness",
+                           val=th,
+                           units="m",
+                           desc="Specified shield thickness")
             self.add_subsystem("ivc", ivc, promotes_outputs=["*"])
 
             # stub to have something that inputs A
@@ -274,23 +285,33 @@ class OutboardBlanketFit(om.Group):
                                bl,
                                promotes_inputs=[("x", "A")],
                                promotes_outputs=[("y", "change")])
-            self.add_subsystem("bl",
-                               om.ExecComp(
-                                   f"blanket_thickness = {t0} + change",
-                                   blanket_thickness={
-                                       "units": "m",
-                                       "lower": 0
-                                   },
-                                   change={"units": "m"}),
-                               promotes_inputs=["change"],
-                               promotes_outputs=["blanket_thickness"])
+            self.add_subsystem(
+                "bl",
+                om.ExecComp(
+                    f"blanket_thickness = {t0} + change",
+                    blanket_thickness={
+                        "units": "m",
+                        "lower": 0,
+                        'desc': "Base blanket thickness"
+                    },
+                    change={
+                        "units":
+                        "m",
+                        'desc':
+                        "Aspect-ratio-dependent component to shield thickness"
+                    }),
+                promotes_inputs=["change"],
+                promotes_outputs=["blanket_thickness"])
 
         elif model == "constant":
             f = config.accessor(
                 ["radial_build", "outboard", "blanket thickness"])
             th = f(["constant"], units="m")
             ivc = om.IndepVarComp()
-            ivc.add_output("blanket_thickness", val=th, units="m")
+            ivc.add_output("blanket_thickness",
+                           val=th,
+                           units="m",
+                           desc="Specified blanket thickness")
             self.add_subsystem("ivc", ivc, promotes_outputs=["*"])
 
             # stub to have something that inputs A
@@ -496,7 +517,7 @@ class MenardSTBlanketAndShieldGeometry(om.ExplicitComponent):
     """
     def setup(self):
         self.add_input("a", units="m", desc="Plasma minor radius")
-        self.add_input("κ", desc="plasma elongation")
+        self.add_input("κ", desc="Plasma elongation")
         self.add_input("Ob SOL width", units="m", desc="Outboard SOL width")
         self.add_input("Ib blanket R_out",
                        units="m",
@@ -660,9 +681,8 @@ class MenardSTBlanketAndShieldGeometry(om.ExplicitComponent):
 
 class InboardMidplaneNeutronFluxFromRing(om.ExplicitComponent):
     r"""
-    Assumes that all neutrons are sourced from a ring at the height of the
-    midplane..
-    Assumes an isotropic neutron source.
+    Assumes that all neutrons are sourced from a thin ring
+    at the height of the midplane. Assumes an isotropic neutron source.
     Does not account for transparency or scattering (in solids or otherwise).
 
     Inputs
@@ -685,13 +705,21 @@ class InboardMidplaneNeutronFluxFromRing(om.ExplicitComponent):
         MW / m**2, Neutron energy flux at inboard midplane
     """
     def setup(self):
-        self.add_input("S", units="fs**-1", val=0)
-        self.add_input("P_n", units="MW", val=0)
-        self.add_input("R0", units="m")
-        self.add_input("r_in", units="m")
+        self.add_input("S",
+                       units="fs**-1",
+                       val=0,
+                       desc="Neutrons per second from ring source")
+        self.add_input("P_n", units="MW", val=0, desc="Total neutron power")
+        self.add_input("R0", units="m", desc="Neutron ring source radius")
+        self.add_input("r_in", units="m", desc="Inboard wall radius")
         Γ_ref = 1e2
-        self.add_output("Γ", units="m**-2 * fs**-1", ref=Γ_ref)
-        self.add_output("q_n", units="MW * m**-2")
+        self.add_output("Γ",
+                        units="m**-2 * fs**-1",
+                        ref=Γ_ref,
+                        desc="Neutron number flux at inboard midplane")
+        self.add_output("q_n",
+                        units="MW * m**-2",
+                        desc="Neutron energy flux at inboard midplane")
         # coefficients for taylor expansion of
         # the 2 Ai * shape factor
         self.c = [3.126, 1.6868, 0.07742]
@@ -806,11 +834,22 @@ class RefrigerationPerformance(om.ExplicitComponent):
        Inverse of the Coefficient of Performance
     """
     def setup(self):
-        self.add_input("T_cold", units="K")
-        self.add_input("T_hot", units="K", val=300)
-        self.add_input("FOM", val=1)
-        self.add_output("f_carnot", lower=0, ref=10)
-        self.add_output("f", lower=0, ref=20)
+        self.add_input("T_cold",
+                       units="K",
+                       desc="Refrigerator cold temperature")
+        self.add_input("T_hot",
+                       units="K",
+                       val=300,
+                       desc="Heat rejection temperature")
+        self.add_input(
+            "FOM",
+            val=1,
+            desc="Factor by which efficiency is worse than ideal; ≥ 1")
+        self.add_output("f_carnot",
+                        lower=0,
+                        ref=10,
+                        desc="Carnot (ideal) efficiency")
+        self.add_output("f", lower=0, ref=20, desc="Actual efficiency; COP⁻¹")
 
     def compute(self, inputs, outputs):
         T_c = inputs["T_cold"]
@@ -863,13 +902,24 @@ class MenardMagnetCooling(om.ExplicitComponent):
         MW, Electric power to deliver cooling at cryogenic temperatures
     """
     def setup(self, ):
-        self.add_input("Δr_sh", units="m")
-        self.add_input("P_n", units="MW")
-        self.add_input("f_refrigeration", val=1)
+        self.add_input("Δr_sh",
+                       units="m",
+                       desc="Effective neutron shield thickness")
+        self.add_input("P_n", units="MW", desc="Neutron power")
+        self.add_input("f_refrigeration",
+                       val=1,
+                       desc="Electrical energy/thermal energy removed; ≥ 1")
         sh_ref = 1e-4
-        self.add_output("shielding", val=sh_ref, ref=sh_ref, lower=0, upper=1)
-        self.add_output("P_h", units="MW")
-        self.add_output("P_c,el", units="MW")
+        self.add_output("shielding",
+                        val=sh_ref,
+                        ref=sh_ref,
+                        lower=0,
+                        upper=1,
+                        desc="Factor by which magnets are shielded")
+        self.add_output("P_h",
+                        units="MW",
+                        desc="Neutron power heating magnets")
+        self.add_output("P_c,el", units="MW", desc="Electrical power for cryo")
         self.λ = 0.081  # decay length, m
         self.c = 0.06  # base power factor
 
@@ -989,11 +1039,15 @@ class SimpleBlanketThermalPower(om.ExplicitComponent):
         MW, Thermal power in blanket
     """
     def setup(self):
-        self.add_input("P_n", units="MW")
+        self.add_input("P_n", units="MW", desc="Neutron power into blanket")
         self.add_input("M_n",
                        desc="Blanket neutron power multiplication factor")
         P_th_ref = 500
-        self.add_output("P_th", units="MW", lower=0, ref=P_th_ref)
+        self.add_output("P_th",
+                        units="MW",
+                        lower=0,
+                        ref=P_th_ref,
+                        desc="Thermal power in blanket")
 
     def compute(self, inputs, outputs):
         outputs["P_th"] = inputs["P_n"] * inputs["M_n"]
@@ -1056,11 +1110,16 @@ class NeutronWallLoading(om.ExplicitComponent):
         Inboard peaking factor
     """
     def setup(self):
-        self.add_input("P_n", units="MW")
-        self.add_input("SA", units="m**2")
-        self.add_input("q_n_IB", units="MW/m**2")
-        self.add_output("q_n_avg", units="MW/m**2", lower=0)
-        self.add_output("f_peak_IB", lower=0)
+        self.add_input("P_n", units="MW", desc="Neutron power")
+        self.add_input("SA", units="m**2", desc="First wall surface area")
+        self.add_input("q_n_IB",
+                       units="MW/m**2",
+                       desc="Inboard peak neutron flux")
+        self.add_output("q_n_avg",
+                        units="MW/m**2",
+                        lower=0,
+                        desc="Average neutral wall loading")
+        self.add_output("f_peak_IB", lower=0, desc="Inboard peaking factor")
 
     def compute(self, inputs, outputs):
         P_n = inputs["P_n"]
@@ -1126,9 +1185,16 @@ class MenardMagnetLifetime(om.ExplicitComponent):
         else:
             self.ccfe_ref_life = 9.36
             self.ccfe_ref_fluence = 0.35  # x 10^23 neutrons / m^2
-        self.add_input("q_n_IB", units="MW/m**2")
-        self.add_input("Shielding factor")
-        self.add_output("lifetime", units="year", lower=0, ref=10)
+        self.add_input("q_n_IB",
+                       units="MW/m**2",
+                       desc="Inboard peak neutron flux")
+        self.add_input("Shielding factor",
+                       desc="Factor relative to reference lifetime")
+        self.add_output("lifetime",
+                        units="year",
+                        lower=0,
+                        ref=10,
+                        desc="Magnet lifetime in full-power years")
 
     def compute(self, inputs, outputs):
         c0 = self.ccfe_ref_life
