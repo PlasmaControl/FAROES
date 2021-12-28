@@ -23,6 +23,9 @@ project = 'FAROES'
 author = 'Jacob Schwartz'
 copyright = f'2020-{datetime.utcnow().year}, {author}'
 
+# The full version, including alpha/beta/rc tags
+release = '0.0.1'
+
 # -- General configuration ---------------------------------------------------
 
 # Add any Sphinx extension module names here, as strings. They can be
@@ -39,19 +42,22 @@ intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'numpy': ('https://numpy.org/doc/stable/', None),
     'scipy': ('https://docs.scipy.org/doc/scipy/reference/', None),
-    'pandas': ('http://pandas.pydata.org/pandas-docs/stable/', None),
-    'astropy': ('http://docs.astropy.org/en/stable/', None),
-    'plasmapy': ('http://docs.plasmapy.org/en/stable/', None),
+    'pandas': ('https://pandas.pydata.org/pandas-docs/stable/', None),
+    'astropy': ('https://docs.astropy.org/en/stable/', None),
+    'plasmapy': ('https://docs.plasmapy.org/en/stable/', None),
     'openmdao': ('http://openmdao.org/twodocs/versions/latest/', None),
 }
 
 numpydoc_show_class_members = False  # for automodapi
 napoleon_custom_sections = [
-    "Inputs", "Outputs", "Discrete Inputs", "Discrete Outputs"
+    ("Inputs", "params_style"), ("Outputs", "params_style")
 ]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
+
+# The root document.
+root_doc = 'index'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
