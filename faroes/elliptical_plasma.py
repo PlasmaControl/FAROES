@@ -106,6 +106,10 @@ class EllipseLikeGeometry(om.ExplicitComponent):
     r"""Describes an elliptical or ellipse-like plasma.
 
     .. image :: images/ellipticalplasmageometry.png
+       :width: 300
+       :alt: A vertically-oriented ellipse with horizontal semi-minor axis 'a',
+           vertical semi-major axis 'b'. The center of the ellipse is at a
+           radius 'R0' from the central vertical axis of the torus.
 
     .. math::
 
@@ -125,10 +129,10 @@ class EllipseLikeGeometry(om.ExplicitComponent):
         \epsilon &= 1 / A \\
         \textrm{full plasma height} &= 2 b \\
         L_\mathrm{pol} &= \textrm{ellipse_perimeter(a, b)} \\
-        \textrm{surface area} &= 2 \pi R * \textrm{ellipse_perimeter(a, b)} \\
+        \textrm{surface area} &= 2 \pi R \, \textrm{ellipse_perimeter(a, b)} \\
         R_\mathrm{in} &= R - a \\
         R_\mathrm{out} &= R + a \\
-        V &= 2 \pi R * \pi a^2 \kappa_a \\
+        V &= 2 \pi R \, \pi a^2 \kappa_a \\
         S_c &= \pi a^2 \kappa_a .
 
     where :math:`L_\mathrm{pol}` is the poloidal circumference and :math:`S_c`
@@ -148,27 +152,28 @@ class EllipseLikeGeometry(om.ExplicitComponent):
     κ : float
         Elongation
     κa : float
-        effective elongation, :math:`S_c / (\pi a^2)`,
-        where :math:`S_c` is the plasma cross-sectional area.
-        same as :math:`\kappa` for this elliptical plasma.
+        Effective elongation, :math:`S_c / (\pi a^2)`
+
+        Here :math:`S_c` is the plasma cross-sectional area.
+        Same as :math:`\kappa` for this elliptical plasma.
 
     Outputs
     -------
     b : float
-        m, minor radius in vertical direction
+        m, Minor radius in vertical direction
     δ : float
-        triangularity: is always zero
+        Triangularity: is always zero
     ε : float
-        inverse aspect ratio
+        Inverse aspect ratio
     full plasma height : float
         m, Twice b
     surface area : float
-        m**2, surface area
+        m**2, Surface area
     L_pol : float
         m, Poloidal circumference
     L_pol_simple : float
         m, Simplified poloidal circumference for testing.
-            Uses a simple ellipse approximation.
+        Uses a simple ellipse approximation.
     S_c : float
         m**2, Poloidal cross section area
     V : float

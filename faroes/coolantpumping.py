@@ -19,7 +19,7 @@ class SimpleCoolantPumpingPower(om.ExplicitComponent):
     Outputs
     -------
     P_pumps : float
-        MW, pumping power
+        MW, Primary coolant pump electric power
     """
     def initialize(self):
         self.options.declare('config', default=None, recordable=False)
