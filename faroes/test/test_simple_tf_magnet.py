@@ -3,9 +3,11 @@ from openmdao.utils.assert_utils import assert_near_equal
 from openmdao.utils.assert_utils import assert_check_partials
 import unittest
 
-import numpy.random as nprand
-
 import faroes.simple_tf_magnet as magnet
+
+example_value_1 = 0.12345
+example_value_2 = 0.54321
+example_value_3 = 0.14253
 
 
 class TestSimpleTFMagnet(unittest.TestCase):
@@ -97,14 +99,15 @@ class TestFieldAtRadius(unittest.TestCase):
 
 
 class TestInboardMagnetGeometry(unittest.TestCase):
+
     def setUp(self):
         prob = om.Problem()
 
         prob.model = magnet.InboardMagnetGeometry()
         prob.setup(force_alloc_complex=True)
-        prob['r_is'] = 0.5 * nprand.random()
-        prob['Δr_m'] = nprand.random()
-        prob['Δr_s'] = nprand.random()
+        prob['r_is'] = 0.5 * example_value_1
+        prob['Δr_m'] = example_value_3
+        prob['Δr_s'] = example_value_2
         prob['n_coil'] = 18
         prob.run_driver()
         self.prob = prob
@@ -123,8 +126,8 @@ class TestOutboardMagnetGeometry(unittest.TestCase):
 
         prob.model = magnet.OutboardMagnetGeometry()
         prob.setup(force_alloc_complex=True)
-        prob['Ib TF Δr'] = 1 + 0.5 * nprand.random()
-        prob['r_iu'] = 4 + 0.5 * nprand.random()
+        prob['Ib TF Δr'] = 1 + 0.5 * example_value_1
+        prob['r_iu'] = 4 + 0.5 * example_value_2
         self.prob = prob
 
     def test_partials(self):
@@ -141,9 +144,9 @@ class TestMagnetCurrent(unittest.TestCase):
         prob.model = magnet.MagnetCurrent()
         prob.setup()
 
-        prob['A_m'] = nprand.random()
-        prob['f_HTS'] = nprand.random()
-        prob['j_HTS'] = nprand.random()
+        prob['A_m'] = example_value_1
+        prob['f_HTS'] = example_value_2
+        prob['j_HTS'] = example_value_3
         prob.run_driver()
 
         check = prob.check_partials(out_stream=None, method='fd')
@@ -157,11 +160,11 @@ class TestInnerTFCoilStrain(unittest.TestCase):
         prob.model = magnet.InnerTFCoilStrain()
         prob.setup(force_alloc_complex=True)
 
-        prob['T1'] = nprand.random()
-        prob['A_s'] = nprand.random() + 0.01
-        prob['A_m'] = nprand.random() + 0.01
-        prob['A_t'] = nprand.random() + 0.01
-        prob['f_HTS'] = nprand.random()
+        prob['T1'] = example_value_1
+        prob['A_s'] = example_value_2 + 0.01
+        prob['A_m'] = example_value_3 + 0.01
+        prob['A_t'] = example_value_1 + 0.01
+        prob['f_HTS'] = example_value_2
 
         check = prob.check_partials(out_stream=None,
                                     compact_print=True,
