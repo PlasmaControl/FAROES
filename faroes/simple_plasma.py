@@ -83,7 +83,7 @@ class ZeroDPlasmaProperties(om.ExplicitComponent):
         self.add_output('Z_eff', val=z_eff, desc="Effective ion charge")
         impurity = Particle(imp["species"])
         self.add_output('Z_imp',
-                        val=impurity.integer_charge,
+                        val=impurity.charge_number,
                         desc='Impurity charge')
         self.add_output('A_imp',
                         val=impurity.mass_number,

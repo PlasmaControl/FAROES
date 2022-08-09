@@ -394,7 +394,7 @@ class SimpleFusionAlphaSource(om.ExplicitComponent):
         alpha = Particle("alpha")
         m_α = alpha.nuclide_mass.to(u.kg).value
         A_α = alpha.nuclide_mass.to(u.u).value
-        Z_α = alpha.integer_charge
+        Z_α = alpha.charge_number
 
         E_J = data["REACTION_ENERGY"].to(u.J).value * self.α_fraction
         v_α = (2 * E_J / m_α)**(1 / 2)

@@ -43,7 +43,7 @@ class SimpleNBISourceProperties(om.Group):
         config = self.options["config"].accessor(["h_cd", "NBI"])
         species_name = config(['ion'])
         species = Particle(species_name)
-        beam_ion_Z = species.integer_charge
+        beam_ion_Z = species.charge_number
         beam_ion_mass_number = species.mass_number
         beam_ion_mass = species.mass.to(apunits.kg).value
         ivc.add_output("m", units='kg', val=beam_ion_mass)
