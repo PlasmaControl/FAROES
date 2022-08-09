@@ -8,15 +8,18 @@ This framework also allows users to easily specify the design variables, constra
 
 |forthebadge made-with-python|
 
-|builds|
+|pytest| |unittest|
 
 .. |forthebadge made-with-python| image:: http://ForTheBadge.com/images/badges/made-with-python.svg
    :target: https://www.python.org/
 
-.. |builds| image:: https://github.com/cfe316/FAROES/workflows/pytests/badge.svg
+.. |pytest| image:: https://github.com/cfe316/FAROES/workflows/pytests/badge.svg
    :target: https://github.com/cfe316/FAROES/workflows/pytests/badge
-   :alt: Pytests build status
+   :alt: Pytest build status
 
+.. |unittest| image:: https://github.com/cfe316/FAROES/workflows/unittest-installs/badge.svg
+   :target: https://github.com/cfe316/FAROES/workflows/unittest-installs/badge
+   :alt: Unittest build status
 
 Requirements
 ------------
