@@ -7,6 +7,23 @@ from astropy import units as apunits
 class SimpleNBISourceProperties(om.Group):
     r"""Helper for the SimpleNBISource
 
+    Loads from the configuration tree::
+
+        h_cd:
+          NBI:
+            power: <P>
+            energy: <E>
+            ion: <ion name>
+            wall-plug efficiency: <eff>
+
+    The ion name is parsed by ``plasmapy`` to determine A, Z, and m.
+    Examples include ``D+``.
+
+    Options
+    -------
+    config : UserConfigurator
+        Configuration tree. Required option.
+
     Outputs
     -------
     P : float
@@ -25,9 +42,8 @@ class SimpleNBISourceProperties(om.Group):
     Notes
     -----
     A and Z are (nearly) integers and won't change over
-    the course of the simulation, but for (me as a naive-user)
-    technical reasons, they can't easily be
-    converted to being a discrete output.
+    the course of the simulation, but for technical reasons,
+    they can't easily be converted to being a discrete output.
     """
     def initialize(self):
         self.options.declare("config", default=None, recordable=False)
@@ -58,6 +74,26 @@ class SimpleNBISource(om.Group):
     Does not handle geometry (incidence angles) etc,
     or beams with multiple energy components.
 
+    The neutral beam power, initial energy, ion species,
+    are efficiency are loaded using :class:`.SimpleNBISourceProperties`.
+
+    The particle source rate is
+
+    .. math:: S = P / E,
+
+    the particle velocity is computed using
+
+    .. math:: v = \sqrt{2 E/m},
+
+    and the total wall-plug power required is
+
+    .. math:: P_\mathrm{aux} = P / \mathrm{eff}.
+
+    Options
+    -------
+    config : UserConfigurator
+        Configuration tree. Required option.
+
     Outputs
     -------
     P : float
@@ -76,11 +112,8 @@ class SimpleNBISource(om.Group):
         m/s, particle velocity
     eff : float
         Wall-plug efficiency
-
-    Notes
-    -----
-    A, Z will typically be fixed during a given set of simulation runs.
-
+    P_aux : float
+        MW, Wall-plug power
     """
     def initialize(self):
         self.options.declare("config", default=None, recordable=False)

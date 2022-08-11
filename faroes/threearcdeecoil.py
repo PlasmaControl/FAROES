@@ -27,14 +27,14 @@ class ThreeEllipseArcDeeTFSetAdaptor(om.ExplicitComponent):
         m, minimum height for inner edge of magnet's crown
 
     f_c : float
-        Fraction of possible bore taken up by the inboard arc
-          Good as a design variable, 0.01 < f_c < 0.99
+        Fraction of possible bore taken up by the inboard arc.
+        Good as a design variable, 0.01 < f_c < 0.99
     f_hhs : float
-        Fraction of height taken up by the straight segment
-          Good as a design variable, 0.01 < f_hhs < 0.99
+        Fraction of height taken up by the straight segment.
+        Good as a design variable, 0.01 < f_hhs < 0.99
     Z_1 : float
         m, Extra height above Z_min for the inner edge of the
-          magnet crown. Good as a design variable, 0 < Z_1 < 5m.
+        magnet crown. Good as a design variable, 0 < Z_1 < 5m.
 
     Outputs
     -------
@@ -159,14 +159,13 @@ class ThreeArcDeeTFSetAdaptor(om.ExplicitComponent):
     Ob TF R_in: float
         m, Outboard TF inner radius
     Z_min : float
-        m, minimum height for inner edge of magnet's crown
-
+        m, Minimum height for inner edge of magnet's crown
     f_c : float
-        Fraction of possible span taken up by the circular arc
-          Good as a design variable, 0.01 < f_c < 0.99
+        Fraction of possible span taken up by the circular arc.
+        Good as a design variable, 0.01 < f_c < 0.99
     Z_1 : float
         m, Extra height above Z_min for the inner edge of the
-          magnet crown. Good as a design variable, 0 < Z_1 < 5m.
+        magnet crown. Good as a design variable, 0 < Z_1 < 5m.
 
     Outputs
     -------
@@ -281,6 +280,15 @@ class ThreeEllipseArcDeeTFSet(om.ExplicitComponent):
     (the inner leg), two quarter-ellipse arcs, and an outer
     half-ellipse arc.
 
+    .. figure :: images/threeellipsearcdee.png
+       :width: 700
+       :align: center
+       :alt: Diagram of inputs and outputs for the ThreeEllipseArcDeeTFSet.
+
+       Inputs and selected outputs of the ThreeEllipseArcDeeTFSet.
+       The outputs "e_κ" and "V_enc" are not shown. The distances 'd'
+       are the square roots of the values 'd_sq'.
+
     Inputs
     ------
     Ib TF R_out : float
@@ -297,7 +305,7 @@ class ThreeEllipseArcDeeTFSet(om.ExplicitComponent):
         m, Plasma major radius
     θ   : array
         Angles relative to the magnetic axis at which to
-           evaluate the distance to the magnet.
+        evaluate the distance to the magnet.
 
     Outputs
     -------
@@ -552,39 +560,51 @@ class ThreeArcDeeTFSet(om.ExplicitComponent):
     (the inner leg), two quarter-circle arcs, and an outer
     half-ellipse arc.
 
+    .. figure :: images/threearcdee.png
+       :width: 700
+       :align: center
+       :alt: Diagram of inputs and outputs for the ThreeArcDeeTFSet.
+
+       Inputs and selected outputs of the ThreeArcDeeTFSet. The outputs
+       "e_κ" and "V_enc" are not shown. The distances 'd'
+       are the square roots of the values 'd_sq'.
+
     Inputs
     ------
     Ib TF R_out : float
-        m, inboard leg outer radius
+        m, Inboard leg outer radius
     hhs : float
-        m, half-height of the straight segment
+        m, Half-height of the straight segment
     e_a : float
-        m, elliptical arc horizontal semi-major axis
+        m, Elliptical arc horizontal semi-major axis
     r_c : float
-        m, circular arc radius
+        m, Circular arc radius
     R0 : float
-        m, plasma major radius
+        m, Plasma major radius
     θ   : array
         Angles relative to the magnetic axis at which to
-           evaluate the distance to the magnet.
+        evaluate the distance to the magnet.
 
     Outputs
     -------
     e_b : float
-        m, elliptical arc vertical semi-major axis
+        m, Elliptical arc vertical semi-major axis
+    half-height : float
+        m, Half the vertical height of the conductors.
+        Alias for e_b.
     d_sq : float
         m**2, Squared distance to points on the inner perimeter,
-           at angle θ from the magnetic axis
+        at angle θ from the magnetic axis
     arc length: float
-        m, inner perimeter of the magnet
+        m, Inner perimeter of the magnet
     V_enc : float
-        m**3, magnetized volume enclosed by the set
-    half-height : float
-        m, half the vertical height of the conductors
+        m**3, Magnetized volume enclosed by the set
     bore : float
         m, Horizontal span of the interior bore
     e_κ : float
         "Elongation" of the elliptical arc
+    Ob TF R_in : float
+        m, Outboard leg inner radius
     """
     def setup(self):
         self.add_input("R0", units="m", desc="Plasma major radius")

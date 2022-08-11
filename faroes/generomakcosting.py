@@ -7,6 +7,9 @@ from scipy.constants import mega, hour, year, kilo
 class PrimaryCoilSetCost(om.ExplicitComponent):
     r"""Generomak primary TF coil set cost
 
+    .. math::
+       C_{pc} = \mathrm{cost}\,V_{pc}
+
     Inputs
     ------
     V_pc: float
@@ -24,15 +27,8 @@ class PrimaryCoilSetCost(om.ExplicitComponent):
 
     Notes
     -----
-    From the last column of Table III of [1]_.
+    From the last column of Table III of :footcite:t:`sheffield_generic_2016`
     This uses the Adjusted for ITER Unit Cost values.
-
-    References
-    ----------
-    .. [1] Sheffield, J.; Milora, S. L.
-       Generic Magnetic Fusion Reactor Revisited.
-       Fusion Science and Technology 2016, 70 (1), 14–35.
-       https://doi.org/10.13182/FST15-157.
     """
     def initialize(self):
         self.options.declare('cost_per_volume')
@@ -58,6 +54,9 @@ class PrimaryCoilSetCost(om.ExplicitComponent):
 class BlanketCost(om.ExplicitComponent):
     r"""Generomak blanket set cost
 
+    .. math::
+       C_{bl} = \mathrm{cost}\,V_{bl}
+
     Inputs
     ------
     V_bl: float
@@ -75,18 +74,11 @@ class BlanketCost(om.ExplicitComponent):
 
     Notes
     -----
-    From the last column of Table III of [1]_.
+    From the last column of Table III of :footcite:t:`sheffield_generic_2016`.
     This uses the Adjusted for ITER Unit Cost values.
 
     In this model, the blanket is replaced, so it is considered as an operating
     cost rather than as a capital cost.
-
-    References
-    ----------
-    .. [1] Sheffield, J.; Milora, S. L.
-       Generic Magnetic Fusion Reactor Revisited.
-       Fusion Science and Technology 2016, 70 (1), 14–35.
-       https://doi.org/10.13182/FST15-157.
     """
     def initialize(self):
         self.options.declare('cost_per_volume')
@@ -109,6 +101,8 @@ class BlanketCost(om.ExplicitComponent):
 class StructureCost(om.ExplicitComponent):
     r"""Generomak structure cost
 
+    .. math:: C_{st} = \mathrm{cost} \, V_{st}
+
     Inputs
     ------
     V_st: float
@@ -126,15 +120,8 @@ class StructureCost(om.ExplicitComponent):
 
     Notes
     -----
-    From the last column of Table III of [1]_.
+    From the last column of Table III of :footcite:t:`sheffield_generic_2016`.
     This uses the Adjusted for ITER Unit Cost values.
-
-    References
-    ----------
-    .. [1] Sheffield, J.; Milora, S. L.
-       Generic Magnetic Fusion Reactor Revisited.
-       Fusion Science and Technology 2016, 70 (1), 14–35.
-       https://doi.org/10.13182/FST15-157.
     """
     def initialize(self):
         self.options.declare('cost_per_volume')
@@ -159,6 +146,8 @@ class StructureCost(om.ExplicitComponent):
 class ShieldWithGapsCost(om.ExplicitComponent):
     r"""Generomak shield with gaps cost
 
+    .. math:: C_{sg} = \mathrm{cost} \, V_{sg}
+
     Inputs
     ------
     V_sg: float
@@ -176,15 +165,8 @@ class ShieldWithGapsCost(om.ExplicitComponent):
 
     Notes
     -----
-    From the last column of Table III of [1]_.
+    From the last column of Table III of :footcite:t:`sheffield_generic_2016`.
     This uses the Adjusted for ITER Unit Cost values.
-
-    References
-    ----------
-    .. [1] Sheffield, J.; Milora, S. L.
-       Generic Magnetic Fusion Reactor Revisited.
-       Fusion Science and Technology 2016, 70 (1), 14–35.
-       https://doi.org/10.13182/FST15-157.
     """
     def initialize(self):
         self.options.declare('cost_per_volume')
@@ -207,6 +189,8 @@ class ShieldWithGapsCost(om.ExplicitComponent):
 class DivertorCost(om.ExplicitComponent):
     r"""Generomak replaceable divertor cost
 
+    .. math:: C_{tt} = \mathrm{cost} \, V_{tt}
+
     Inputs
     ------
     A_tt: float
@@ -224,18 +208,12 @@ class DivertorCost(om.ExplicitComponent):
 
     Notes
     -----
-    From the paragraph below Equation (24) of [1]_.
+    From the paragraph below Equation (24) of
+    :footcite:t:`sheffield_generic_2016`.
     The Generomak estimates the target area as 10% of the wall area,
     and estimates a thermal load on the divertor targets of 10 MW/m^2
     when the neutron wall load p_wn is 3.0 MW/m^2. This doesn't seem compatible
     with modern ideas to have detached or very radiative divertors.
-
-    References
-    ----------
-    .. [1] Sheffield, J.; Milora, S. L.
-       Generic Magnetic Fusion Reactor Revisited.
-       Fusion Science and Technology 2016, 70 (1), 14–35.
-       https://doi.org/10.13182/FST15-157.
     """
     def initialize(self):
         self.options.declare('cost_per_area')
@@ -255,6 +233,8 @@ class DivertorCost(om.ExplicitComponent):
 class AuxHeatingCost(om.ExplicitComponent):
     r"""Generomak auxilliary heating cost
 
+    .. math:: C_{aux} = \mathrm{cost} P_{aux}
+
     Inputs
     ------
     P_aux: float
@@ -273,14 +253,7 @@ class AuxHeatingCost(om.ExplicitComponent):
     Notes
     -----
     Dollar values are from the "Adjusted for ITER Unit Cost" column of Table
-    III of [1]_.
-
-    References
-    ----------
-    .. [1] Sheffield, J.; Milora, S. L.
-       Generic Magnetic Fusion Reactor Revisited.
-       Fusion Science and Technology 2016, 70 (1), 14–35.
-       https://doi.org/10.13182/FST15-157.
+    III of :footcite:t:`sheffield_generic_2016`.
     """
     def initialize(self):
         self.options.declare('cost_per_watt')
@@ -305,6 +278,8 @@ class AuxHeatingCost(om.ExplicitComponent):
 class AnnualAuxHeatingCost(om.ExplicitComponent):
     r"""Part of the 'fuel cycle costs'
 
+    .. math:: C_{aa} = f_{spares} f_{annual} C_{aux}
+
     Inputs
     ------
     C_aux: float
@@ -315,17 +290,22 @@ class AnnualAuxHeatingCost(om.ExplicitComponent):
     C_aa: float
        MUSD/a, Averaged costs of aux heating
 
+    Options
+    -------
+    cost_params : dict
+        This is a dictionary of coefficients for the costing model.
+        The dictionary provided must have values for all these keys:
+
+        f_spares : float
+            Factor for spares.
+        annual_aux_heating_factor : float
+            Fraction of the capital cost required for maintainance each year.
+
     Notes
     -----
     This is a constant factor of the aux heating capital cost.
-    The value is from the paragraph before Equation (25) of [1]_.
-
-    References
-    ----------
-    .. [1] Sheffield, J.; Milora, S. L.
-       Generic Magnetic Fusion Reactor Revisited.
-       Fusion Science and Technology 2016, 70 (1), 14–35.
-       https://doi.org/10.13182/FST15-157.
+    The value is from the paragraph before Equation (25) of
+    :footcite:t:`sheffield_generic_2016`.
     """
     def initialize(self):
         self.options.declare('cost_params', default=None)
@@ -357,7 +337,7 @@ class AnnualAuxHeatingCost(om.ExplicitComponent):
 class FusionIslandCost(om.ExplicitComponent):
     r"""Fusion island cost
 
-    Equation (18) of [1]_.
+    Equation (18) of :footcite:t:`sheffield_generic_2016`.
 
     .. math::
          C_{FI} = c_{PT}(P_t / d_{Pt})^{e_{PT}}
@@ -415,18 +395,11 @@ class FusionIslandCost(om.ExplicitComponent):
             Multiplier for the auxilliary heating cost C_aux, to allow for
             spares.
         fudge : float
-            Overall fudge factor.
+            Overall fudge factor, normally 1.
 
     Notes
     -----
     The blanket and divertor are considered as Operating Costs.
-
-    References
-    ----------
-    .. [1] Sheffield, J.; Milora, S. L.
-       Generic Magnetic Fusion Reactor Revisited.
-       Fusion Science and Technology 2016, 70 (1), 14–35.
-       https://doi.org/10.13182/FST15-157.
     """
     def initialize(self):
         self.options.declare('cost_params', default=None, types=dict)
@@ -502,13 +475,14 @@ class FusionIslandCost(om.ExplicitComponent):
 class CapitalCost(om.ExplicitComponent):
     r"""Generomak plant capital cost
 
-    From Equation (19) of [1]_,
+    From Equation (19) of :footcite:t:`sheffield_generic_2016`,
 
     .. math::
        C_D = f_{cont}\left(\left(c_{e1} + c_{e2} P_e/c_{e3}\right)
-                           \left(P_t / d_{Pt}\right)^{e_{Pt}}
-                           + c_V(V_{FI}/d_{V})^{e_{V}}
+                           \left(\frac{P_t}{d_{Pt}}\right)^{e_{Pt}}
+                           + c_V\left(\frac{V_{FI}}{d_{V}}\right)^{e_{V}}
                            + C_{FI}\right).
+
     Inputs
     ------
     P_e : float
@@ -562,13 +536,6 @@ class CapitalCost(om.ExplicitComponent):
     Sheffield treats V_FI as the smallest cylinder that the TF fits inside.
     Something like the cryostat volume might be a suitable replacement, if it's
     not too much larger.
-
-    References
-    ----------
-    .. [1] Sheffield, J.; Milora, S. L.
-       Generic Magnetic Fusion Reactor Revisited.
-       Fusion Science and Technology 2016, 70 (1), 14–35.
-       https://doi.org/10.13182/FST15-157.
     """
     def initialize(self):
         self.options.declare('cost_params', types=dict)
@@ -661,7 +628,18 @@ class CapitalCost(om.ExplicitComponent):
 class DeuteriumVariableCost(om.ExplicitComponent):
     r"""Instantaneous variable cost for deuterium
 
-    Assumes a DT reactor
+    This is **not** directly from the Sheffield papers.
+
+    Up to dimensional constants,
+
+    .. math::
+       \mathrm{D}_\mathrm{usage} =
+       P_\mathrm{fus} \, (1\;\mathrm{hour})/ ρ_{energy}
+
+    where :math:`ρ_{energy}` is the energy density of deuterium fuel,
+    which was precomputed for this function; see the Notes.
+
+    .. math:: C_{\mathrm{D},v} = C_\mathrm{deu} \, \mathrm{D}_\mathrm{usage}
 
     Inputs
     ------
@@ -685,7 +663,7 @@ class DeuteriumVariableCost(om.ExplicitComponent):
             kUSD/kg, Price of Deuterium in $/kg.
 
     For a similar computation see pg 512 of Volume II of the STARFIRE report
-    [1]_.
+    :footcite:p:`baker_starfire_1980-1`.
 
     The price of deuterium is estimated from wikipedia: it lists $13k/kg, but I
     estimated it as $10k/kg.
@@ -704,13 +682,6 @@ class DeuteriumVariableCost(om.ExplicitComponent):
         c = Quantity["SpeedOfLight"];
         jperkg = UnitConvert[(mt + md - mn - ma - me) c^2/md,
           "Megajoules"/"Kilograms"]
-
-    References
-    ----------
-    .. [1] Baker, C. C.; Abdou, M. A. et al.
-       STARFIRE - A Commerical Tokamak Fusion Power Study. Volume II.
-       ANL/FPP-80-1; Argonne National Laboratory: Argonne, Illinois, 1980.
-       https://doi.org/10.2172/6633213
     """
     def initialize(self):
         self.options.declare('cost_params', types=dict)
@@ -751,7 +722,15 @@ class DeuteriumVariableCost(om.ExplicitComponent):
 class AnnualDeuteriumCost(om.ExplicitComponent):
     r"""Similar to the STARFIRE report.
 
+    This is **not** directly from the Sheffield papers.
+
     Assumes a D-T reactor.
+
+    .. math:: C_{deuterium} = f_{av} \, C_{\mathrm{D},v} \,
+       \frac{\mathrm{a}}{\mathrm{h}}
+
+    .. math:: \textrm{Annual D usage} = f_{av}\,\mathrm{D}_\mathrm{usage} \,
+        \frac{\mathrm{a}}{\mathrm{h}}\, \frac{\mathrm{g}}{\mathrm{kg}}
 
     Inputs
     ------
@@ -774,17 +753,10 @@ class AnnualDeuteriumCost(om.ExplicitComponent):
     f_av here is the fraction of time during which the plasma is in flattop.
 
     For a similar computation see pg 512 of Volume II of the STARFIRE report
-    [1]_.
+    :footcite:p:`baker_starfire_1980-1`.
 
     The price of deuterium is estimated from wikipedia: it lists $13k/kg, but I
     estimated it as $10k/kg.
-
-    References
-    ----------
-    .. [1] Baker, C. C.; Abdou, M. A. et al.
-       STARFIRE - A Commerical Tokamak Fusion Power Study. Volume II.
-       ANL/FPP-80-1; Argonne National Laboratory: Argonne, Illinois, 1980.
-       https://doi.org/10.2172/6633213
     """
     def setup(self):
         self.add_input("C_Dv",
@@ -829,6 +801,11 @@ class AnnualDeuteriumCost(om.ExplicitComponent):
 class MiscReplacements(om.ExplicitComponent):
     r"""Miscellaneous replacements
 
+    .. math::
+       C_{misca} &= f_{CR,0} \, C_{misc}
+
+       C_{fa} &= C_{fuel} + C_{misca}
+
     Inputs
     ------
     C_fuel: float
@@ -854,18 +831,12 @@ class MiscReplacements(om.ExplicitComponent):
 
     Notes
     -----
-    The original paper uses C_fa = 0.4 + 24 f_CR0. The new paper [1]_ uses an
+    The original paper uses C_fa = 0.4 + 24 f_CR0.
+    The new paper :footcite:p:`sheffield_generic_2016` uses an
     inflation factor of 2.19 from 1983 to 2010, but also says C_fa = 7.5 M
     with f_CR0 = 0.078. I'm not sure how this is consistent.
 
     Here the default C_misc is from multiplying 24 * 2.2.
-
-    References
-    ----------
-    .. [1] Sheffield, J.; Milora, S. L.
-       Generic Magnetic Fusion Reactor Revisited.
-       Fusion Science and Technology 2016, 70 (1), 14–35.
-       https://doi.org/10.13182/FST15-157.
     """
     def initialize(self):
         self.options.declare('cost_params', types=dict)
@@ -901,6 +872,8 @@ class MiscReplacements(om.ExplicitComponent):
 class FuelCycleCost(om.ExplicitComponent):
     r"""Fuel cycle cost sum
 
+    .. math:: C_F = C_{ba} + C_{ta} + C_{aa} + C_{fa}
+
     Inputs
     ------
     C_ba : float
@@ -918,14 +891,7 @@ class FuelCycleCost(om.ExplicitComponent):
         GUSD/a, Fuel cycle cost. Includes all blanket and divertor replacement
         and C_OM.
 
-    From Equation (22) of [1]_.
-
-    References
-    ----------
-    .. [1] Sheffield, J.; Milora, S. L.
-       Generic Magnetic Fusion Reactor Revisited.
-       Fusion Science and Technology 2016, 70 (1), 14–35.
-       https://doi.org/10.13182/FST15-157.
+    From Equation (22) of :footcite:t:`sheffield_generic_2016`.
     """
     def setup(self):
         self.add_input("C_ba",
@@ -960,11 +926,12 @@ class FuelCycleCost(om.ExplicitComponent):
 
 class AveragedAnnualBlanketCost(om.ExplicitComponent):
     r"""
-    From Equation (23) of [1]_.
+    From Equation (23) of :footcite:t:`sheffield_generic_2016`.
 
     .. math::
+
         C_{ba} = f_{fail} \left(f_{spare} C_{bl} F_{CR0}
-                        + (f_{av} N p_{wn} / F_{wn} - 1)C_bl/N)
+                        + (f_{av} N p_{wn} / F_{wn} - 1)C_{bl}/N\right)
 
     where :math:`N` is the number of years of plant operation.
 
@@ -992,6 +959,8 @@ class AveragedAnnualBlanketCost(om.ExplicitComponent):
     C_ba : float
         MUSD/a, Averaged annual blanket costs
 
+    Options
+    -------
     cost_params : dict
         This is a dictionary of coefficients for the costing model.
         The dictionary provided must have values for all these keys:
@@ -1003,14 +972,7 @@ class AveragedAnnualBlanketCost(om.ExplicitComponent):
         F_CR0  : float
             1/a, Constant dollar fixed charge rate.
         fudge  : float
-            Overall fudge factor.
-
-    References
-    ----------
-    .. [1] Sheffield, J.; Milora, S. L.
-       Generic Magnetic Fusion Reactor Revisited.
-       Fusion Science and Technology 2016, 70 (1), 14–35.
-       https://doi.org/10.13182/FST15-157.
+            Overall fudge factor, normally 1.
     """
     def initialize(self):
         self.options.declare('cost_params', types=dict)
@@ -1127,14 +1089,8 @@ class DivertorVariableCost(om.ExplicitComponent):
 
     Notes
     -----
-    This is a subelement of Equation (24) of [1]_.
-
-    References
-    ----------
-    .. [1] Sheffield, J.; Milora, S. L.
-       Generic Magnetic Fusion Reactor Revisited.
-       Fusion Science and Technology 2016, 70 (1), 14–35.
-       https://doi.org/10.13182/FST15-157.
+    This is a subelement of Equation (24) of
+    :footcite:t:`sheffield_generic_2016`.
     """
     def setup(self):
         self.add_input("C_tt",
@@ -1173,14 +1129,14 @@ class DivertorVariableCost(om.ExplicitComponent):
 
 class AveragedAnnualDivertorCost(om.ExplicitComponent):
     r"""
-    From Equation (24) of [1]_.
+    From Equation (24) of :footcite:t:`sheffield_generic_2016`.
 
     .. math::
-        C_{ta} = f_{fail} \left(f_{spare} C_{tt} F_{CR0}
-                        + (f_{av} N p_{tt} / F_{tt} - 1)C_tt/N)
+        C_{ta} &= f_{fail} \left(f_{spare} C_{tt} F_{CR0}
+                        + (f_{av} N p_{tt} / F_{tt} - 1)C_{tt}/N\right)
 
-        C_{ta} = f_{fail} \left(f_{spare} C_{tt} F_{CR0}
-                        + (f_{av} N C_{tv} - C_{tt})/N)
+               &= f_{fail} \left(f_{spare} C_{tt} F_{CR0}
+                        + (f_{av} N C_{tv} - C_{tt})/N\right)
 
     where :math:`N` is the number of years of plant operation.
     :math:`C_{tv}` is the instantaneous variable cost of divertor usage.
@@ -1209,6 +1165,8 @@ class AveragedAnnualDivertorCost(om.ExplicitComponent):
     C_ta : float
         MUSD/a, Averaged annual divertor costs
 
+    Options
+    -------
     cost_params : dict
         This is a dictionary of coefficients for the costing model.
         The dictionary provided must have values for all these keys:
@@ -1220,14 +1178,7 @@ class AveragedAnnualDivertorCost(om.ExplicitComponent):
         F_CR0  : float
             1/a, Constant dollar fixed charge rate.
         fudge  : float
-            Overall fudge factor.
-
-    References
-    ----------
-    .. [1] Sheffield, J.; Milora, S. L.
-       Generic Magnetic Fusion Reactor Revisited.
-       Fusion Science and Technology 2016, 70 (1), 14–35.
-       https://doi.org/10.13182/FST15-157.
+            Overall fudge factor, normally 1.
     """
     def initialize(self):
         self.options.declare('cost_params', types=dict)
@@ -1327,6 +1278,9 @@ class AveragedAnnualDivertorCost(om.ExplicitComponent):
 class FixedOMCost(om.ExplicitComponent):
     r"""From Sheffield; scaled based off STARFIRE.
 
+    .. math:: C_{OM} = \mathrm{fudge} \cdot \mathrm{base}_{OM}
+       \left(\frac{P_e}{\mathrm{base}_{Pe}}\right)^{1/2}
+
     Inputs
     ------
     P_e : float
@@ -1349,12 +1303,12 @@ class FixedOMCost(om.ExplicitComponent):
             MUSD/a, Fixed operations and maintenance cost for a plant that
             generates base_Pe of net electric power.
         fudge  : float
-            Overall fudge factor.
+            Overall fudge factor, normally 1.
 
     Notes
     -----
     It appears that this value assumes a steam plant.
-    See Equation (F.10) of [2]_.
+    See Equation (F.10) of :footcite:t:`sheffield_cost_1986`.
 
     It is based on numbers from STARFIRE, a 1200MWe plant.
     This includes staff costs, annual misc. consumables and equipment,
@@ -1363,21 +1317,11 @@ class FixedOMCost(om.ExplicitComponent):
     processing, annual fuel handling costs (=0), and annual miscellaneous costs
     (training, requalification of operators, rent of equipment, travel).
 
-    The two Sheffield papers appear to scale this cost with the net electric
-    power, but it would be more appropriate to scale with the gross power,
+    The two Sheffield papers
+    :footcite:t:`sheffield_cost_1986, sheffield_generic_2016`
+    appear to scale this cost with the **net** electric
+    power, but it would be more appropriate to scale with the **gross** power,
     since that will determine the size of turbines, buildings, cooling, etc.
-
-    References
-    ----------
-    .. [1] Sheffield, J.; Milora, S. L.
-       Generic Magnetic Fusion Reactor Revisited.
-       Fusion Science and Technology 2016, 70 (1), 14–35.
-       https://doi.org/10.13182/FST15-157.
-
-    .. [2] Sheffield, J. et al.
-       Cost Assessment of a Generic Magnetic Fusion Reactor.
-       Fusion Technology 1986, 9 (2), 199–249.
-       https://doi.org/10.13182/FST9-2-199.
     """
     def initialize(self):
         self.options.declare("cost_params", types=dict)
@@ -1421,7 +1365,9 @@ class FixedOMCost(om.ExplicitComponent):
 
 class TotalCapitalCost(om.ExplicitComponent):
     r"""
-    Equation (27) of [1]_.
+    Equation (27) of :footcite:t:`sheffield_generic_2016`.
+
+    .. math:: C_{C0} = f_{CAP,0}\,f_{IND}\,C_D
 
     Inputs
     ------
@@ -1436,13 +1382,6 @@ class TotalCapitalCost(om.ExplicitComponent):
     -------
     C_C0 : float
         GUSD, Total capital cost of the plant
-
-    References
-    ----------
-    .. [1] Sheffield, J.; Milora, S. L.
-       Generic Magnetic Fusion Reactor Revisited.
-       Fusion Science and Technology 2016, 70 (1), 14–35.
-       https://doi.org/10.13182/FST15-157.
     """
     def setup(self):
         self.add_input("C_D",
@@ -1478,7 +1417,9 @@ class TotalCapitalCost(om.ExplicitComponent):
 class IndirectChargesFactor(om.ExplicitComponent):
     r"""Owner's cost proportional to construction time
 
-    Equation (28) of [1]_.
+    .. math:: f_{IND} = 1 + 0.5 \, T_{constr} / 8
+
+    Equation (28) of :footcite:t:`sheffield_generic_2016`.
 
     Inputs
     ------
@@ -1490,12 +1431,6 @@ class IndirectChargesFactor(om.ExplicitComponent):
     f_IND : float
         Indirect charges factor
 
-    References
-    ----------
-    .. [1] Sheffield, J.; Milora, S. L.
-       Generic Magnetic Fusion Reactor Revisited.
-       Fusion Science and Technology 2016, 70 (1), 14–35.
-       https://doi.org/10.13182/FST15-157.
     """
     def setup(self):
         self.add_input("T_constr", units="a", desc="Construction time")
@@ -1513,7 +1448,9 @@ class IndirectChargesFactor(om.ExplicitComponent):
 class ConstantDollarCapitalizationFactor(om.ExplicitComponent):
     r"""
 
-    Table IV of [1]_.
+    Table IV of :footcite:t:`sheffield_generic_2016`.
+
+    .. math:: f_{CAP,0} = 1 + 0.012 \, T_{constr} + 0.003
 
     Inputs
     ------
@@ -1532,13 +1469,6 @@ class ConstantDollarCapitalizationFactor(om.ExplicitComponent):
 
     These values apparently correspond to rates of 0.06
     for inflation and escalation.
-
-    References
-    ----------
-    .. [1] Sheffield, J.; Milora, S. L.
-       Generic Magnetic Fusion Reactor Revisited.
-       Fusion Science and Technology 2016, 70 (1), 14–35.
-       https://doi.org/10.13182/FST15-157.
     """
     def setup(self):
         self.add_input("T_constr", units='a', desc="Construction time")
@@ -1555,16 +1485,20 @@ class ConstantDollarCapitalizationFactor(om.ExplicitComponent):
 
 class CostOfElectricity(om.ExplicitComponent):
     r"""
-    Equation (26) of [1]_.
+    Equation (26) of :footcite:t:`sheffield_generic_2016`.
+
+    .. math:: COE = \mathrm{fudge} \cdot
+       \left(10^6\frac{C_{C0}\,f_{CR,0} + C_F + C_{OM}}
+       {P_e \, 8760 \, f_{av}} + (\textrm{waste charge})\right)
 
     Inputs
     ------
     C_C0 : float
         MUSD, total capital cost
     C_F : float
-        MUSD, Annual fuel cycle costs
+        MUSD/a, Annual fuel cycle costs
     C_OM : float
-        mUSD/kW/h, Operations and maintenance cost
+        MUSD/a, Operations and maintenance cost
     f_av : float
         Availability factor
     P_e : float
@@ -1584,16 +1518,9 @@ class CostOfElectricity(om.ExplicitComponent):
         F_CR0  : float
             1/a, Constant dollar fixed charge rate.
         fudge  : float
-            Overall fudge factor.
+            Overall fudge factor, normally 1.
         waste_charge : float
             mUSD/kW/h, Cost of waste disposal
-
-    References
-    ----------
-    .. [1] Sheffield, J.; Milora, S. L.
-       Generic Magnetic Fusion Reactor Revisited.
-       Fusion Science and Technology 2016, 70 (1), 14–35.
-       https://doi.org/10.13182/FST15-157.
     """
     def initialize(self):
         self.options.declare('cost_params', default=None)
@@ -1677,14 +1604,7 @@ class GeneromakStructureVolume(om.ExplicitComponent):
 
     Notes
     -----
-    From Equation (17) of [1]_.
-
-    References
-    ----------
-    .. [1] Sheffield, J.; Milora, S. L.
-       Generic Magnetic Fusion Reactor Revisited.
-       Fusion Science and Technology 2016, 70 (1), 14–35.
-       https://doi.org/10.13182/FST15-157.
+    From Equation (17) of :footcite:t:`sheffield_generic_2016`.
     """
     def setup(self):
         self.add_input("V_pc",
@@ -1705,7 +1625,10 @@ class GeneromakStructureVolume(om.ExplicitComponent):
 
 
 class GeneromakCosting(om.Group):
-    r"""
+    r"""Top-level costing group
+
+    Based on :footcite:t:`sheffield_cost_1986, sheffield_generic_2016`.
+
     Inputs
     ------
     V_FI: float
@@ -1753,17 +1676,27 @@ class GeneromakCosting(om.Group):
 
     Options
     -------
-    exact_generomak: bool
+    config : UserConfigurator
+        Configuration tree. Required option.
+
+    exact_generomak : bool
         If true, then
-        1. The plant capital and O&M costs use the net electric power.
-        2. The coil structure volume is 0.75 of the primary
-           coil structure volume.
-        3. The fuel cost is $7.5M
+
+          1. The plant capital and O&M costs use the net electric power.
+
+          2. The coil structure volume is 0.75 of the primary
+          coil structure volume.
+
+          3. The fuel cost is $7.5M
+
         Else,
-        1. The plant capital and O&M costs use the gross electric power.
-        2. The coil structure volume is an input.
-        3. The calculated fuel cost includes a calculation for the price of
-           deuterium.
+
+          1. The plant capital and O&M costs use the gross electric power.
+
+          2. The coil structure volume is an input.
+
+          3. The calculated fuel cost includes a calculation for the price of
+          deuterium.
 
         For either option, the input interface is the same.
     """
@@ -2086,6 +2019,13 @@ class GeneromakCosting(om.Group):
 class GeneromakToGenX(om.ExplicitComponent):
     r"""Outputs metrics used by GenX
 
+    This is an interface from the Sheffield costing model
+    to the cost-related inputs required by a standard GenX generator.
+
+    For GenX, the 'fuel' used for the reactor will be 'None'; instead,
+    the deuterium is included in the variable cost of operation.
+    This avoids the need for an additional fuel type in GenX.
+
     Inputs
     ------
 
@@ -2110,7 +2050,6 @@ class GeneromakToGenX(om.ExplicitComponent):
     C_fv : float
         USD/h, variable cost of fuel
 
-
     P_e : float
         MW, Electric power output
 
@@ -2122,7 +2061,7 @@ class GeneromakToGenX(om.ExplicitComponent):
         MUSD/MW/a, Operations and maintenance cost
     Var_OM_Cost_per_MWh : float
         USD/MW/h, Instantaneous variable cost, not including downtime
-           for repairs.
+        for repairs.
 
     Notes
     -----
@@ -2137,7 +2076,7 @@ class GeneromakToGenX(om.ExplicitComponent):
         F_CR0  : float
             1/a, Constant dollar fixed charge rate.
         fudge  : float
-            Overall fudge factor.
+            Overall fudge factor, normally 1.
         waste_charge : float
             mUSD/kW/h, Cost of waste disposal
     """

@@ -13,35 +13,32 @@ import numpy as np
 class SlowingThermalizationTime(om.ExplicitComponent):
     r"""Time to slow down to zero velocity
 
+    .. math::
+
+       \tau_\mathrm{th} = \frac{t_s}{3}
+           \log\left(1 +
+           \left(\frac{W}{W_\mathrm{crit}}\right)^{3/2}\right)
+
+    Here, :math:`t_s` is the ion-electron slowing down time given
+    by Spitzer :footcite:p:`spitzer_physics_2006`.
+
+
     Inputs
     ------
     W/Wc : float
         Initial beam energy to critical energy
     ts : float
-        s, Ion-electron velocity slowing down time (Spitzer, 1962)
+        s, Ion-electron velocity slowing down time
 
     Outputs
     -------
     τth : float
         s, Thermalization time
-           (time to slow to zero average velocity, in this model)
-
-    Notes
-    -----
-
-    .. math::
-
-       \tau_\mathrm{th} = \frac{t_s}{3}
-           \log(1 + (\frac{W}{W_\mathrm{crit}})^{3/2})
-
-    Where :math:`t_s` is the ion-electron slowing down time given
-    by Spitzer [1]_.
+        (time to slow to zero average velocity, in this model)
 
     References
     ----------
-    .. [1] Stix, T. H. Heating of Toroidal Plasmas by Neutral Injection.
-       Plasma Physics 1972, 14 (4), 367–384.
-       https://doi.org/10.1088/0032-1028/14/4/002.
+    :footcite:t:`stix_heating_1972`
     """
     def setup(self):
         self.add_input("W/Wc", desc="Initial beam energy / critical energy")
@@ -72,6 +69,18 @@ class SlowingThermalizationTime(om.ExplicitComponent):
 class FastParticleHeatingFractions(om.ExplicitComponent):
     r"""Fraction of fast particle energy to ions vs electrons
 
+    This is the exact solution to an integral
+
+    .. math::
+
+       G &= \frac{W_c}{W} \int_0^{W/W_c} \frac{dy}{1 + y^{3/2}}
+
+         &= \, _2F_1\left(\frac{2}{3},1;\frac{5}{3};-(W/W_c)^{3/2}\right)
+
+    where :math:`W_c` is the critical slowing energy. The fraction of the
+    energy which goes to ions :math:`f_i = G` and the fraction to electrons
+    is :math:`f_e = 1 - G`.
+
     Inputs
     ------
     W/Wc : float
@@ -87,28 +96,13 @@ class FastParticleHeatingFractions(om.ExplicitComponent):
     Notes
     -----
 
-    This is the exact solution to an integral
-
-    .. math::
-
-       G = \frac{W_c}{W} \int_0^{W/W_c} \frac{dy}{1 + y^{3/2}}
-
-       G = \, _2F_1\left(\frac{2}{3},1;\frac{5}{3};-(W/W_c)^{3/2}\right)
-
-    where :math:`W_c` is the critical slowing energy.
-    See equation (17) of [1]_.
-
     In Mathematica:
 
-    ```
-    G = wc/w Integrate[1/(1 + y^(3/2)), {y, 0, w/wc}]
-    ```
+    ``G = wc/w Integrate[1/(1 + y^(3/2)), {y, 0, w/wc}]``
 
     References
     ----------
-    .. [1] Stix, T. H. Heating of Toroidal Plasmas by Neutral Injection.
-       Plasma Physics 1972, 14 (4), 367–384.
-       https://doi.org/10.1088/0032-1028/14/4/002.
+    Equation (17) of :footcite:t:`stix_heating_1972`.
     """
     def setup(self):
         self.add_input("W/Wc", desc="Initial beam energy / critical energy")
@@ -155,7 +149,12 @@ class SlowingTimeOnElectrons(om.ExplicitComponent):
        dW/dt = -W / \tau_{s,w}.
 
     Since :math:`(d/dt) (1/2)m u^2 = m u du/dt` it is easy to show that
-    :math:`\tau_{s} = 2 \tau_{s,e}`.
+    :math:`\tau_{s} = 2 \tau_{s,w}`.
+
+    .. math::
+
+       \tau_s = c \frac{A_b (T_e / \mathrm{keV})^{3/2}}
+           {Z^2 (n_e / (10^{20} \mathrm{m}^{-3}) \log{\Lambda_e}}
 
     Inputs
     ------
@@ -174,43 +173,21 @@ class SlowingTimeOnElectrons(om.ExplicitComponent):
     -------
     ts : float
        s, Velocity slowing time of subthermal ions on electrons.
-          Subthermal means that the ions are moving slower
-          than electron thermal velocities.
+       Subthermal means that the ions are moving slower
+       than electron thermal velocities.
     tsw : float
        s, Energy slowing time of subthermal ions on electrons.
 
-    Notes
-    -----
-
-    .. math::
-
-       \tau_s = c \frac{A_b (T_e / \mathrm{keV})^{3/2}}
-           {Z^2 (n_e / (10^{20} \mathrm{m}^{-3}) \log{\Lambda_e}}
-
-    Menard uses Equation (2) of Medley [1]_. That version includes a numerical
-    constant, 6.27e14. Medley cites Spitzer [2]_.
-
-    See Equation (13.72) of Bellan [3]_ for comparison.
-    The Bellan equation has a term :math:`(1 + m_T / m_e)` but here
-    the test particles are ions, so their masses are much larger
-    than the electron masses; that term is not present in Medley.
-
     References
     ----------
-    .. [1] Medley, S. S.; Gorelenkov, N. N.; Andre, R.; Bell, R. E.;
-       Darrow, D. S.; Fredrickson, E. D.; Kaye, S. M.; LeBlanc, B. P.;
-       Roquemore, A. L.;
-       MHD-Induced Energetic Ion Loss during H-Mode Discharges in
-       the National Spherical Torus Experiment.
-       Nuclear Fusion 2004, 44 (11), 1158–1175.
-       https://doi.org/10.1088/0029-5515/44/11/002.
+    Menard uses Equation (2) of Medley :footcite:t:`medley_mhd-induced_2004`.
+    That version includes a numerical constant, 6.27e14.
+    Medley cites Spitzer :footcite:p:`spitzer_physics_2006`.
 
-    .. [2] Spitzer, L. Physics of Fully Ionized Gases.
-       Interscience, New York, 2nd Revised edition.
-       Equations 5-29.
-
-    .. [3] Bellan, P. Fundamentals of Plasma Physics;
-       Cambridge University Press, 2006.
+    See Equation (13.72) of Bellan :footcite:p:`bellan_fundamentals_2006`.
+    for comparison. The Bellan equation has a term :math:`(1 + m_T / m_e)`
+    but here the test particles are ions, so their masses are much larger
+    than the electron masses; that term is not present in Medley.
     """
     def setup(self):
         # the constant is equal to
@@ -276,7 +253,16 @@ class AverageEnergyWhileSlowing(om.ExplicitComponent):
 
     .. math::
 
-        \frac{1}{\tau_\mathrm{th}} \int_0^{\tau_{th}} W(t) \; dt
+        \bar{W} = \frac{1}{\tau_\mathrm{th}} \int_0^{\tau_{th}} W(t) \; dt
+
+    With :math:`W_r \equiv W/W_c`,
+
+    .. math::
+
+        \bar{W} = \frac{W_c}{6 \log(1 + W_r)} \left(-4\cdot\, 3^{1/2} \pi +
+          9(1 + W_r^{3/2})^{2/3}
+             \, _2F_1\left(-\frac{2}{3}, -\frac{2}{3}; \frac{1}{3};
+             \frac{1}{1 + W_r^{3/2}} \right)\right)
 
     Inputs
     ------
@@ -344,7 +330,17 @@ class AverageEnergyWhileSlowing(om.ExplicitComponent):
 class StixCriticalSlowingEnergy(om.ExplicitComponent):
     r"""Critical energy for fast particles slowing down
 
-    where energy is transferred equally to ions and electrons
+    This is the energy at which the energy lost is transferred equally to ions
+    and electrons, as computed by :footcite:t:`stix_heating_1972`.
+
+    .. math::
+
+        \alpha' &= A_t \sum_i n_i Z_i^2 / A_i
+
+        \beta' &= \frac{4}{3 \pi^{1/2}} n_e
+
+        W_\mathrm{crit} &= T_e \left(\frac{m_T}{m_e}\right)^{1/3}
+            \left(\frac{\alpha'}{\beta'}\right)^{2/3}
 
     Inputs
     ------
@@ -365,25 +361,6 @@ class StixCriticalSlowingEnergy(om.ExplicitComponent):
     -------
     W_crit : float
         keV, Critical energy for slowing ions
-
-    Notes
-    -----
-
-    .. math::
-
-        \alpha' = A_t \sum_i n_i Z_i^2 / A_i
-
-        \beta' = \frac{4}{3 \pi^{1/2}} n_e
-
-        W_\mathrm{crit} = T_e \left(\frac{m_T}{m_e}\right)^(1/3}
-            \left(\frac{\alpha'}{\beta'}\right)^{2/3}
-
-    References
-    ----------
-    .. [1] Stix, T. H. Heating of Toroidal Plasmas by Neutral Injection.
-       Plasma Physics 1972, 14 (4), 367–384.
-       https://doi.org/10.1088/0032-1028/14/4/002.
-
     """
     def setup(self):
         self.add_input('At', units="u", desc="Test particle atomic mass")
@@ -471,6 +448,16 @@ class BellanCriticalSlowingEnergy(om.ExplicitComponent):
 
     where energy is transferred equally to ions and electrons
 
+    .. math::
+
+        \alpha' &= \sum_i n_i Z_i^2 (1 + A_t / A_i)
+
+        \beta' &= \frac{4}{3 \pi^{1/2}} n_e
+
+        W_\mathrm{crit} &= T_e \left(\frac{m_T}{m_e}\right)^{1/3}
+            \left(\frac{\alpha'}{\beta'}\right)^{2/3}
+
+
     Inputs
     ------
     At : float
@@ -494,34 +481,20 @@ class BellanCriticalSlowingEnergy(om.ExplicitComponent):
     Notes
     -----
 
-    .. math::
-
-        \alpha' = \sum_i n_i Z_i^2 (1 + A_t / A_i)
-
-        \beta' = \frac{4}{3 \pi^{1/2}} n_e
-
-        W_\mathrm{crit} = T_e \left(\frac{m_T}{m_e}\right)^(1/3}
-            \left(\frac{\alpha'}{\beta'}\right)^{2/3}
-
-    Bellan does not explicitly provide a formula for the critical slowing
-    energy, but it can be derived from Equation 13.72.
-    The major difference from Stix's treatment is that the summation here
-    called :math:`\alpha'` is over :math:`n_i Z_i^2 (1 + A_t/A_i)`,
+    Bellan :footcite:p:`bellan_fundamentals_2006` does not explicitly
+    provide a formula for the critical slowing energy, but it can be
+    derived from Equation 13.72. The major difference from the treatment
+    of :footcite:t:`stix_heating_1972` is that the summation here called
+    :math:`\alpha'` is over :math:`n_i Z_i^2 (1 + A_t/A_i)`,
     whereas Stix sums :math:`n_i Z_i^2 (A_t/A_i)`. This term is a reduced mass
     :math:`\mu` and can be traced back to the collision operator. I'm not sure
     why it's not present in Stix's treatment.
-    Stix cites Sivukhin [3]_, Equation 8.1.
+    Stix cites Sivukhin, Equation 8.1.
 
     References
     ----------
-    .. [1] Bellan, P. Fundamentals of Plasma Physics;
-       Cambridge University Press, 2006.
 
-    .. [2] Stix, T. H. Heating of Toroidal Plasmas by Neutral Injection.
-       Plasma Physics 1972, 14 (4), 367–384.
-       https://doi.org/10.1088/0032-1028/14/4/002.
-
-    .. [3] Sivukhin, D. V. (1966).
+       Sivukhin, D. V. (1966).
        Reviews of Plasma Physics (M. A. Leontovich, Ed.)
        Consultants Bureau, New York, Vol. 4, p.93, Equation 8.1
 
@@ -610,6 +583,12 @@ class BellanCriticalSlowingEnergy(om.ExplicitComponent):
 class CriticalSlowingEnergyRatio(om.ExplicitComponent):
     r"""Ratio of test particle energy to critical energy
 
+    This module simply combines the two inputs into a single
+    quantity representing their ratio, which is useful to simplify various
+    derivative calculations.
+
+    .. math:: \left[\frac{W}{W_c}\right] = W / W_c
+
     Inputs
     ------
     W : float
@@ -642,7 +621,28 @@ class CriticalSlowingEnergyRatio(om.ExplicitComponent):
 
 
 class FastParticleSlowing(om.Group):
-    r"""
+    r"""Top-level group for fast particles
+
+    After calculating the critical fast particle energy it can be scaled by a
+    multiplier before proceeding with further calculations.
+
+    .. math::
+
+        W_\mathrm{crit} = \mathrm{scale} \; W_{\mathrm{crit},0}
+
+    Given the source rate :math:`S` for a given group of fast particles
+    the group also calculates the total fast-particle stored energy
+    from that group.
+
+    .. math::
+
+        W_\mathrm{fast} = \bar{W}\, \tau_\mathrm{th}\, S
+
+    Options
+    -------
+    config : UserConfigurator
+        Configuration tree. Required option.
+
     Inputs
     ------
     S : float
@@ -687,7 +687,8 @@ class FastParticleSlowing(om.Group):
     -----
     Inputs from the configuration file:
 
-    method: "Stix" or "Menard" or "Bellan"
+    method:
+       "Stix" or "Menard" or "Bellan"
        This controls the calculation method for the critical slowing energy.
        "Menard" is an alias for "Stix" here.
 

@@ -6,6 +6,13 @@ import openmdao.api as om
 
 class AuxilliaryPower(om.ExplicitComponent):
     r"""
+
+    .. math::
+       P_\mathrm{aux,h} &= P_\mathrm{NBI} + P_\mathrm{RF}
+
+       P_\mathrm{aux,e} &= P_\mathrm{NBI}/η_\mathrm{NBI} +
+                          P_\mathrm{RF}/η_\mathrm{RF}
+
     Inputs
     ------
     P_NBI : float
@@ -77,7 +84,12 @@ class AuxilliaryPower(om.ExplicitComponent):
 
 
 class RecirculatingElectricPower(om.ExplicitComponent):
-    r"""
+    r"""Total recirculating power
+
+    .. math:: P_\mathrm{recirc} = P_\mathrm{aux} +
+                                  P_\mathrm{cryo} +
+                                  P_\mathrm{pumps} +
+                                  P_\mathrm{control}
 
     Inputs
     ------
@@ -136,6 +148,17 @@ class RecirculatingElectricPower(om.ExplicitComponent):
 
 class TotalThermalPower(om.ExplicitComponent):
     r"""
+
+    In addition to the heat leaving the plasma and generated in the blanket,
+    the cooling systems are not perfectly efficient. They must remove heat
+    generated due to losses in their own pipes.
+
+    .. math::
+
+        P_\mathrm{primary} &= P_\mathrm{bl} + P_α + P_\mathrm{aux}
+
+        P_\mathrm{heat} &= P_\mathrm{primary} + P_\mathrm{coolant}
+
     Inputs
     ------
     P_blanket : float
@@ -205,7 +228,21 @@ class SimpleGeneratedPower(om.ExplicitComponent):
     r"""Simplified power generation
 
     .. math::
-       P_\mathrm{el} = \eta_{th} * P_\mathrm{heat}
+       P_\mathrm{el} = η_\mathrm{th} \; P_\mathrm{heat}
+
+    The thermal-to-electric conversion efficiency is loaded from the
+    configuration tree::
+
+      machine:
+        electrical generation:
+          efficiency: <η>
+
+    The default if no configuration tree is provided is 0.45.
+
+    Options
+    -------
+    config : UserConfigurator
+        Configuration tree.
 
     Inputs
     ------
@@ -249,13 +286,11 @@ class PowerplantQ(om.ExplicitComponent):
     r"""End power plant efficiency metrics
 
     .. math::
-        Q_\mathrm{eng} = P_\mathrm{gen} / P_\mathrm{recirc}
+        Q_\mathrm{eng} &= P_\mathrm{gen} / P_\mathrm{recirc}
 
-    .. math::
-        P_\mathrm{net} = P_\mathrm{gen} - P_\mathrm{recirc}
+        P_\mathrm{net} &= P_\mathrm{gen} - P_\mathrm{recirc}
 
-    .. math::
-        f_\mathrm{recirc} = Q_\mathrm{eng}^{-1}
+        f_\mathrm{recirc} &= Q_\mathrm{eng}^{-1}
 
     Inputs
     ------
@@ -315,7 +350,12 @@ class PowerplantQ(om.ExplicitComponent):
 
 
 class Powerplant(om.Group):
-    r"""
+    r"""Top-level group for overall electric plant performance
+
+    Options
+    -------
+    config : UserConfigurator
+        Configuration tree. Required input.
 
     Inputs
     ------
@@ -327,8 +367,6 @@ class Powerplant(om.Group):
         MW, RF power that heats the plasma
     η_RF : float
         Wall-plug efficiency of RF heating
-    P_aux : float
-        MW, Auxilliary heating electric power
     P_cryo : float
         MW, Electric power to drive cryogenic systems
 

@@ -11,6 +11,22 @@ class SimplePlasmaControlPower(om.ExplicitComponent):
     to control the plasma. In general this should depend on the plasma
     and magnet geometry.
 
+    .. math:: P_\mathrm{control} = c \, P_\mathrm{thermal}
+
+    The constant c is loaded from the configuration tree::
+
+      machine:
+        plasma control system:
+          power factor: <c>
+
+    The default in the case of no configuration tree is 0.04.
+
+    Options
+    -------
+    config : UserConfigurator
+        Configuration tree.
+
+
     Inputs
     ------
     P_thermal : float

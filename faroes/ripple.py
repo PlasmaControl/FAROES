@@ -7,8 +7,9 @@ class SimpleRipple(om.ExplicitComponent):
     r"""Ripple magnitude estimation from Wesson
 
     Estimates vacuum toroidal field ripple magnitude at the midplane,
-    for filamentary currents.  Formula is provided in [1]_. A comparison
-    is given in [2]_ to a more sophisticated formula.
+    for filamentary currents.  Formula is provided in
+    :footcite:t:`wesson_tokamaks_2004`. A comparison is given in
+    :footcite:t:`kovari_process_2014` to a more sophisticated formula.
 
     .. math::
 
@@ -33,17 +34,6 @@ class SimpleRipple(om.ExplicitComponent):
     -------
     δ : float
         Normalized ripple strength
-
-    References
-    ----------
-    .. [1] Wesson, J. Tokamaks, 3rd ed.;
-       Oxford University Press: New York, 2004.
-       Section 4.11: Ripple transport. Page 175.
-
-    .. [2] Kovari, M.; Kemp, R.; Lux, H.; Knight, P.; Morris, J.; Ward, D. J.
-       "PROCESS": A Systems Code for Fusion Power Plants—Part 1: Physics.
-       Fusion Engineering and Design 2014, 89 (12), 3054–3069.
-       https://doi.org/10.1016/j.fusengdes.2014.09.018.
     """
     def initialize(self):
         self.options.declare("config", default=None, recordable=False)

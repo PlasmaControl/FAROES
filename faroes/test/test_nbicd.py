@@ -145,19 +145,19 @@ class TestCurrentDriveEfficiencyTerms(unittest.TestCase):
         prob = self.prob
 
         prob.run_driver()
-        assert_near_equal(prob["line1"], 0.3233, tolerance=1e-3)
+        assert_near_equal(prob["term1"], 0.3233, tolerance=1e-3)
 
     def test_values2(self):
         prob = self.prob
 
         prob.run_driver()
-        assert_near_equal(prob["line2"], 1.007, tolerance=1e-3)
+        assert_near_equal(prob["term2"], 1.007, tolerance=1e-3)
 
     def test_values3(self):
         prob = self.prob
 
         prob.run_driver()
-        assert_near_equal(prob["line3"], 0.307878, tolerance=1e-3)
+        assert_near_equal(prob["term3"], 0.307878, tolerance=1e-3)
 
 
 class TestCurrentDriveEfficiency(unittest.TestCase):

@@ -20,11 +20,13 @@ _DT_fusion_data = {
 
 
 class SimpleRateCoeff(om.ExplicitComponent):
-    r"""Simple fusion rate coefficient
+    r"""Fusion rate coefficient
 
     .. math::
 
-       \sigma v = 1.1 \times 10^{-24} T^2
+       \left<\sigma v\right> =
+       1.1 \times 10^{-24}\,\mathrm{m}^3 \mathrm{s}^{-1}
+       (T_i/\mathrm{keV})^2
 
     Inputs
     ------
@@ -63,6 +65,20 @@ class SimpleRateCoeff(om.ExplicitComponent):
 
 class VolumetricThermalFusionRate(om.ExplicitComponent):
     r"""
+
+    .. math:: \mathrm{rate}_\mathrm{fus}/V =
+              \left<\sigma\,v\right>\, n_D\, n_T
+
+    .. math::
+       P_\mathrm{fus}/V &=
+              \epsilon_\mathrm{fus} \,\mathrm{rate}_\mathrm{fus}/V
+
+       P_n/V &= \frac{4}{5} P_\mathrm{fus}/V
+
+       P_\alpha/V &= \frac{1}{5} P_\mathrm{fus}/V
+
+    where :math:`\epsilon_\mathrm{fus}` is the total energy released by one
+    fusion reaction.
 
     Inputs
     ------
@@ -165,7 +181,8 @@ class NBIBeamTargetFusion(om.ExplicitComponent):
 
     .. math::
 
-        \mathrm{Rate} = 80 * 1.1e14 P_\mathrm{NBI} \left<T_e\right>^{3/2}
+        \mathrm{rate} = 80 * 1.1\cdot10^{14} P_\mathrm{NBI}
+                        \left<T_e\right>^{3/2}
 
     Inputs
     ------
@@ -180,29 +197,15 @@ class NBIBeamTargetFusion(om.ExplicitComponent):
         1/as, Fusion reaction rate
     P_fus : float
         MW, Total fusion power
-    #P_α : float
-    #    MW, Fusion alpha power
-    #P_n : float
-    #    MW, Fusion neutron power
 
     Notes
     -----
-    From Menard spreadsheet cells T318 and T319. There is a reference
-    to [1], though I could not find the formula anywhere in the paper.
-
-    The rightmost part of the formula assumes D-D fusion rates only,
+    The formula apart from the 80 assumes D-D fusion rates only,
     while the factor 80 represents the rate increase from D-D to 50/50 D/T.
 
     References
     ----------
-    [1] Strachan, J. D.; Colestock, P. L.; Davis, S. L.; Eames, D.;
-    Efthimion, P. C.; Eubank, H. P.; Goldston, R. J.; Grisham, L. R.;
-    Hawryluk, R. J.; Hosea, J. C.; Hovey, J.; Jassby, D. L.;
-    Johnson, D. W.; Mirin, A. A.; Schilling, G.; Stooksberry, R.;
-    Stewart, L. D.; Towner, H. H.
-    Fusion Neutron Production during Deuterium Neutral-Beam Injection
-    into the PLT Tokamak. Nuclear Fusion 1981, 21 (1), 67–81.
-    https://doi.org/10.1088/0029-5515/21/1/006.
+    :footcite:t:`strachan_fusion_1981`
 
     """
     def setup(self):
@@ -277,7 +280,17 @@ class NBIBeamTargetFusion(om.ExplicitComponent):
 
 
 class TotalDTFusionRate(om.ExplicitComponent):
-    r"""From thermal and beam-target components
+    r"""Adds thermal and beam-target components
+
+    .. math::
+       r_\mathrm{fus} &= r_\mathrm{th} + r_\mathrm{NBI}
+
+       P_\mathrm{fus} &= P_\mathrm{fus,th} + P_\mathrm{fus,NBI}
+
+    .. math::
+       P_\alpha &= \frac{1}{5} P_\mathrm{fus}
+
+       P_n &= \frac{4}{5} P_\mathrm{fus}
 
     Inputs
     ------
@@ -304,8 +317,7 @@ class TotalDTFusionRate(om.ExplicitComponent):
 
     Notes
     -----
-    The rates and powers are trivially linked, but they're already calculated
-    elsewhere so I don't want to update everything.
+    The rates and powers are trivially linked, of course.
     """
     def setup(self):
         data = _DT_fusion_data
@@ -374,6 +386,10 @@ class TotalDTFusionRate(om.ExplicitComponent):
 class SimpleFusionAlphaSource(om.ExplicitComponent):
     r"""Source for alpha particle properties
 
+    Although these are essentially constants of nature,
+    this component serves as a convenient way to make properties
+    available as OpenMDAO variables.
+
     Outputs
     -------
     E : float
@@ -381,7 +397,9 @@ class SimpleFusionAlphaSource(om.ExplicitComponent):
     A : float
         u, mass of particles
     Z : int
-        e, Charge of beam particles
+        e, Charge of α particles
+    v : float
+        m/s, Alpha particle initial velocity
     """
     def setup(self):
         # number of particles in a millimole

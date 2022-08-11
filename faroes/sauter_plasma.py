@@ -14,25 +14,23 @@ from numpy import sin, cos
 class SauterGeometry(om.ExplicitComponent):
     r"""Plasma shape from Sauter's formulas.
 
-    Sauter's paper [1]_ describes plasma with a LCFS
+    :footcite:t:`sauter_geometric_2016` describes plasma with a LCFS
     (last closed flux surface) shape parameterized by the angle around the
-    magnetic axis :math:`\theta`,
+    magnetic axis :math:`θ`,
 
     .. math::
-
-        R &= R_0 + a\cos(\theta + \delta\sin(\theta) - \xi\sin(2\theta)) \\
-        Z &= \kappa a\sin(\theta + \xi\sin(2\theta))
+        R &= R_0 + a\cos(θ + δ\sin(θ) - ξ\sin(2θ)) \\
+        Z &= κ a\sin(θ + ξ\sin(2θ))
 
     where :math:`a` is the minor radius, :math:`\kappa` is elongation,
     :math:`\delta` is triangularity, and :math:`\xi` is "squareness".
     The basic shape properties are defined in the usual way,
 
     .. math::
-
         R_0 &= \frac{R_\mathrm{out} + R_\mathrm{in}}{2} \\
         a &= \frac{R_\mathrm{out} - R_\mathrm{in}}{2} \\
-        \epsilon &= a / R_0 \\
-        \kappa &= \frac{Z_\mathrm{top} - Z_\mathrm{bot}}{R_\mathrm{out} -
+        ε &= a / R_0 \\
+        κ &= \frac{Z_\mathrm{top} - Z_\mathrm{bot}}{R_\mathrm{out} -
         R_\mathrm{in}}. \\
 
     Because the exact cross-sectional area :math:`S_c`, poloidal circumference
@@ -42,21 +40,22 @@ class SauterGeometry(om.ExplicitComponent):
     in parameter space.
 
     .. math::
+       S_c &= (π a^2 κ)(1 + 0.52 (w_{07} - 1))
 
-       S_c &= (\pi a^2 \kappa)(1 + 0.52 (w_{07} - 1)) \\
-        L_\mathrm{pol} &= (2 \pi a (1 + 0.55 (\kappa - 1))
-           (1 + 0.08 δ^2)(1 + 0.2(w_{07} - 1))) \\
-       A_p &= (2 \pi R_0)(1 - 0.32 \delta \epsilon) L_\mathrm{pol} \\
-       V &= (2 \pi R_0)(1 - 0.25\delta\epsilon) S_c
+        L_\mathrm{pol} &= (2 π a (1 + 0.55 (κ - 1))
+           (1 + 0.08 δ^2)(1 + 0.2(w_{07} - 1)))
+
+       A_p &= (2 π R_0)(1 - 0.32 δ ε) L_\mathrm{pol}
+
+       V &= (2 π R_0)(1 - 0.25δε) S_c
 
     where :math:`w_{07}` is the plasma width at 0.7 of the
     maximum height. It is defined by
 
     .. math::
+       θ_{07} &= \sin^{-1}(0.7) - (2 ξ) / (1 + (1 + 8 ξ^2)^{1/2})
 
-       \theta_{07} &= \sin^{-1}(0.7) - (2 \xi) / (1 + (1 + 8 \xi^2)^{1/2}) \\
-       w_{07} &= \cos(\theta_{07}- \xi \sin(2 \theta_{07}) / 0.51^{1/2})
-            (1 - 0.49 \delta^2/2).
+       w_{07} &= \cos(θ_{07}- ξ \sin(2 θ_{07}) / 0.51^{1/2}) (1 - 0.49 δ^2/2).
 
     The value :math:`V_{B0}` is the volume of toroidal magnetic field
     with the strength of that at R0, which would corresponds to an
@@ -67,24 +66,24 @@ class SauterGeometry(om.ExplicitComponent):
 
     .. math::
 
-        W_B = \int \frac{B_t^2}{2 \mu_0} \; dV
-            = \frac{B_0^2}{2 \mu_0} R_0^2 \int \frac{1}{R^2} \; dV
+        W_B = \int \frac{B_t^2}{2 μ_0} \; dV
+            = \frac{B_0^2}{2 μ_0} R_0^2 \int \frac{1}{R^2} \; dV
 
     then :math:`V_{B0}` is
 
     .. math::
 
        V_{B02} = R_0^2 \int \frac{1}{R^2} \; dV
-              = R_0^2 \int_0^{2\pi} \frac{Z(\theta)
-                2 \pi R(\theta)}{R^2(\theta)}
-                \left(-\frac{dR(\theta)}{d\theta}\right) \; d\theta
-              = R_0^2 2 \int_0^{\pi} \frac{Z(\theta)
-                2 \pi R(\theta)}{R^2(\theta)}
-                \left(\frac{dR(\theta)}{d\theta}\right) \; d\theta
+              = R_0^2 \int_0^{2π} \frac{Z(θ)
+                2 π R(θ)}{R^2(θ)}
+                \left(-\frac{dR(θ)}{dθ}\right) \; dθ
+              = R_0^2 2 \int_0^{π} \frac{Z(θ)
+                2 π R(θ)}{R^2(θ)}
+                \left(\frac{dR(θ)}{dθ}\right) \; dθ
 
     where the negative sign appears because :math:`dR/d\theta` is negative. The
     value :math:`V_{B0,n}` is a normalization such that when
-    :math:`\delta = \xi = 0`, it equals the actual plasma volume.
+    :math:`δ = ξ = 0`, it equals the actual plasma volume.
 
     .. math::
        V_{B02,n} = V_{B0} \frac{R_0 + \sqrt{R_0^2 - a^2}}{2 R_0}.
@@ -156,12 +155,6 @@ class SauterGeometry(om.ExplicitComponent):
     <(R0/R)^2>n : float
         Volume average of (R/R0)^2, normalized to unity for an elliptical
         plasma. Thus this only depends on A, δ, and ξ.
-
-
-    References
-    ----------
-    .. [1] Fusion Engineering and Design 112, 633-645 (2016);
-       http://dx.doi.org/10.1016/j.fusengdes.2016.04.033
     """
     def initialize(self):
         self.options.declare("config", default=None, recordable=False)
@@ -526,7 +519,8 @@ class SauterGeometry(om.ExplicitComponent):
 class SauterPlasmaGeometryMarginalKappa(om.Group):
     r"""Sauter's general plasma shape and blanket with automatic elongation.
 
-    Uses :code:`MenardKappaScaling`.
+    Uses :class:`.MenardKappaScaling`.
+    Otherwise behaves like :class:`.SauterGeometry`.
     """
     def initialize(self):
         self.options.declare('config', default=None, recordable=False)

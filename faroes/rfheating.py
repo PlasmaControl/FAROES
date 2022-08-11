@@ -3,16 +3,26 @@ from faroes.configurator import UserConfigurator, Accessor
 
 
 class SimpleRFHeatingProperties(om.Group):
-    r"""Helper for the SimpleNBISource
+    r"""Helper for the SimpleRFHeating
+
+    Loads from the configuration tree::
+
+        h_cd:
+          RF:
+            power: <P>
+            wall-plug efficiency: <eff>
+
+    Options
+    -------
+    config : UserConfigurator
+        Configuration tree. Required option.
 
     Outputs
     -------
     P : float
-        MW, Neutral beam power to plasma
+        MW, RF heating power absorbed in plasma
     eff : float
         Wall-plug efficiency
-    P_aux : float
-        MW, Wall-plug power
     """
     def initialize(self):
         self.options.declare("config", default=None, recordable=False)
@@ -27,13 +37,24 @@ class SimpleRFHeatingProperties(om.Group):
 
 
 class SimpleRFHeating(om.Group):
-    r"""RF heating that does not drive current, but might be more efficient than
-    NBI heating.
+    r"""RF heating that does not drive current
+
+    Calculates the required auxilliary power
+
+    .. math:: P_\mathrm{aux} = P / \mathrm{eff}
+
+    where :math:`P` and 'eff' are loaded from the configuration tree
+    by :class:`.SimpleRFHeatingProperties`.
+
+    Options
+    -------
+    config : UserConfigurator
+        Configuration tree. Required option.
 
     Outputs
     -------
     P : float
-        MW, Neutral beam power to plasma
+        MW, RF heating power absorbed in plasma
     eff : float
         Wall-plug efficiency
     P_aux : float

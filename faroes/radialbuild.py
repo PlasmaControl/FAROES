@@ -11,6 +11,28 @@ from faroes.blanket import OutboardBlanketFit
 
 class Properties(om.Group):
     r"""Helper for the Menard ST radial build
+
+    Options
+    -------
+    config : UserConfigurator
+        Configuration tree. Required option.
+
+    Outputs
+    -------
+    Ib WC VV shield thickness : float
+        m
+    Ib FW thickness : float
+        m
+    Ib SOL width : float
+        m
+    Ob SOL width : float
+        m
+    Ob access thickness : float
+        m
+    Ob vv thickness : float
+        m
+    TF-cryostat thickness : float
+        m
     """
     def initialize(self):
         self.options.declare('config', default=None, recordable=False)
@@ -62,6 +84,30 @@ class Properties(om.Group):
 
 class CSToTF(om.ExplicitComponent):
     r"""Radial build out to the inside of the TF
+
+    A diagram of the radial build is shown below. On the left, (after the first
+    entry) are the thicknesses of the various components. On the right are the
+    absolute radii of various points (generally the inner or outer extent of
+    components). Two entries on the same line have equal radii.::
+
+             Inputs   Outputs
+
+         Plug R_out + CS R_in
+              CS ΔR |
+                    + CS R_out
+          CS-TF gap |
+                    + TF R_in
+
+    Notes
+    -----
+
+    "CS R_in" is equal to "Plug R_out".
+
+    Options
+    -------
+    config : UserConfigurator
+        Configuration tree. Used to load a default value for "CS-TF gap", else
+        it is zero.
 
     Inputs
     ------
@@ -142,6 +188,45 @@ class CSToTF(om.ExplicitComponent):
 class MenardSTInboard(om.ExplicitComponent):
     r"""From outside of the TF to the first wall
 
+    A diagram of the radial build is shown below. On the left, (after the first
+    entry) are the thicknesses of the various components. On the right are the
+    absolute radii of various points (generally the inner or outer extent of
+    components). Two entries on the same line have equal radii.::
+
+                                Inputs   Outputs
+
+                              TF R_out +
+           *TF true position tolerance |
+                    *vacuum vessel TPT |
+      *wedge assembly fit-up thickness |
+                                       + Thermal shield R_in
+             *Thermal shield thickness |
+                            *vv ts gap |
+                                       + VV R_in
+             *vv inner shell thickness |
+                                       + VV 2nd shell R_out, WC VV shield R_in
+                WC VV shield thickness |
+                                       + WC VV shield R_out, VV 1st shell R_in
+             *vv outer shell thickness |
+                                       + VV R_out, WC shield R_in
+                   WC shield thickness |
+                                       + WC shield R_out
+          *extra shield to blanket gap |
+                    *vacuum vessel TPT |
+                                       + blanket R_in
+                     blanket thickness |
+                                       + blanket R_out, FW R_in
+                          FW thickness |
+                                       + FW R_out
+
+    The components on the left marked with a * are loaded from the
+    configurator.
+
+    Options
+    -------
+    config : UserConfigurator
+        Configuration tree.
+
     Inputs
     ------
     TF R_out : float
@@ -186,7 +271,7 @@ class MenardSTInboard(om.ExplicitComponent):
 
     Thermal shield to FW : float
         m, Total thickness of region including
-               the thermal shield and inboard FW
+        the thermal shield and inboard FW
     Shield to FW: float
         m, Total thickness from the outer WC shield to FW
     Blanket to FW : float
@@ -205,7 +290,7 @@ class MenardSTInboard(om.ExplicitComponent):
                 ["wedge assy fit-up thickness"], units="m")
             self.thermal_shield_thickness = ac(
                 ["thermal shield insulation thickness"], units="m")
-            vv_tf_gap = ac(["vv tf gap thickness"], units="m")
+            vv_ts_gap = ac(["vv ts gap thickness"], units="m")
             self.vv_inner_shell_thickness = ac(["vv inner shell thickness"],
                                                units="m")
             self.vv_outer_shell_thickness = ac(["vv outer shell thickness"],
@@ -218,7 +303,7 @@ class MenardSTInboard(om.ExplicitComponent):
                        desc="Inboard TF leg casing outer radius")
         self.add_input("Thermal shield to VV gap",
                        units='m',
-                       val=vv_tf_gap,
+                       val=vv_ts_gap,
                        desc="Gap between thermal shield and vacuum vessel")
         self.add_input(
             "WC VV shield thickness",
@@ -367,6 +452,22 @@ class MenardSTInboard(om.ExplicitComponent):
 class Plasma(om.ExplicitComponent):
     r"""From inboard FW to outboard FW
 
+    A diagram of the radial build is shown below. On the left, (after the first
+    entry) are the thicknesses of the various components. On the right are the
+    absolute radii of various points.::
+
+            Inputs   Outputs
+
+       Ib FW R_out +
+      Ib SOL width |
+                   + R_in
+                 a |
+                   + R0
+                 a |
+                   + R_out
+      Ob SOL width |
+                   + Ob FW R_in
+
     Inputs
     ------
     Ib FW R_out : float
@@ -463,6 +564,24 @@ class Plasma(om.ExplicitComponent):
 class MenardSTOutboard(om.ExplicitComponent):
     r"""Outboard radial build
 
+    A diagram of the radial build is shown below. On the left, (after the first
+    entry) are the thicknesses of the various components. On the right are the
+    absolute radii of various points (generally the inner or outer extent of
+    components). Two entries on the same line have equal radii.::
+
+                 Inputs   Outputs
+
+             Ob FW R_in + blanket R_in
+      blanket thickness |
+                        + blanket R_out
+       shield thickness |
+                        + shield R_out
+       access thickness |
+           VV thickness |
+                        + TF R_min
+           gap thickness|
+                        + TF R_in
+
     Inputs
     ------
     Ob FW R_in : float
@@ -470,26 +589,26 @@ class MenardSTOutboard(om.ExplicitComponent):
     blanket thickness : float
         m, Thickness of FW and blanket
     shield thickness : float
-        m, thickness of neutron shield
+        m, Thickness of neutron shield
     access thickness : float
-        m, thickness of access region
+        m, Thickness of access region
     VV thickness : float
-        m, thickness of vacuum vessel
+        m, Thickness of vacuum vessel
     gap thickness : float
-        m, thickness of extra gap in front of TF
+        m, Thickness of extra gap in front of TF
 
     Outputs
     -------
     blanket R_in : float
-        m, inner radius of outboard blanket at midplane
+        m, Inner radius of outboard blanket at midplane
     blanket R_out : float
-        m, outer radius of outboard blanket at midplane
+        m, Outer radius of outboard blanket at midplane
     shield R_out : float
-        m, outer radius of outboard blanket at midplane
+        m, Outer radius of outboard blanket at midplane
     TF R_min : float
-        m, minimum radius of inner part of TF outboard leg
+        m, Minimum radius of inner part of TF outboard leg
     TF R_in : float
-        m, inner radius of inner part of TF outboard leg
+        m, Inner radius of inner part of TF outboard leg
     """
     def setup(self):
 
@@ -497,9 +616,9 @@ class MenardSTOutboard(om.ExplicitComponent):
         self.add_input("Ob FW R_in",
                        units="m",
                        desc="Outboard midplane first wall inner radius")
-        self.add_input("blanket thickness", units="m", val=1.0)
+        self.add_input("blanket thickness", units="m", val=1.0,
+                       desc="Thickness of first wall & blanket")
 
-        # I think this is where the PF coils go?
         self.add_input("access thickness", units="m", desc="Access thickness")
         self.add_input("VV thickness", units="m", desc="Vacuum vessel")
         self.add_input("shield thickness", units="m", desc="Neutron shield")
@@ -570,6 +689,17 @@ class MenardSTOutboard(om.ExplicitComponent):
 
 class MenardSTOuterMachine(om.ExplicitComponent):
     r"""Radial build outside the TF coils
+
+    A diagram of the radial build is shown below. On the left, (after the first
+    entry) are the thicknesses of the various components. On the right are the
+    absolute radii of various points (generally the inner or outer extent of
+    components).::
+
+                               Inputs   Outputs
+
+                          Ob TF R_out +
+                TF-cryostat thickness |
+                                      + cryostat R_out
 
     Inputs
     ------

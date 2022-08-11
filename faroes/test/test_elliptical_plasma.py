@@ -30,23 +30,6 @@ class TestEllipseLikeGeometry(unittest.TestCase):
         assert_check_partials(check, atol=1e-3)
 
 
-class TestKappaScaling(unittest.TestCase):
-    def setUp(self):
-        prob = om.Problem()
-        prob.model = elliptical_plasma.MenardKappaScaling()
-        prob.model.kappa_multiplier = 0.95
-        prob.model.κ_ε_scaling_constants = [1.9, 1.9, 1.4]
-        prob.model.κ_area_frac = 0.8
-        prob.setup(force_alloc_complex=True)
-        prob.set_val('A', 1.6)
-        self.prob = prob
-
-    def test_partials(self):
-        prob = self.prob
-        check = prob.check_partials(out_stream=None, method='cs')
-        assert_check_partials(check)
-
-
 class TestMenardPlasmaGeometry(unittest.TestCase):
     def setUp(self):
         uc = UserConfigurator()

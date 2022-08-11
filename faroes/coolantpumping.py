@@ -11,6 +11,21 @@ class SimpleCoolantPumpingPower(om.ExplicitComponent):
     to pump the coolant. In general this should depend on the blanket
     details.
 
+    .. math:: P_\mathrm{pumps} = c \, P_\mathrm{thermal}
+
+    The constant c is loaded from the configuration tree::
+
+      machine:
+        coolant pumping system:
+          power factor: <c>
+
+    The default in the case of no configuration tree is 0.03.
+
+    Options
+    -------
+    config : UserConfigurator
+        Configuration tree.
+
     Inputs
     ------
     P_thermal : float

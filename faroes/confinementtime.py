@@ -5,12 +5,15 @@ import openmdao.api as om
 
 
 class ConfinementTime(om.Group):
-    r"""Energy confinement time group
+    r"""Scaled energy confinement time
 
     Options
     -------
+    config : UserConfigurator
+        Configuration tree. Required option.
     scaling : str
-        The scaling law to use. The default is specified in fits.yaml.
+        The scaling law to use. If ``"default"`` or ``None``, uses the
+        "default" option specified in ``fits.yaml``
 
     Inputs
     ------
@@ -69,6 +72,8 @@ class ConfinementTime(om.Group):
 class ConfinementTimeMultiplication(om.ExplicitComponent):
     r"""Energy confinement time
 
+    .. math:: \tau_e = H \tau_{e,\mathrm{law}}
+
     Inputs
     ------
     τe_law : float
@@ -110,10 +115,19 @@ class ConfinementTimeMultiplication(om.ExplicitComponent):
 class ConfinementTimeScaling(om.ExplicitComponent):
     r"""Confinement time scaling law
 
+    .. math::
+        \tau_e = c_0 I_p^{c_{I_p}}\,B_t^{c_{B_t}}\,n_{19}^{c_{n_{19}}}\,
+                 P_L^{c_{P_L}}\, R^{c_R}\,\epsilon^{c_\epsilon}\,
+                 \kappa_a^{c_{\kappa_a}}\,M^{c_M}
+
+
     Options
     -------
+    config : UserConfigurator
+        Configuration tree. Required option.
     scaling : str
-        The scaling law to use. The default is specified in fits.yaml.
+        The scaling law to use. If ``"default"`` or ``None``, uses the
+        "default" option specified in ``fits.yaml``.
 
     Inputs
     ------
@@ -139,6 +153,14 @@ class ConfinementTimeScaling(om.ExplicitComponent):
     -------
     τe : float
         s, confinement time
+
+    Raises
+    ------
+    ValueError
+        If any key in the scaling law dictionary is not one of a set of known
+        values.
+    om.AnalysisError
+        If any of the input values is negative during a computation.
 
     Notes
     -----
@@ -226,6 +248,54 @@ class ConfinementTimeScaling(om.ExplicitComponent):
 
 
 class MenardHybridScaling(om.Group):
+    r"""Aspect-ratio-dependent hybrid scaling law
+
+    This law is indended to bridge the gap between spherical tokamaks
+    and standard-aspect-ratio tokamaks, especially for :math:`A` of
+    around 1.5 to 2.5.
+
+    It uses a hyperbolic tangent to interpolate between the NSTX-MG
+    scaling law at small aspect ratio and the Petty scaling
+    :footcite:p:`petty_sizing_2008` at larger aspect ratio.
+
+    .. math::
+
+       \tau = f \tau_{e,\mathrm{NSTX-MG}} + (1 - f) \tau_{e,\mathrm{Petty}}
+
+       f = 0.5 + \tanh(10 \epsilon - 5) / 2
+
+    The interpolator :math:`f` is 0.5 at :math:`\epsilon=0.5` or :math:`A=2`.
+
+    Options
+    -------
+    config : UserConfigurator
+        Configuration tree. Required option.
+
+    Inputs
+    ------
+    Ip : float
+        MA, plasma current
+    Bt : float
+        T, toroidal field on axis
+    n19 : float
+        n19, electron density
+    PL : float
+        MW, heating power (or loss power)
+    R : float
+        m, major radius
+    ε : float
+        inverse aspect ratio a / R
+    κa : float
+        effective elongation, S_c / (π a^2),
+        where S_c is the plasma cross-sectional area
+    M : float
+        main ion mass number
+
+    Outputs
+    -------
+    τe : float
+        s, confinement time
+    """
     def initialize(self):
         self.options.declare('config', recordable=False)
 

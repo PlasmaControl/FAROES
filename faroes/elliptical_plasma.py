@@ -1,105 +1,9 @@
 from faroes.configurator import UserConfigurator
+from faroes.shapinglimits import MenardKappaScaling
 import faroes.util as util
 
 import openmdao.api as om
 from math import pi as π
-
-
-class MenardKappaScaling(om.ExplicitComponent):
-    r"""
-
-    Elongation :math:`\kappa` is determined by a "marginal scaling"
-    from Jon Menard:
-
-    .. math:: \kappa = 0.95 (1.9 + 1.9 / (A^{1.4})).
-
-    An factor ":math:`\kappa` area fraction" from the configuration file
-    multiplies the above "marginal :math:`\kappa`"
-    to generate :math:`\kappa_a`. The latter is used for computations
-    of the plasma cross-sectional area and volume.
-
-    Inputs
-    ------
-    A : float
-        Aspect ratio
-
-    Outputs
-    -------
-    κ : float
-        Elongation
-    κa : float
-        Effective elongation
-
-    Notes
-    -----
-    The fit coefficients are loaded from the configuration tree.
-    """
-    def initialize(self):
-        self.options.declare('config', default=None, recordable=False)
-
-    def setup(self):
-        if self.options['config'] is not None:
-            self.config = self.options['config']
-            ac = self.config.accessor(['fits'])
-            self.kappa_multiplier = ac(["κ multiplier"])
-            self.κ_area_frac = ac(["κ area fraction"])
-            self.κ_ε_scaling_constants = ac(
-                ["marginal κ-ε scaling", "constants"])
-
-        self.add_input("A", desc="Aspect Ratio")
-        self.add_output("κ", lower=0, ref=2, desc="Elongation")
-        self.add_output("κa", lower=0, ref=2, desc="Effective elongation")
-
-    def marginal_kappa_epsilon_scaling(self, aspect_ratio):
-        """
-        marginal kappa(epsilon) scaling
-
-        Parameters
-        ----------
-        aspect_ratio: float
-
-        References
-        ----------
-        Physics of Plasmas 11, 639 (2004);
-        https://doi.org/10.1063/1.1640623
-        "NSTX, FNSF-ST, DIII-D, EAST"
-        I guess this is how kappa scales with epsilon.
-
-        I'm not sure where it is in the paper, though.
-
-        [T73 from the spreadsheet]
-
-        b12 + c12/(t4^d12)
-
-        Values are from the "Scaling Parameters" sheet
-        """
-        constants = self.κ_ε_scaling_constants
-        b = constants[0]
-        c = constants[1]
-        d = constants[2]
-        return b + c / (aspect_ratio**d)
-
-    def compute(self, inputs, outputs):
-        A = inputs["A"]
-
-        if A <= 1:
-            raise om.AnalysisError(f"Aspect ratio A ={A} < 1")
-
-        κ = self.kappa_multiplier * self.marginal_kappa_epsilon_scaling(A)
-        outputs["κ"] = κ
-        outputs["κa"] = κ * self.κ_area_frac
-
-    def setup_partials(self):
-        self.declare_partials(["κ", "κa"], "A")
-
-    def compute_partials(self, inputs, J):
-        constants = self.κ_ε_scaling_constants
-        sp_c12 = constants[1]
-        sp_d12 = constants[2]
-        A = inputs["A"]
-        J["κ",
-          "A"] = -self.kappa_multiplier * sp_c12 * sp_d12 * A**(-sp_d12 - 1)
-        J["κa", "A"] = J["κ", "A"] * self.κ_area_frac
 
 
 class EllipseLikeGeometry(om.ExplicitComponent):
@@ -112,28 +16,27 @@ class EllipseLikeGeometry(om.ExplicitComponent):
            radius 'R0' from the central vertical axis of the torus.
 
     .. math::
+        a &= R_0 / A
 
-        a &= R_0 / A \\
-        \delta &= 0
+        δ &= 0
 
-    :math:`\kappa_a` is an 'effective elongation' which is the same
-    as :math:`\kappa` for a perfect ellipse plasma, but can be smaller
+    :math:`κ_a` is an 'effective elongation' which is the same
+    as :math:`κ` for a perfect ellipse plasma, but can be smaller
     to model a more realistic diverted plasma shape or volume.
-    The "ellipse-like plasma" has :math:`\kappa_a \neq \kappa`.
+    The "ellipse-like plasma" has :math:`κ_a \neq κ`.
 
     Other properties are determined using standard geometry formulas:
 
     .. math::
-
-        b &= \kappa a \\
-        \epsilon &= 1 / A \\
+        b &= κ a \\
+        ε &= 1 / A \\
         \textrm{full plasma height} &= 2 b \\
         L_\mathrm{pol} &= \textrm{ellipse_perimeter(a, b)} \\
         \textrm{surface area} &= 2 \pi R \, \textrm{ellipse_perimeter(a, b)} \\
         R_\mathrm{in} &= R - a \\
         R_\mathrm{out} &= R + a \\
-        V &= 2 \pi R \, \pi a^2 \kappa_a \\
-        S_c &= \pi a^2 \kappa_a .
+        V &= 2 \pi R \, \pi a^2 κ_a \\
+        S_c &= \pi a^2 κ_a .
 
     where :math:`L_\mathrm{pol}` is the poloidal circumference and :math:`S_c`
     is the poloidal cross-section area.
@@ -152,10 +55,10 @@ class EllipseLikeGeometry(om.ExplicitComponent):
     κ : float
         Elongation
     κa : float
-        Effective elongation, :math:`S_c / (\pi a^2)`
+        Effective elongation, :math:`S_c / (π a^2)`
 
         Here :math:`S_c` is the plasma cross-sectional area.
-        Same as :math:`\kappa` for this elliptical plasma.
+        Same as :math:`κ` for this elliptical plasma.
 
     Outputs
     -------
@@ -316,9 +219,13 @@ class EllipseLikeGeometry(om.ExplicitComponent):
 class EllipticalPlasmaGeometry(om.Group):
     r"""Perfect ellipse plasma.
 
-    Fixes :math:`\kappa_a = \kappa`.
+    Fixes :math:`κ_a = κ`.
 
-    Otherwise behaves like :code:`EllipseLikePlasma`.
+    Uses :class:`.MenardKappaScaling`
+    to determine :math:`κ`.
+
+    Otherwise behaves like
+    :class:`.EllipseLikeGeometry`.
     """
     def initialize(self):
         self.options.declare('config', default=None, recordable=False)
@@ -347,9 +254,10 @@ class MenardPlasmaGeometry(om.Group):
     r"""Not-quite-ellipse plasma shape.
 
     Loads "κ area fraction" from a configuration file
-    and has :math:`\kappa_a \neq \kappa`.
+    and has :math:`κ_a \neq κ`.
 
-    Otherwise behaves like :code:`EllipseLikePlasma`.
+    Otherwise behaves like
+    :class:`.EllipseLikeGeometry`.
     """
     def initialize(self):
         self.options.declare('config', default=None, recordable=False)

@@ -3,7 +3,22 @@ from scipy.constants import pi
 
 
 class SimpleCryostat(om.ExplicitComponent):
-    r"""Simple cryostat model
+    r"""Calculates cryostat height and volume
+
+    The cryostat height is a constant multiple, typically :math:`m=2`,
+    of the toroidal field coil total height:
+
+    .. math:: h_\mathrm{cryostat} = m\,\left(2\cdot\frac{1}{2}h_{TH}\right).
+
+    The cryostat volume is that of a cylinder,
+
+    .. math::
+       V_\mathrm{cryostat} = π\,R_\mathrm{out}^2 h_\mathrm{cryostat}.
+
+    Options
+    -------
+    config : UserConfigurator
+        Configuration tree.
 
     Inputs
     ------
@@ -21,8 +36,14 @@ class SimpleCryostat(om.ExplicitComponent):
 
     Notes
     -----
-    A "TF height multiple" is loaded from the configuration files.
+    The multiplier to find the cryostat height is loaded from the configuration
+    tree::
 
+      machine:
+        cryostat:
+          TF height multiple: <value>
+
+    If the configuration tree is not loaded, tf_height_multiple is 2.
     """
     def initialize(self):
         self.options.declare('config', default=None, recordable=False)

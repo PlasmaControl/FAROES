@@ -14,30 +14,40 @@ Welcome to FAROES's documentation!
 
 .. toctree::
    :maxdepth: 4
-   :caption: Contents:
+   :caption: Contents
 
    about
    install
    running_tests
+   bibliography
 
 .. toctree::
    :maxdepth: 4
-   :caption: Examples:
+   :caption: Examples
 
    running_an_example
    configuration
 
 .. toctree::
-   :maxdepth: 4
-   :caption: Physics and Engineering:
+   :maxdepth: 2
+   :caption: Physics and Engineering
 
-   plasma_shapes
-   plasma_physics
-   energy_confinement
    radial_build
    magnet_engineering
+   plasma_shapes
+   cryostat
+   plasma_physics
+   fusion_physics
    sol
    Radiation <radiation/index>
+   auxheating
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Powerplant
+
+   powerplant
+   costing
 
 
 Indices and tables

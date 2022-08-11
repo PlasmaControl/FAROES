@@ -8,11 +8,17 @@ import numpy as np
 class TrappedParticleFractionUpperEst(om.ExplicitComponent):
     r"""Upper estimate for the trapped particle fraction on a flux surface
 
+    .. math::
+
+       f_{\mathrm{trap},u} = 1 - \left(1 - \epsilon^2\right)^{-1/2}
+                                 \left(1 - \frac{3}{2} \epsilon^{1/2} +
+                                           \frac{1}{2} \epsilon^{3/2}\right)
+
     Notes
     -----
-    This is derived for "... the case of concentric, elliptical
-    flux surfaces that are adequate to describe low-β,
-    up-down symmetric equilibria"
+    This is derived by :footcite:t:`linliu_upper_1995`, Equation (13),
+    for "... the case of concentric, elliptical flux surfaces that
+    are adequate to describe low-β, up-down symmetric equilibria"
 
     This might be enhanced in the future into a 'mid-range'
     trapped-particle-fraction estimate, by programming in the lower estimate
@@ -27,14 +33,6 @@ class TrappedParticleFractionUpperEst(om.ExplicitComponent):
     -------
     ftrap_u : float
         Upper estimate of the trapped particle fraction on that surface
-
-    References
-    ----------
-    .. [1] Equation (13) of
-    Lin‐Liu, Y. R.; Miller, R. L. Upper and Lower Bounds
-    of the Effective Trapped Particle Fraction in General Tokamak Equilibria.
-    Physics of Plasmas 1995, 2 (5), 1666–1668.
-    https://doi.org/10.1063/1.871315.
     """
     def setup(self):
         self.add_input("ε", desc="Inverse aspect ratio of flux surface")
@@ -113,30 +111,37 @@ class SauterTrappedParticleFractionCalc(om.ExplicitComponent):
 class SauterTrappedParticleFraction(om.Group):
     r"""Sauter's estimate of trapped particle fraction with triangularity
 
-    Sauter's paper [1]_ defines
+    :footcite:t:`sauter_geometric_2016` defines
 
     .. math::
 
-       \epsilon_{eff} = 0.67 (1 - 1.4 \delta \left|\delta\right|right)\epsilon
+       f_t = 1 -
+           \frac{1 - \epsilon_\mathrm{eff}}
+           {1 + 2 \sqrt{\epsilon_\mathrm{eff}}}
+           \left(\frac{1-\epsilon}{1 +\epsilon}\right)
 
-    and
+    where
 
     .. math::
 
-       f_t = 1 - \frac{1 - \epsilon_{eff}}{1 + 2 \sqrt{\epsilon_{eff}}}
-             \left(\frac{1-\epsilon}{1 +\epsilon}\right)
+       \epsilon_\mathrm{eff} =
+           0.67 (1 - 1.4 \delta \left|\delta\right|)\epsilon.
 
-    Then as a limiter against :math:`f_t` > 1, which can happen in extreme
-    scenarios of very small :math:`\epsilon` and negative :math:`\delta`,
+    A limiter
 
     .. math::
 
         f_t = \min(1, f_t)
 
+    is applied against :math:`f_t` > 1, which can happen in extreme
+    scenarios of very small :math:`\epsilon` and negative :math:`\delta`.
+    For numerical reasons this is implemented with
+    :class:`.utils.SoftCapUnity`.
+
     Notes
     -----
-    I'm not sure if this is for an entire plasma or for a particular flux
-    surface.
+    I'm not sure if this is for an entire plasma or for a particular
+    flux surface.
 
     Inputs
     ------
@@ -149,11 +154,6 @@ class SauterTrappedParticleFraction(om.Group):
     -------
     ftrap : float
        Estimate of trapped particle fraction
-
-    References
-    ----------
-    .. [1] Fusion Engineering and Design 112, 633-645 (2016);
-       http://dx.doi.org/10.1016/j.fusengdes.2016.04.033
     """
     def setup(self):
         self.add_subsystem("ft",

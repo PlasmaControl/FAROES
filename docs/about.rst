@@ -12,8 +12,8 @@ This code is developed using funding from the Department of Energy, including Co
 Why FAROES?
 -----------
 The code is named for the Faroe Islands, a archipelago in the North Atlantic and part of the Kingdom of Denmark.
-The islands have a rugged and elemental appearance. The hills are not obscured by trees, so you can see every form and detail, which is reflected by the code's open-source nature.
-The glaciers carved valleys and fjords with wide, uniform profiles, which gives a 'geometric' appearance to the terrain. This is reflected by the code's zero-dimensional nature.
+The islands have a rugged and elemental appearance. The hills are not obscured by trees, so you can see every form and detail, which is reflected in the code's open-source nature.
+The glaciers carved valleys and fjords with wide, uniform profiles, which gives a 'geometric' appearance to the terrain. This is reflected in the code's zero-dimensional nature.
 
 .. figure:: https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/Faroe_Islands%2C_Bor%C3%B0oy%2C_Klaksv%C3%ADk_%283%29.jpg/1024px-Faroe_Islands%2C_Bor%C3%B0oy%2C_Klaksv%C3%ADk_%283%29.jpg
    :alt: A photograph of a fjord with a town on each side.

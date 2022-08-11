@@ -7,7 +7,13 @@ import numpy as np
 
 
 class SOLProperties(om.Group):
-    r"""
+    r"""Outputs properties of the SOL and divertor
+
+    Options
+    -------
+    config : UserConfigurator
+        Configuration tree. Required option.
+
     Outputs
     -------
     Z_eff : float
@@ -19,13 +25,18 @@ class SOLProperties(om.Group):
     f_rad : float
         Core radiated power fraction
     f_outer : float
-        power fraction to outer divertor
+        Power fraction to outer divertor
     θ_pol : float
-        poloidal tilt at plate
+        Poloidal tilt at plate
     θ_tot : float
         Total B-field angle of incidence at strike point
     f_fluxexp : float
         Poloidal flux expansion factor
+
+    Notes
+    -----
+    The f_rad specified here is independent of the calculation actually used
+    for the core plasma. In the future these should be coupled together.
     """
     def initialize(self):
         self.options.declare("config", default=None, recordable=False)
@@ -72,7 +83,7 @@ class SOLProperties(om.Group):
 class StrikePointRadius(om.ExplicitComponent):
     r"""Radius of the critical strike point
 
-    This is computed in one of three ways. For the snowflake divertor (SF),
+    Three models are implemented. For the snowflake divertor (SF),
 
     .. math::
 
@@ -96,15 +107,15 @@ class StrikePointRadius(om.ExplicitComponent):
 
     where typically :math:`f_w = 1/4` and `f_d = 1`.
 
-    Notes
-    -----
-    This component is configured using
-    config:SOL:divertor:model. The options are either "SF" or "SXD".
+    Options
+    -------
+    config : UserConfigurator
+        Configuration tree. Required option.
 
     Inputs
     ------
     R0 : float
-       m, Plasma major radius
+       m, Plasma geometric major radius
     a : float
        m, Plasma minor radius
     δ : float
@@ -114,6 +125,30 @@ class StrikePointRadius(om.ExplicitComponent):
     -------
     R_strike : float
        m, Outer strike point major radius
+
+    Notes
+    -----
+    The choice of model is configured using
+    ``plasma:SOL:divertor:model``. The options are either ``"SF"``,
+    ``"SXD"``, or ``"LinearDelta"``.
+
+    The configurations for each component are within
+    ``plasma:SOL:divertor:[Model choice]``.
+
+    For the SF model, the shift factor :math:`c` is loaded via
+    ``outer strike point radius shift (SF, SFD)``.
+
+    For the Super-X model, :math:`c` is loaded via
+    ``outer strike point radius multiplier``.
+
+    For the LinearDelta model, :math:`f_w` and :math:`f_d` are loaded via
+    ``outer-inner width`` and ``delta factor``.
+
+
+    Raises
+    ------
+    ValueError
+       If the model string is not recognized.
     """
     BAD_MODEL = "Only 'SF', 'SXD', and 'LinearDelta' are supported"
 
@@ -198,10 +233,11 @@ class StrikePointRadius(om.ExplicitComponent):
 
 
 class GoldstonHDSOL(om.ExplicitComponent):
-    r"""
+    r"""SOL width and seperatrix temperature
 
     The scrape-off-layer width and upstream seperatrix temperature
-    are computed according the Heuristic Drift ("HD") model [1]_.
+    are computed according Equations (6) and (7) of the
+    Heuristic Drift ("HD") model :footcite:p:`goldston_heuristic_2012`.
 
     .. math::
 
@@ -254,17 +290,8 @@ class GoldstonHDSOL(om.ExplicitComponent):
     λ : float
         mm, SOL width, assuming that ion magnetic drift determines the net
         particle transport
-
-    References
-    ----------
-    .. [1] Goldston, R. J.
-       Heuristic Drift-Based Model of the Power Scrape-off Width
-       in Low-Gas-Puff H-Mode Tokamaks.  Nuclear Fusion 2012, 52, 013009.
-       https://doi.org/10.1088/0029-5515/52/1/013009.
-       Equations (6) and (7).
     """
     def setup(self):
-        # reference: Menard T109
         self.c_Tesep = 30.81
         self.c_λ = 5671
         self.add_input("R0", units="m", desc="Plasma geometric major radius")
@@ -346,11 +373,16 @@ class PeakHeatFlux(om.ExplicitComponent):
                  \lambda_\mathrm{SOL}} \frac{q^*}{\kappa}
                  \sin(\theta_\mathrm{tot})
 
+    Options
+    -------
+    config : UserConfigurator
+        Configuration tree. Required option.
+
     Notes
     -----
     Which model is used is configured via
-    :code:`plasma:SOL:divertor:peak heat flux model`
-    and the choices are either :code:`poloidal angle` or :code:`total angle`.
+    ``plasma:SOL:divertor:peak heat flux model``
+    and the choices are either ``"poloidal angle"`` or ``"total angle"``.
 
     Inputs
     ------
@@ -359,28 +391,33 @@ class PeakHeatFlux(om.ExplicitComponent):
     κ : float
         Plasma elongation
     P_sol : float
-        MW, Power to SOL.
+        MW, Power to SOL
     f_outer : float
-        Fraction of power to the outer divertor.
+        Fraction of power to the outer divertor
     f_fluxexp : float
         Factor by which power is spread out due to flux expansion.
         (Typically greater than 1.)
     λ_sol : float
         m, SOL width
     q_star : float
-        Normalized safety factor
+        Cylindrical safety factor
     θ_pol : float
         rad, Poloidal angle of the field at the strike point
     θ_tot : float
         rad, Total angle of the field to the strike point surface
 
-    N_div : int
+    N_div : float
         Number of divertors (1 or 2). 1 is for single-null, 2 is a double-null.
 
     Outputs
     -------
     q_max : float
         MW/m**2, Peak heat flux
+
+    Raises
+    ------
+    ValueError
+        If the model choice string is not recognized.
     """
     POLOIDAL_ANGLE_MODEL = 1
     TOTAL_ANGLE_MODEL = 2
@@ -467,6 +504,51 @@ class PeakHeatFlux(om.ExplicitComponent):
 
 
 class SOLAndDivertor(om.Group):
+    r"""Top-level tokamak SOL and divertor group
+
+    Options
+    -------
+    config : UserConfigurator
+        Configuration tree. Required option.
+
+    Inputs
+    ------
+    R0 : float
+       m, Plasma major radius
+    a : float
+       m, Plasma minor radius
+    κ : float
+        Plasma elongation
+    δ : float
+       Triangularity
+    Bt : float
+        T, Vacuum toroidal field on-axis
+    Ip : float
+        MA, Plasma current
+    q_star : float
+        Normalized safety factor
+    P_heat : float
+        MW, Plasma heating power
+
+    Outputs
+    -------
+    P_sol : float
+        MW, Power entering the SOL
+    T_sep : float
+        eV, Midplane seperatrix temperature
+    λ_HD : float
+        mm, SOL width, assuming that ion magnetic drift determines the net
+        particle transport
+    λ_sol : float
+        mm, adjusted SOL width
+    q_max : float
+        MW/m**2, Peak heat flux
+
+    Notes
+    -----
+    The T_sep computation is an output, and is not guaranteed to be consistent
+    with any model of the core.
+    """
     def initialize(self):
         self.options.declare("config", default=None, recordable=False)
 

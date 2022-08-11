@@ -12,7 +12,7 @@ class SauterBootstrapProportionality(om.Group):
     r"""Allows adjustment of bootstrap fraction with δ.
 
     The local bootstrap current is proportional to the trapped particle
-    fraction [1]_
+    fraction :footcite:p:`kikuchi_negative_2014`.
 
     .. math::
 
@@ -33,7 +33,7 @@ class SauterBootstrapProportionality(om.Group):
     Here we assume that ε=0.75 of the LCFS ε and δ is 0.5 of the LCFS δ.
     This assumes that :math:`\delta = \delta_0(1 - \sqrt{1 - 0.75})`, i.e.,
     delta increases nonlinearly toward the LCFS. This scaling is similar to
-    that shown in Figure D24 of [2]_.
+    that shown in Figure D24 of :footcite:t:`sauter_geometric_2016`.
 
     Inputs
     ------
@@ -46,18 +46,6 @@ class SauterBootstrapProportionality(om.Group):
     -------
     m: float
        Multiplier of bootstrap current relative to when δ=0 case.
-
-    References
-    ----------
-    .. [1] Kikuchi, M.; Takizuka, T.; Furukawa, M.
-       Negative Triangularity as a Possible Tokamak Scenario.
-       Proceedings of the 12th Asia Pacific Physics Conference (APPC12) 2014.
-       https://doi.org/10.7566/JPSCP.1.015014.
-
-    .. [2] Sauter, O. Geometric Formulas for System Codes
-       Including the Effect of Negative Triangularity.
-       Fusion Engineering and Design 2016, 112, 633–645.
-       https://doi.org/10.1016/j.fusengdes.2016.04.033.
     """
     def setup(self):
         self.set_input_defaults("δ", 0)
@@ -130,20 +118,22 @@ class BootstrapMultiplier(om.ExplicitComponent):
 
     .. math::
 
-        \max(1.2 - (q^* / q_{min} / 5), 0.6)
+        \mathrm{bs}_\mathrm{mult} = \max(1.2 - (q^* / q_{min} / 5), 0.6)
 
     Notes
     -----
     In terms of physics, I don't know where this expression comes from.
 
-    We'd like to approximate the `max` function in a way such that the first
+    For implementation,
+    we'd like to approximate the ``max`` function in a way such that the first
     derivatives are continuous. One way is to use a LogSumExp function,
 
     .. math::
 
-       \max(a, b) \approx \log({base}^a + {base}^b) / \log({base})
+       \max(a, b) \approx \log(\mathrm{base}^a + \mathrm{base}^b) /
+       \log(\mathrm{base})
 
-    but this turns out to be bad numerically as `base` needs to be a large
+    but this turns out to be bad numerically as ``base`` needs to be a large
     number, like 10^5. Instead we use
 
     .. math::
@@ -210,12 +200,12 @@ class BootstrapMultiplier(om.ExplicitComponent):
 
 
 class BootstrapFraction(om.ExplicitComponent):
-    r"""
+    r"""Bootstrap fraction estimation, with extra multipliers
 
     .. math::
 
-        0.9 bs_\mathrm{mult} * \beta_{p, th} * \sqrt{\epsilon} *
-           \delta_\mathrm{mult} * \mathrm{fudge}
+        f_\mathrm{BS} = 0.9 \mathrm{bs}_\mathrm{mult} \, \epsilon^{1/2}
+            \beta_{p, \mathrm{th}} \, \delta_\mathrm{mult} \, \mathrm{fudge}
 
     Inputs
     ------
@@ -238,18 +228,13 @@ class BootstrapFraction(om.ExplicitComponent):
     Notes
     -----
     I don't know where this formula came from. It is similar to a formula in
-    Wesson [1] for low-aspect-ratio tokamaks,
+    :footcite:t:`wesson_tokamaks_2004` for low-aspect-ratio tokamaks,
 
     .. math::
 
        f_{BS} = c \epsilon^{1/2} \beta_p,
 
     found at the end of Section 4.9 (Bootstrap current).
-
-    References
-    ----------
-    .. [1] Wesson, J. Tokamaks, 3rd ed.;
-       Oxford University Press: New York, 2004.
     """
     def setup(self):
         self.add_input("bs_mult", desc="Bootstrap current multiplier")
@@ -290,23 +275,28 @@ class BootstrapFraction(om.ExplicitComponent):
 
 
 class BootstrapCurrent(om.Group):
-    r"""
+    r"""Main group for the zero-D plasma bootstrap calculation.
+
+    .. math::
+
+       I_\mathrm{BS} = f_\mathrm{BS}\,I_p
+
     Inputs
     ------
     ε : float
         Inverse aspect ratio of the plasma LCFS
     δ : float
-        Triangularity of the plasma LCFS
+        Triangularity of the plasma LCFS. Default is zero.
     Ip : float
-        MA, plasma current
+        MA, Plasma current
     βp : float
         Total poloidal beta
     thermal pressure fraction: float
         Fraction of pressure which is thermal
     q_star : float
-        Normalized q
+        Cylindrical safety factor
     q_min : float
-        Minimum q
+        Reference safety factor
 
     Outputs
     -------
@@ -314,6 +304,11 @@ class BootstrapCurrent(om.Group):
         Bootstrap current fraction
     I_BS : float
         MA, Boostrap current
+
+    Notes
+    -----
+    The ``fudge`` input of the :class:`.BootstrapFraction` calculation is not
+    normally exposed. It can be accessed at ``"<this>.bsf.fudge"``.
     """
     def setup(self):
         self.set_input_defaults("δ", 0)

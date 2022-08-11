@@ -10,7 +10,7 @@ class AlfvenSpeed(om.ExplicitComponent):
 
     .. math::
 
-       V_A = \left|B\right| / \sqrt{\mu_0 \rho}
+       V_A = \left|B\right| / \sqrt{μ_0 ρ}
 
     Inputs
     ------
@@ -58,7 +58,7 @@ class AverageIonMass(om.ExplicitComponent):
 
     .. math::
 
-       \overline{A_i} = \sum_i n_i A_i / \sum n_i
+       \bar{A} = \frac{\sum_i n_i A_i }{ \sum_i n_i}
 
     Inputs
     ------
@@ -105,9 +105,10 @@ class CoulombLogarithmElectrons(om.ExplicitComponent):
     r"""Electron coulomb logarithm
 
     .. math::
-        \log \Lambda_e = 31.3 - \log(\sqrt{n_e} / T_e)
+        \log Λ_e = 31.3 - \log(\sqrt{n_e} / T_e)
 
     Where ne is in per cubic meter and Te is in eV.
+    The formula is from :footcite:t:`sauter_neoclassical_1999`.
 
     Inputs
     ------
@@ -126,23 +127,16 @@ class CoulombLogarithmElectrons(om.ExplicitComponent):
     This computation may be somewhat specific for fast-particle slowing.
     Need to check.
 
-    The upper bound for logΛe is generous:
-       real tokamak plasmas should never be so rare or hot.
-
-    References
-    ----------
-    [1] Sauter, O.; Angioni, C.; Lin-Liu, Y. R.
-    Neoclassical Conductivity and Bootstrap Current Formulas
-    for General Axisymmetric Equilibria and Arbitrary Collisionality Regime.
-    Physics of Plasmas 1999, 6 (7), 2834–2839.
-    https://doi.org/10.1063/1.873240.
+    Raises
+    ------
+    om.AnalysisError
+       If density is negative
     """
     def setup(self):
         self.add_input("ne", units="n20", desc="Electron density")
         self.add_input("Te", units="eV", desc="Electron temperature")
         self.add_output("logΛe",
                         lower=3,
-                        upper=100,
                         ref=20,
                         desc="Coulomb collision logarithm for e⁻")
         self.c0 = 31.3
@@ -169,9 +163,10 @@ class CoulombLogarithmIons(om.ExplicitComponent):
     r"""Ion coulomb logarithm
 
     .. math::
-        \log \Lambda_{ii} = 30 - \log(Z^3 \sqrt{n_i} / T_i^{3/2})
+        \log Λ_{ii} = 30 - \log(Z^3 \sqrt{n_i} / T_i^{3/2})
 
     Where ni is in per cubic meter and Ti is in eV.
+    The formula is from :footcite:t:`sauter_neoclassical_1999`.
 
     Inputs
     ------
@@ -192,20 +187,9 @@ class CoulombLogarithmIons(om.ExplicitComponent):
     This computation may be somewhat specific for fast-particle slowing.
     Need to check.
 
-    The upper bound for logΛi is generous:
-       real tokamak plasmas should never be so rare or hot.
-
     Sauter notes that these formulas are only for single-species plasmas, and
     that multi-species plasmas are out-of-scope.
     Here we use Z_average.
-
-    References
-    ----------
-    [1] Sauter, O.; Angioni, C.; Lin-Liu, Y. R.
-    Neoclassical Conductivity and Bootstrap Current Formulas
-    for General Axisymmetric Equilibria and Arbitrary Collisionality Regime.
-    Physics of Plasmas 1999, 6 (7), 2834–2839.
-    https://doi.org/10.1063/1.873240.
     """
     def setup(self):
         self.add_input("ni", units="n20", desc="Ion density")
@@ -213,7 +197,6 @@ class CoulombLogarithmIons(om.ExplicitComponent):
         self.add_input("Z", desc="Ion charge number")
         self.add_output("logΛi",
                         lower=0,
-                        upper=100,
                         ref=20,
                         desc="Coulomb collision logarithm for ions")
         self.c0 = 30

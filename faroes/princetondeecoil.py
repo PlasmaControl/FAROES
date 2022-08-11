@@ -9,8 +9,79 @@ import numpy as np
 class PrincetonDeeTFSet(om.ExplicitComponent):
     r"""Simplified constant-tension coil shape
 
+    This is based on the analysis of :footcite:t:`gralnick_analytic_1976`.
     This magnet has an inner profile composed of a vertical line
     (the inner leg), and a constant-tension shape.
+
+    Remarkably only two parameters are needed to describe the shape:
+    the inboard and outboard radii, here denoted as :math:`r_1` and
+    :math:`r_2`.
+    The additional inputs :math:`R_0` and :math:`θ` serve additional
+    outputs which describe a constraint and the distance from the major axis
+    to the magnet.
+
+    .. figure :: images/princetondee.png
+       :width: 700
+       :align: center
+       :alt: Diagram of inputs and outputs for the PrincetonDeeTFSet
+
+       Inputs and selected outputs of the PrincetonDeeTFSet.
+       The output "V_enc" is not shown. The distances 'd'
+       are the square roots of the values 'd_sq'.
+
+    The 'magnet shape parameter' :math:`k` is defined as
+
+    .. math:: k = \frac{1}{2}\log\left(\frac{r_2}{r_1}\right).
+
+    An intermediate radius parameter :math:`r_0` defined as
+
+    .. math:: r_0 = \sqrt{r_1\,r_2}
+
+    is also used in the following calculations, but is not part of the output.
+
+    The half-height of the straight inner leg is
+
+    .. math:: \frac{h_{\mathrm{iL}}}{2} = r_0 k π I_1(k)
+
+    where :math:`I_1` is the `modified Bessel function`_ of the first kind,
+    of the first order.
+
+    The overall half-height is
+
+    .. math::
+       \frac{h}{2} = \frac{1}{2} π \,k\,r_0\,\left(I_1(k) + L_{-1}(k)\right)
+
+    where :math:`L` is the `modified Struve function`_.
+
+    .. _modified Bessel function: \
+       https://en.wikipedia.org/wiki/Bessel_function#Modified_Bessel_function
+
+    .. _modified Struve function: https://en.wikipedia.org/wiki/Struve_function
+
+    The arc length (turn length) is
+
+    .. math:: l_\mathrm{arc} = 2 π\,r_0\,k\left(I_0(k) + I_1(k)\right).
+
+    The volume enclosed by the magnets is
+
+    .. math::
+       V_\mathrm{enc} = 2 r_0^3 \, k\, π^2
+                       \left(I_1(3 k) - e^{-2 k}\,I_v(1, k)\right).
+
+    The overall shape of the magnet is recorded in the output
+    'd_sq'. It is constructed by numerically solving a
+    second order differential equation in polar coordinates,
+
+    .. math::
+       k \left(ρ \cos(θ) + x\right) = \frac{\left(ρ'(θ)^2 + ρ^2\right)}
+       {2 ρ'(θ)^2 - ρ ρ''(θ) + ρ^2}
+
+    where :math:`ρ = d/r_0` is a normalized radius and :math:`x = R_0 / r_0` is
+    a normalized horizontal axis position from which the radius is measured.
+    The R.H.S. of the equation is the inverse of the expression for curvature
+    in polar coordinates; essentially the equation says that the magnet's
+    curvature is inversely proportional to the distance from the machine center
+    axis.
 
     Notes
     -----
@@ -29,9 +100,9 @@ class PrincetonDeeTFSet(om.ExplicitComponent):
         m, Outboard TF inner radius
     R0 : float
         m, plasma major radius
-    θ   : array
+    θ   : array of floats
         Angles relative to the magnetic axis at which to
-           evaluate the distance to the magnet.
+        evaluate the distance to the magnet.
 
     Outputs
     -------
@@ -39,26 +110,19 @@ class PrincetonDeeTFSet(om.ExplicitComponent):
         Normalized magnet shape parameter
     inner leg half-height : float
         m, half-height of the vertical inner leg
-    d_sq : float
+    d_sq : array of floats
         m**2, Squared distance to points on the inner perimeter,
-           at angle θ from the magnetic axis
+        at angle θ from the plasma geometric axis
     V_enc : float
-        m**3, magnetized volume enclosed by the set
+        m**3, Magnetized volume enclosed by the set
     arc length: float
-        m, inner perimeter of the magnet
+        m, Inner perimeter of the magnet
     half-height : float
-        m, half the vertical height of the conductors
+        m, Half the vertical height of the conductors
 
     constraint_axis_within_coils : float
         m, Constraint which is greater than 0 when the major axis
-           is within the outer legs
-
-    References
-    ----------
-    .. [1] Gralnick, S. L.; Tenney, F. H.
-       Analytic Solutions for Constant‐tension Coil Shapes.
-       J. Appl. Phys. 1976, 47, 7.
-       https://doi.org/10.1063/1.322993
+        is within the outer legs
     """
     def setup(self):
         self.add_input("R0", units="m", desc="Plasma major radius")
@@ -73,9 +137,10 @@ class PrincetonDeeTFSet(om.ExplicitComponent):
                        desc="Angles at which to eval. distance")
 
         self.add_output("k", desc="Normalized magnet shape parameter")
-        # self.add_output("arc length",
-        #                 units="m",
-        #                 desc="Inner perimeter of the magnet")
+        self.add_output("arc length",
+                        units="m",
+                        ref=10,
+                        desc="Inner perimeter of the magnet")
         V_enc_ref = 1e3
         self.add_output("constraint_axis_within_coils",
                         units="m",
@@ -86,7 +151,10 @@ class PrincetonDeeTFSet(om.ExplicitComponent):
                         lower=0,
                         ref=V_enc_ref,
                         desc="Magnetized volume enclosed by the set")
-        self.add_output("d_sq", units="m**2", copy_shape="θ")
+        self.add_output("d_sq",
+                        units="m**2",
+                        copy_shape="θ",
+                        desc="Squared distances from axis to inner perimeter")
         self.add_output("half-height",
                         units="m",
                         lower=0,
@@ -191,6 +259,10 @@ class PrincetonDeeTFSet(om.ExplicitComponent):
         half_height = (1 / 2) * pi * k * r0 * (iv(1, k) + modstruve(-1, k))
         outputs["half-height"] = half_height
 
+        # compute the arc length (turn length)
+        arc_length = 2 * pi * k * r0 * (iv(0, k) + iv(1, k))
+        outputs["arc length"] = arc_length
+
     def setup_partials(self):
         size = self._get_var_meta("θ", "size")
         self.declare_partials("k", ["Ib TF R_out", "Ob TF R_in"],
@@ -207,6 +279,8 @@ class PrincetonDeeTFSet(om.ExplicitComponent):
         self.declare_partials("V_enc", ["Ib TF R_out", "Ob TF R_in"],
                               method="exact")
         self.declare_partials("half-height", ["Ib TF R_out", "Ob TF R_in"],
+                              method="exact")
+        self.declare_partials("arc length", ["Ib TF R_out", "Ob TF R_in"],
                               method="exact")
 
     def compute_partials(self, inputs, J):
@@ -263,6 +337,14 @@ class PrincetonDeeTFSet(om.ExplicitComponent):
           "Ob TF R_in"] = dhh_dk * J["k", "Ob TF R_in"] + dhh_dr0 * dr0_dr2
         J["half-height",
           "Ib TF R_out"] = dhh_dk * J["k", "Ib TF R_out"] + dhh_dr0 * dr0_dr1
+
+        darclength_dk = 2 * pi * r0 * ((1 + k) * iv(0, k) + k * iv(1, k))
+        darclength_dr0 = 2 * pi * k * (iv(0, k) + iv(1, k))
+        J["arc length", "Ib TF R_out"] = darclength_dk * J[
+            "k", "Ib TF R_out"] + darclength_dr0 * dr0_dr1
+
+        J["arc length", "Ob TF R_in"] = darclength_dk * J[
+            "k", "Ob TF R_in"] + darclength_dr0 * dr0_dr2
 
     def plot(self, ax=None, **kwargs):
         color = "black"

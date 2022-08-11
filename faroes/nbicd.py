@@ -16,6 +16,17 @@ electron_mass_in_u = physical_constants["electron mass in u"][0]
 
 class CurrentDriveProperties(om.Group):
     """Helper class to load properties
+
+    Options
+    -------
+    config : UserConfigurator
+        Configuration tree. Required option.
+
+    Outputs
+    -------
+    ε fraction : float
+        Specifies a typical flux surface for efficiency calculations
+        as a fraction of the LCFS inverse aspect ratio.
     """
     def initialize(self):
         self.options.declare('config', default=None, recordable=False)
@@ -31,14 +42,19 @@ class CurrentDriveProperties(om.Group):
 class CurrentDriveBeta1(om.ExplicitComponent):
     r"""Current drive variable β1
 
-    This is special case of the more general parameter
+    .. math::
+
+       \beta_1 = Z_\mathrm{eff} A_i / A_b
+
+    This is a special case of the more general parameter
     for the fast ion distribution βn,
 
     .. math::
 
-        \beta_n = m_i Z_\mathrm{eff} n (n+1) / (2 m_b)
+        \beta_n = m_i Z_\mathrm{eff} n (n+1) / (2 m_b).
 
-    Only the :math:`n=1` term is needed to compute the current drive efficiency
+    Only the :math:`n=1` term is needed to compute the current drive
+    efficiency.
 
     Inputs
     ------
@@ -56,11 +72,7 @@ class CurrentDriveBeta1(om.ExplicitComponent):
 
     References
     ----------
-    After Equation (44) of
-    Start, D. F. H.; Cordey, J. G.; Jones, E. M.
-    The Effect of Trapped Electrons on Beam Driven Currents
-    in Toroidal Plasmas. Plasma Physics 1980, 22 (4), 303–316.
-    https://doi.org/10.1088/0032-1028/22/4/002.
+    After Equation (44) of :footcite:t:`start_effect_1980`.
     """
     def setup(self):
         self.add_input("Z_eff", desc="Effective ion charge")
@@ -89,6 +101,8 @@ class CurrentDriveBeta1(om.ExplicitComponent):
 class CurrentDriveA(om.ExplicitComponent):
     r"""Approximate current drive A
 
+    .. math:: A = 1 + 0.6 / ((1 + v_b / v_{\mathrm{th},e}) Z_\mathrm{eff})
+
     Inputs
     ------
     Z_eff : float
@@ -105,13 +119,8 @@ class CurrentDriveA(om.ExplicitComponent):
 
     Notes
     -----
-    Formula from Menard cell T128. I'm not sure what reference
-    this is from.
-
+    Unsure of the provenance of this formula.
     """
-    def initialize(self):
-        self.options.declare("config", default=None, recordable=False)
-
     def setup(self):
         self.add_input("Z_eff", desc="Effective ion charge")
         self.add_input("vb",
@@ -145,13 +154,17 @@ class CurrentDriveAlphaCubed(om.ExplicitComponent):
 
     .. math::
 
-        \alpha^3 = 0.75 \pi^{1/2} m_e (v_e/v_0)^3 (\sum n_i Z_i^2 / n_e m_i)
+        \alpha^3 = 0.75 \pi^{1/2} m_e \left(\frac{v_e}{v_0}\right)^3
+            \left(\sum n_i Z_i^2 / n_e m_i\right)
 
     This is implemented as
 
-        \alpha^3 = 0.75 \pi^{1/2} A_e (v_e/v_0)^3 (\sum n_i Z_i^2 / n_e A_i)
+    .. math::
 
-    Where A_e is the electron mass in u
+        \alpha^3 = 0.75 \pi^{1/2} A_e \left(\frac{v_e}{v_0}\right)^3
+            \left(\sum n_i Z_i^2 / n_e A_i\right).
+
+    Where A_e is the electron mass in u.
 
     Inputs
     ------
@@ -175,16 +188,11 @@ class CurrentDriveAlphaCubed(om.ExplicitComponent):
 
     References
     ----------
-    Equation (44) of
-    Start, D. F. H.; Cordey, J. G.; Jones, E. M.
-    The Effect of Trapped Electrons on Beam Driven Currents
-    in Toroidal Plasmas. Plasma Physics 1980, 22 (4), 303–316.
-    https://doi.org/10.1088/0032-1028/22/4/002.
+    Equation (44) of :footcite:t:`start_effect_1980`
 
     Notes
     -----
-    This equation is referenced to be from a paper by Cordey and Haas
-
+    This equation is referenced to be from a paper by Cordey and Haas.
     """
     def setup(self):
         self.add_input("v0",
@@ -244,6 +252,9 @@ class CurrentDriveAlphaCubed(om.ExplicitComponent):
 class CurrentDriveG(om.ExplicitComponent):
     r"""Neutral beam current drive variable G
 
+    .. math::
+        G = 1 + (f_{\mathrm{trap},u} A - 1)  Z_b/Z_\mathrm{eff}
+
     Inputs
     ------
     ftrap_u : float
@@ -258,12 +269,10 @@ class CurrentDriveG(om.ExplicitComponent):
     Outputs
     -------
     G : float
-        ?
 
     Notes
     -----
-    From Menard's spreadsheet cell T129. I don't know where this formula
-    originate. It's labeled as G(Z_eff, A) but there are additional inputs...
+    Provenance of this formula is not known.
     """
     def setup(self):
         self.add_input("ftrap_u", desc="Trapped particle fraction")
@@ -286,22 +295,32 @@ class CurrentDriveG(om.ExplicitComponent):
 
 
 class CurrentDriveEfficiencyTerms(om.ExplicitComponent):
-    r"""
+    r"""Constructs the terms of Start, Equation (45)
 
     .. math::
 
-        \frac{\tau_{se} v_0 Z_b G}{2 \pi R (1 + \alpha^3) E_{NBI}}
+        \mathrm{term}_1 &= \frac{\tau_{se} v_0 Z_b G}
+            {2 \pi R (1 + \alpha^3) E_{NBI}}
 
-    .. math::
+        \mathrm{term}_2 &= 1 + (3 - 2 \alpha^3 \beta_1) \delta /
+            (1 + \alpha^3)^2
 
-        1 + (3 - 2 \alpha^3 \beta_1) \delta / (1 + \alpha^3)^2
+        \delta &\equiv \left<T_e\right>/(2 E_\mathrm{NBI})
 
-        \delta \equiv \left<T_e\right>/(2 E_\mathrm{NBI})
-
-    .. math::
-
-        i = \int_0^1 x^{3 + \beta_1}
+        \mathrm{term}_3 &= \int_0^1 x^{3 + \beta_1}
            \left(\frac{1 + \alpha^3}{x^3 + \alpha^3}\right)^{1+\beta_1/3} \; dx
+
+
+    The term evaluates to an expression with a hypergeometric function,
+
+    .. math::
+
+        \frac{1}{4 + \beta_1}
+           \left(\frac{\alpha^3}{1 + \alpha^3}\right)^{-1 - \beta_1/3}
+       \, _2F_1\left(\frac{3 + \beta_1}{3},
+                     \frac{4 + \beta_1}{3};
+                     \frac{7 + \beta_1}{3};
+                     \frac{-1}{\alpha^3}\right).
 
     Inputs
     ------
@@ -326,26 +345,22 @@ class CurrentDriveEfficiencyTerms(om.ExplicitComponent):
 
     Outputs
     -------
-    line1 : float
-        A/W, First line of Equation (45) of [1]
-    line2 : float
+    term1 : float
+        A/W, First line of Equation (45) of :footcite:t:`start_effect_1980`
+    term2 : float
         unitless, Second line of the equation
-    line3 : float
+    term3 : float
         unitless, Third line, the integral
 
     Notes
     -----
+    This component could be combined with the next,
+    :class:`.CurrentDriveEfficiencyEquation`, but a seperate implementation
+    simplifies the derivatives.
+
     There is no general analytic formula for derivatives of the 2F1 function
     with respect to the parameters, so finite differencing is used here.
     The function is fairly smooth so it should be acceptable.
-
-    References
-    ----------
-    .. [1] Equation (45) of
-    Start, D. F. H.; Cordey, J. G.; Jones, E. M.
-    The Effect of Trapped Electrons on Beam Driven Currents
-    in Toroidal Plasmas. Plasma Physics 1980, 22 (4), 303–316.
-    https://doi.org/10.1088/0032-1028/22/4/002.
     """
     def setup(self):
         self.add_input("τs", units="s", desc="Slowing time of beam ions on e⁻")
@@ -357,13 +372,13 @@ class CurrentDriveEfficiencyTerms(om.ExplicitComponent):
         self.add_input("E_NBI", units="keV", desc="Beam ion initial energy")
         self.add_input("β1", desc="Current drive variable β₁")
         self.add_input("<T_e>", units="keV", desc="Electron temperature")
-        self.add_output("line1",
+        self.add_output("term1",
                         units="A/W",
                         desc="Line 1 of NBIcd eff. equation")
-        self.add_output("line2",
+        self.add_output("term2",
                         units="unitless",
                         desc="Line 2 of NBIcd eff. equation")
-        self.add_output("line3",
+        self.add_output("term3",
                         units="unitless",
                         lower=0,
                         desc="Line 3 of NBIcd eff. equation")
@@ -376,14 +391,14 @@ class CurrentDriveEfficiencyTerms(om.ExplicitComponent):
         R = inputs["R"]
         α3 = inputs["α³"]
         E_NBI = inputs["E_NBI"]
-        line1 = τs * (mega * v0) * zb * G / (2 * pi * R * (1 + α3) *
+        term1 = τs * (mega * v0) * zb * G / (2 * pi * R * (1 + α3) *
                                              (kilo * E_NBI))
-        outputs["line1"] = line1
+        outputs["term1"] = term1
 
         β1 = inputs["β1"]
         Te = inputs["<T_e>"]
-        line2 = 1 + (3 - 2 * α3 * β1) * Te / (2 * E_NBI * (1 + α3)**2)
-        outputs["line2"] = line2
+        term2 = 1 + (3 - 2 * α3 * β1) * Te / (2 * E_NBI * (1 + α3)**2)
+        outputs["term2"] = term2
 
         if α3 < 1e-10:
             raise om.AnalysisError("Current drive α3 is too small")
@@ -394,14 +409,14 @@ class CurrentDriveEfficiencyTerms(om.ExplicitComponent):
         arg = -1 / α3
         hyp = hyp2f1(p1, p2, p3, arg)
         result = (α3 / (1 + α3))**(-1 - β1 / 3) * hyp / (4 + β1)
-        outputs["line3"] = result
+        outputs["term3"] = result
 
     def setup_partials(self):
-        self.declare_partials("line1",
+        self.declare_partials("term1",
                               ["τs", "v0", "Zb", "G", "R", "α³", "E_NBI"])
-        self.declare_partials("line2", ["α³", "β1", "<T_e>", "E_NBI"])
-        self.declare_partials("line3", ["β1"], method="fd")
-        self.declare_partials("line3", ["α³"])
+        self.declare_partials("term2", ["α³", "β1", "<T_e>", "E_NBI"])
+        self.declare_partials("term3", ["β1"], method="fd")
+        self.declare_partials("term3", ["α³"])
 
     def compute_partials(self, inputs, J):
         τs = inputs["τs"]
@@ -413,20 +428,20 @@ class CurrentDriveEfficiencyTerms(om.ExplicitComponent):
         E_NBI = inputs["E_NBI"]
         numer = τs * (mega * v0) * zb * G
         denom = (2 * pi * R * (1 + α3) * (kilo * E_NBI))
-        J["line1", "τs"] = (mega * v0) * zb * G / denom
-        J["line1", "v0"] = τs * mega * zb * G / denom
-        J["line1", "Zb"] = τs * (mega * v0) * G / denom
-        J["line1", "G"] = τs * (mega * v0) * zb / denom
-        J["line1", "R"] = -numer / denom / R
-        J["line1", "E_NBI"] = -numer / denom / E_NBI
-        J["line1", "α³"] = -numer / (2 * pi * R * (1 + α3)**2 * (kilo * E_NBI))
+        J["term1", "τs"] = (mega * v0) * zb * G / denom
+        J["term1", "v0"] = τs * mega * zb * G / denom
+        J["term1", "Zb"] = τs * (mega * v0) * G / denom
+        J["term1", "G"] = τs * (mega * v0) * zb / denom
+        J["term1", "R"] = -numer / denom / R
+        J["term1", "E_NBI"] = -numer / denom / E_NBI
+        J["term1", "α³"] = -numer / (2 * pi * R * (1 + α3)**2 * (kilo * E_NBI))
 
         β1 = inputs["β1"]
         Te = inputs["<T_e>"]
-        J["line2", "α³"] = (-3 + (α3 - 1) * β1) * Te / ((1 + α3)**3 * E_NBI)
-        J["line2", "β1"] = -α3 * Te / ((1 + α3)**2 * E_NBI)
-        J["line2", "<T_e>"] = (3 - 2 * α3 * β1) / (2 * (1 + α3)**2 * E_NBI)
-        J["line2",
+        J["term2", "α³"] = (-3 + (α3 - 1) * β1) * Te / ((1 + α3)**3 * E_NBI)
+        J["term2", "β1"] = -α3 * Te / ((1 + α3)**2 * E_NBI)
+        J["term2", "<T_e>"] = (3 - 2 * α3 * β1) / (2 * (1 + α3)**2 * E_NBI)
+        J["term2",
           "E_NBI"] = (-3 + 2 * α3 * β1) * Te / (2 * (1 + α3)**2 * E_NBI**2)
 
         p3 = (7 + β1) / 3
@@ -436,69 +451,67 @@ class CurrentDriveEfficiencyTerms(om.ExplicitComponent):
         prefactor = (1 + 1 / α3)**exp * (α3 / (1 + α3))**exp / (3 * α3**2 *
                                                                 (4 + β1))
         result = prefactor * (-α3 * (4 + β1) + (1 + α3 * (4 + β1)) * hyp)
-        J["line3", "α³"] = result
+        J["term3", "α³"] = result
 
 
 class CurrentDriveEfficiencyEquation(om.ExplicitComponent):
     r"""Current drive efficiency
 
+    .. math:: \frac{I_t}{P} = \mathrm{term}_1\;\mathrm{term}_2\;\mathrm{term}_3
+
     Inputs
     ------
-    line1 : float
+    term1 : float
         A/W, First line of the equation
-    line2 : float
+    term2 : float
         unitless, Second line of the equation
-    line3 : float
+    term3 : float
         unitless, Third line of the equation
 
     Outputs
     -------
     It/P : float
         A/W, Ratio of the net current flowing parallel to the magnetic field
-            to the injected neutral beam power
+        to the injected neutral beam power
 
     References
     ----------
-    Line 3 of Equation (45) of
-    Start, D. F. H.; Cordey, J. G.; Jones, E. M.
-    The Effect of Trapped Electrons on Beam Driven Currents
-    in Toroidal Plasmas. Plasma Physics 1980, 22 (4), 303–316.
-    https://doi.org/10.1088/0032-1028/22/4/002.
+    This completes Equation (45) of :footcite:t:`start_effect_1980`.
     """
     def setup(self):
-        self.add_input("line1",
+        self.add_input("term1",
                        units="A/W",
-                       desc="Line 1 of NBIcd eff. equation")
-        self.add_input("line2",
+                       desc="Term 1 of NBIcd eff. equation")
+        self.add_input("term2",
                        units="unitless",
-                       desc="Line 2 of NBIcd eff. equation")
-        self.add_input("line3",
+                       desc="Term 2 of NBIcd eff. equation")
+        self.add_input("term3",
                        units="unitless",
-                       desc="Line 3 of NBIcd eff. equation")
+                       desc="Term 3 of NBIcd eff. equation")
         self.add_output("It/P",
                         units="A/W",
                         desc="NBI current drive 'efficiency'")
 
     def compute(self, inputs, outputs):
-        line1 = inputs["line1"]
-        line2 = inputs["line2"]
-        line3 = inputs["line3"]
-        outputs["It/P"] = line1 * line2 * line3
+        term1 = inputs["term1"]
+        term2 = inputs["term2"]
+        term3 = inputs["term3"]
+        outputs["It/P"] = term1 * term2 * term3
 
     def setup_partials(self):
-        self.declare_partials("It/P", ["line1", "line2", "line3"])
+        self.declare_partials("It/P", ["term1", "term2", "term3"])
 
     def compute_partials(self, inputs, J):
-        line1 = inputs["line1"]
-        line2 = inputs["line2"]
-        line3 = inputs["line3"]
-        J["It/P", "line1"] = line2 * line3
-        J["It/P", "line2"] = line1 * line3
-        J["It/P", "line3"] = line1 * line2
+        term1 = inputs["term1"]
+        term2 = inputs["term2"]
+        term3 = inputs["term3"]
+        J["It/P", "term1"] = term2 * term3
+        J["It/P", "term2"] = term1 * term3
+        J["It/P", "term3"] = term1 * term2
 
 
 class CurrentDriveEfficiency(om.Group):
-    r"""
+    r"""Top-level group for NBI current drive efficiency
 
     Inputs
     ------
@@ -541,7 +554,7 @@ class CurrentDriveEfficiency(om.Group):
         Trapped particle fraction
     It/P : float
         A/W, Ratio of the net current flowing parallel to the magnetic field
-            to the injected neutral beam power
+        to the injected neutral beam power
     """
     def initialize(self):
         self.options.declare("config", default=None, recordable=False)
@@ -567,39 +580,36 @@ class CurrentDriveEfficiency(om.Group):
                            promotes_outputs=["A_bar"])
         self.add_subsystem('beta1',
                            CurrentDriveBeta1(),
-                           promotes_inputs=["Z_eff", "Ab", ("Ai", "A_bar")],
-                           promotes_outputs=["β1"])
+                           promotes_inputs=["Z_eff", "Ab", ("Ai", "A_bar")])
         self.add_subsystem('A',
                            CurrentDriveA(),
-                           promotes_inputs=["Z_eff", "vb", "vth_e"],
-                           promotes_outputs=["A"])
+                           promotes_inputs=["Z_eff", "vb", "vth_e"])
         self.add_subsystem('ftrapped',
                            TrappedParticleFractionUpperEst(),
                            promotes_inputs=[("ε", "ε_neoclass")],
                            promotes_outputs=["ftrap_u"])
+        self.add_subsystem('G',
+                           CurrentDriveG(),
+                           promotes_inputs=["ftrap_u", "Zb", "Z_eff"])
+        self.connect('A.A', 'G.A')
         self.add_subsystem('alphacubed',
                            CurrentDriveAlphaCubed(),
                            promotes_inputs=[("v0", "vb"), ("ve", "vth_e"),
-                                            "ne", "ni", "Ai", "Zi"],
-                           promotes_outputs=["α³"])
-        self.add_subsystem('G',
-                           CurrentDriveG(),
-                           promotes_inputs=["ftrap_u", "A", "Zb", "Z_eff"],
-                           promotes_outputs=["G"])
+                                            "ne", "ni", "Ai", "Zi"])
         self.add_subsystem("threelines",
                            CurrentDriveEfficiencyTerms(),
                            promotes_inputs=[
                                "τs",
                                ("v0", "vb"),
                                "Zb",
-                               "G",
                                ("R", "R0"),
-                               "α³",
                                ("E_NBI", "Eb"),
-                               "β1",
                                "<T_e>",
                            ],
-                           promotes_outputs=["line1", "line2", "line3"])
+                           promotes_outputs=["term1", "term2", "term3"])
+        self.connect('beta1.β1', 'threelines.β1')
+        self.connect('G.G', 'threelines.G')
+        self.connect('alphacubed.α³', 'threelines.α³')
         self.add_subsystem('eff',
                            CurrentDriveEfficiencyEquation(),
                            promotes_inputs=["*"],
@@ -611,7 +621,22 @@ class NBICurrent(om.ExplicitComponent):
 
     .. math::
 
-        I_\mathrm{NBI} = fudge * \sum (S Eb It/P)
+        I_\mathrm{NBI} = \mathrm{fudge} *
+        \sum \left(S\,E_b\,\frac{It}{P}\right)
+
+    The :math:`\mathrm{fudge}` term is loaded from the configuration tree::
+
+      h_cd:
+        NBI:
+          current drive estimate:
+            fudge factor: <fudge>
+
+    This term can be used to match a more sophisticated calculation.
+
+    Options
+    -------
+    config : UserConfigurator
+        Configuration tree. If ``None``, :math:`\mathrm{fudge}=1`.
 
     Inputs
     ------

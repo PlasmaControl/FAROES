@@ -21,7 +21,7 @@ inboard:
   thermal shield insulation thickness: {value: 8, units: mm}
 
   # gap between the vv and the vv thermal shield
-  vv tf gap thickness: {value: 5, units: mm}
+  vv ts gap thickness: {value: 5, units: mm}
 
   # vacuum vessel shield thickness
   vv inner shell thickness: {value: 12, units: mm}

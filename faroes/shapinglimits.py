@@ -1,9 +1,101 @@
-# note: this class is not yet integrated into any larger models
 import openmdao.api as om
+
+
+class MenardKappaScaling(om.ExplicitComponent):
+    r"""
+
+    Elongation :math:`κ` is determined by a "marginal scaling"
+    from :footcite:t:`menard_aspect_2004`,
+
+    .. math:: κ = 0.95 (1.9 + 1.9 / (A^{1.4})).
+
+    A factor ":math:`κ` area fraction" from the configuration file
+    multiplies the above "marginal :math:`κ`"
+    to generate :math:`κ_a`. The latter is used for computations
+    of the plasma cross-sectional area and volume.
+
+    Options
+    -------
+    config : UserConfigurator
+        Configuration tree. Required option.
+
+    Inputs
+    ------
+    A : float
+        Aspect ratio
+
+    Outputs
+    -------
+    κ : float
+        Elongation
+    κa : float
+        Effective elongation
+
+    Notes
+    -----
+    The fit coefficients are loaded from the configuration tree.
+    """
+    def initialize(self):
+        self.options.declare('config', default=None, recordable=False)
+
+    def setup(self):
+        if self.options['config'] is not None:
+            self.config = self.options['config']
+            ac = self.config.accessor(['fits'])
+            self.kappa_multiplier = ac(["κ multiplier"])
+            self.κ_area_frac = ac(["κ area fraction"])
+            self.κ_ε_scaling_constants = ac(
+                ["marginal κ-ε scaling", "constants"])
+
+        self.add_input("A", desc="Aspect Ratio")
+        self.add_output("κ", lower=0, ref=2, desc="Elongation")
+        self.add_output("κa", lower=0, ref=2, desc="Effective elongation")
+
+    def marginal_kappa_epsilon_scaling(self, aspect_ratio):
+        """
+        marginal kappa(epsilon) scaling
+
+        Parameters
+        ----------
+        aspect_ratio: array_like
+
+        Returns
+        -------
+        array_like
+        """
+        constants = self.κ_ε_scaling_constants
+        b = constants[0]
+        c = constants[1]
+        d = constants[2]
+        return b + c / (aspect_ratio**d)
+
+    def compute(self, inputs, outputs):
+        A = inputs["A"]
+
+        if A <= 1:
+            raise om.AnalysisError(f"Aspect ratio A ={A} < 1")
+
+        κ = self.kappa_multiplier * self.marginal_kappa_epsilon_scaling(A)
+        outputs["κ"] = κ
+        outputs["κa"] = κ * self.κ_area_frac
+
+    def setup_partials(self):
+        self.declare_partials(["κ", "κa"], "A")
+
+    def compute_partials(self, inputs, J):
+        constants = self.κ_ε_scaling_constants
+        sp_c12 = constants[1]
+        sp_d12 = constants[2]
+        A = inputs["A"]
+        J["κ",
+          "A"] = -self.kappa_multiplier * sp_c12 * sp_d12 * A**(-sp_d12 - 1)
+        J["κa", "A"] = J["κ", "A"] * self.κ_area_frac
 
 
 class ZohmMaximumKappaScaling(om.ExplicitComponent):
     r"""Maximum controllable elongation
+
+    .. math:: κ = 1.5 + 0.5 / (A - 1)
 
     Inputs
     ------
@@ -17,35 +109,16 @@ class ZohmMaximumKappaScaling(om.ExplicitComponent):
 
     Notes
     -----
-    Used in PROCESS [3]_, which cites Hartmann [2]_,
-    but is actually from Zohm [1]_.  In [2]_ a leading value of 1.46
-    rather than 1.5 is written, in formula (2.167).
+    Used in PROCESS :footcite:p:`kovari_process_2014`, which cites
+    :footcite:t:`hartmann_development_2013`, but is actually from
+    :footcite:t:`zohm_physics_2013`. In Hartmann formula (2.167) a
+    leading value of 1.46 rather than 1.5 is written.
 
     Zohm writes "The maximum controllable elongation and triangularity for a
     given PF coil will depend on [shape and aspect ratio] and a simple relation
-    :math:`\kappa_{X,max} = 1.5 + 0.5/(A-1)` is proposed. Future studies will
+    :math:`κ_{X,max} = 1.5 + 0.5/(A-1)` is proposed. Future studies will
     provide more complete fits, also taking into account the :math:`l_i` and
-    :math:`\delta`-dependence."
-
-    References
-    ----------
-    ..[1] Zohm, H.; Angioni, C.; Fable, E.; Federici, G.; Gantenbein, G.;
-      Hartmann, T.; Lackner, K.; Poli, E.; Porte, L.; Sauter, O.;
-      Tardini, G.; Ward, D.; Wischmeier, M.
-      On the Physics Guidelines for a Tokamak DEMO.
-      Nuclear Fusion 2013, 53 (7).
-      https://doi.org/10.1088/0029-5515/53/7/073019.
-
-    ..[2] Hartmann, T.
-      Development of a Modular Systems Code to Analyse the
-      Implications of Physics Assumptions on the Design of a
-      Demonstration Fusion Power Plant.
-      PhD thesis, Technischen Universitat Munchen, Munich, Germany, 2013.
-
-    ..[3] Kovari, M.; Kemp, R.; Lux, H.; Knight, P.; Morris, J.; Ward, D. J.
-      "PROCESS": A Systems Code for Fusion Power Plants—Part 1: Physics.
-      Fusion Engineering and Design 2014, 89 (12), 3054–3069.
-      https://doi.org/10.1016/j.fusengdes.2014.09.018.
+    :math:`δ`-dependence."
     """
     def setup(self):
         self.add_input("A", desc="Aspect Ratio")

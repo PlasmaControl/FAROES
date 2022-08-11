@@ -37,6 +37,7 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.intersphinx',
     'sphinx_rtd_theme',
+    'sphinxcontrib.bibtex'
 ]
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
@@ -48,9 +49,13 @@ intersphinx_mapping = {
     'openmdao': ('http://openmdao.org/twodocs/versions/latest/', None),
 }
 
+bibtex_bibfiles = ["refs.bib"]
+bibtex_default_style = "plain"
+bibtex_reference_style = "author_year"
+
 numpydoc_show_class_members = False  # for automodapi
 napoleon_custom_sections = [
-    ("Inputs", "params_style"), ("Outputs", "params_style")
+    ("Inputs", "params_style"), ("Outputs", "params_style"), "Options"
 ]
 
 # Add any paths that contain templates here, relative to this directory.
