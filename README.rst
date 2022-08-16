@@ -8,7 +8,7 @@ This framework also allows users to easily specify the design variables, constra
 
 |forthebadge made-with-python|
 
-|pytest| |unittest|
+|pytest| |unittest| |license|
 
 .. |forthebadge made-with-python| image:: http://ForTheBadge.com/images/badges/made-with-python.svg
    :target: https://www.python.org/
@@ -20,6 +20,10 @@ This framework also allows users to easily specify the design variables, constra
 .. |unittest| image:: https://github.com/cfe316/FAROES/workflows/unittest-installs/badge.svg
    :target: https://github.com/cfe316/FAROES/workflows/unittest-installs/badge
    :alt: Unittest build status
+
+.. |license| image:: https://img.shields.io/badge/License-MIT-blue.svg
+   :target: https://opensource.org/licenses/MIT
+   :alt: MIT licensed
 
 Requirements
 ------------
