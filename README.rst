@@ -63,3 +63,12 @@ Documentation Packages
 * ``sphinx_rtd_theme``
 
 The above packages are used to build the documentation for FAROES, and can be downloaded automatically by downloading the repos, ``cd`` to the folder, and running ``pip install -e .[docs]``, which will install FAROES in 'editable' mode alongside with the packages needed to build the documentation.
+
+Funding
+-------
+This work was supported by the U.S. Department of Energy under contract number DE-AC02-09CH11466.
+
+The developer grants to the Government, and others acting on its behalf,
+a nonexclusive, paid-up, irrevocable, world-wide license in such copyrighted data to reproduce,
+prepare derivative works, distribute copies to the public, and perform publicly and display publicly,
+by or on behalf of the Government.

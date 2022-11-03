@@ -27,3 +27,12 @@ The glaciers carved valleys and fjords with wide, uniform profiles, which gives 
 History
 -------
 FAROES started as a port of a 600-line spreadsheet model developed at PPPL.
+
+Funding
+-------
+This work was supported by the U.S. Department of Energy under contract number DE-AC02-09CH11466.
+
+The developer grants to the Government, and others acting on its behalf,
+a nonexclusive, paid-up, irrevocable, world-wide license in such copyrighted data to reproduce,
+prepare derivative works, distribute copies to the public, and perform publicly and display publicly,
+by or on behalf of the Government.
