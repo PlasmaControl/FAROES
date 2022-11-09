@@ -286,9 +286,9 @@ class Bremsstrahlung(om.Group):
                                promotes_inputs=["A", "δ0", "κ"],
                                promotes_outputs=["S"])
 
-            brems_eq = "P=S * a0**3 * Zeff**2 * n0**2 * T0**(1/2) * "
+            brems_eq = f"P=S * a0**3 * Zeff**2 * n0**2 * T0**(1/2) * {self.c}"
             self.add_subsystem("brems",
-                               om.ExecComp(brems_eq + str(self.c),
+                               om.ExecComp(brems_eq,
                                            a0={"units": "m"},
                                            n0={"units": "m**(-3)"},
                                            T0={"units": "keV"},
@@ -310,20 +310,22 @@ class Bremsstrahlung(om.Group):
                                promotes_inputs=inputs_to_promote)
 
         elif profile == "parabolic":
-            if triangularity == "constant":
-                self.add_subsystem("parab_profile_const_triang",
-                                   ParabProfileConstTriang(),
-                                   promotes_inputs=["A", "δ0", "κ", "α"],
-                                   promotes_outputs=["S"])
-            elif triangularity == "linear":
-                self.add_subsystem("parab_profile_linear_triang",
-                                   ParabProfileLinearTriang(),
-                                   promotes_inputs=["A", "δ0", "κ", "α"],
-                                   promotes_outputs=["S"])
 
-            brems_eq = "P=S * a0**3 * Zeff**2 * n0**2 * T0**(1/2) * "
+            if triangularity == "constant":
+                subsystem_name = "parab_profile_const_triang"
+                klass = ParabProfileConstTriang
+            elif triangularity == "linear":
+                subsystem_name = "parab_profile_linear_triang"
+                klass = ParabProfileLinearTriang
+
+            self.add_subsystem(subsystem_name,
+                               klass(),
+                               promotes_inputs=["A", "δ0", "κ", "α"],
+                               promotes_outputs=["S"])
+
+            brems_eq = f"P=S * a0**3 * Zeff**2 * n0**2 * T0**(1/2) * {self.c}"
             self.add_subsystem("brems",
-                               om.ExecComp(brems_eq + str(self.c),
+                               om.ExecComp(brems_eq,
                                            a0={"units": "m"},
                                            n0={"units": "m**(-3)"},
                                            T0={"units": "keV"},
@@ -346,26 +348,23 @@ class Bremsstrahlung(om.Group):
 
         elif profile == "pedestal":
             if triangularity == "constant":
-                self.add_subsystem("pedestal_profile_const_triang",
-                                   PedestalProfileConstTriang(),
-                                   promotes_inputs=["A", "δ0", "κ",
-                                                    "αn", "αT", "β",
-                                                    "ρpedn", "ρpedT", "n0",
-                                                    "nped", "n1", "T0",
-                                                    "Tped", "T1"],
-                                   promotes_outputs=["S"])
+                subsystem_name = "pedestal_profile_const_triang"
+                klass = PedestalProfileConstTriang
             elif triangularity == "linear":
-                self.add_subsystem("pedestal_profile_linear_triang",
-                                   PedestalProfileLinearTriang(),
-                                   promotes_inputs=["A", "δ0", "κ",
-                                                    "αn", "αT", "β",
-                                                    "ρpedn", "ρpedT", "n0",
-                                                    "nped", "n1", "T0",
-                                                    "Tped", "T1"],
-                                   promotes_outputs=["S"])
-            brems_eq = "P=S * a0**3 * Zeff**2 * "
+                subsystem_name = "pedestal_profile_linear_triang"
+                klass = PedestalProfileLinearTriang
+
+            self.add_subsystem(subsystem_name,
+                               klass(),
+                               promotes_inputs=["A", "δ0", "κ",
+                                                "αn", "αT", "β",
+                                                "ρpedn", "ρpedT", "n0",
+                                                "nped", "n1", "T0",
+                                                "Tped", "T1"],
+                               promotes_outputs=["S"])
+            brems_eq = f"P=S * a0**3 * Zeff**2 * {self.c}"
             self.add_subsystem("brems",
-                               om.ExecComp(brems_eq + str(self.c),
+                               om.ExecComp(brems_eq,
                                            a0={"units": "m"},
                                            S={"units": "W * m**(-3)"},
                                            P={"units": "W"}),
