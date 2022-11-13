@@ -45,10 +45,10 @@ There are two methods (components) for calculating :math:`W_c`, one following :f
 
        \beta' &= \frac{4}{3 \pi^{1/2}} n_e
 
-       W_\mathrm{crit} &= T_e \left(\frac{m_T}{m_e}\right)^{1/3}
+       W_\mathrm{crit} &= T_e \left(\frac{m_t}{m_e}\right)^{1/3}
            \left(\frac{\alpha'}{\beta'}\right)^{2/3}
 
-They are identical other than the calculation of :math:`\alpha'`. The sum indexes over the background plasma ions. The subscript :math:`_T` refers to the fast ion as the test particle.
+They are identical other than the calculation of :math:`\alpha'`. The sum indexes over the background plasma ions. The subscript :math:`_t` refers to the fast ion as the test particle.
 
 Next we can start to calculate properties of the ever-slowing population of fast particles.
 
